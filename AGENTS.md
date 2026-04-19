@@ -3,7 +3,7 @@
 > Instruções operacionais para agentes de codificação AI.  
 > Leia antes de qualquer modificação no código.
 
-O código da aplicação **FlowBoard** vive em `apps/flowboard/`. Na raiz há `.memory-bank/` (specs, ADRs), `.cursor/skills/` e `_codesteer/` (templates de agentes; a raiz ignora `_codesteer/*` no `.gitignore` — não espere esse conteúdo versionado no clone).
+O código da aplicação **FlowBoard** vive em `apps/flowboard/`. Na raiz há `.memory-bank/` (specs, ADRs), `.cursor/skills/` e `_codesteer/` (templates de agentes; a pasta `_codesteer/` está no `.gitignore` — mantenha-a só localmente; clones não trazem esse conteúdo).
 
 ## Comandos essenciais
 
