@@ -73,4 +73,4 @@ Registrar um **GitHub OAuth App** (client id, redirect URI, etc.) **não é nece
 
 ## Licença
 
-Conforme definido pelo mantenedor deste repositório.
+O código-fonte do FlowBoard neste repositório está sob a [licença MIT](LICENSE).
