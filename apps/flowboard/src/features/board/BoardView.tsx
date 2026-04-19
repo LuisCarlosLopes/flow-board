@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import {
   DndContext,
   DragOverlay,
@@ -35,9 +35,11 @@ import './BoardView.css'
 type Props = {
   session: FlowBoardSession
   boardId: string
+  /** Incremented from the shell (e.g. board settings menu) to open the column editor. */
+  columnEditorMenuTick?: number
 }
 
-export function BoardView({ session, boardId }: Props) {
+export function BoardView({ session, boardId, columnEditorMenuTick = 0 }: Props) {
   const client = useMemo(() => createClientFromSession(session), [session])
   const repo = useMemo(() => createBoardRepository(client), [client])
 
@@ -48,9 +50,12 @@ export function BoardView({ session, boardId }: Props) {
   const [persistError, setPersistError] = useState('')
   const [saving, setSaving] = useState(false)
   const [colModal, setColModal] = useState(false)
-  type TaskModalState = 'closed' | 'create' | { edit: Card }
+  type TaskModalState = 'closed' | { mode: 'create'; columnId: string } | { mode: 'edit'; card: Card }
   const [taskModal, setTaskModal] = useState<TaskModalState>('closed')
   const [activeId, setActiveId] = useState<string | null>(null)
+  /** Initialize to current tick so remount (ex. trocar aba) não reabre o modal só porque o tick global já era > 0. */
+  const lastColumnEditorMenuTick = useRef(columnEditorMenuTick)
+  const prevBoardIdForColumnMenu = useRef(boardId)
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
@@ -74,6 +79,18 @@ export function BoardView({ session, boardId }: Props) {
     }, 0)
     return () => clearTimeout(t)
   }, [reload])
+
+  useEffect(() => {
+    if (boardId !== prevBoardIdForColumnMenu.current) {
+      prevBoardIdForColumnMenu.current = boardId
+      lastColumnEditorMenuTick.current = columnEditorMenuTick
+      return
+    }
+    if (columnEditorMenuTick > lastColumnEditorMenuTick.current) {
+      lastColumnEditorMenuTick.current = columnEditorMenuTick
+      setColModal(true)
+    }
+  }, [boardId, columnEditorMenuTick])
 
   const cardById = useMemo(() => new Map(doc?.cards.map((c) => [c.cardId, c]) ?? []), [doc])
 
@@ -159,12 +176,12 @@ export function BoardView({ session, boardId }: Props) {
     commitAfterDrag(nextItems, activeIdStr)
   }
 
-  function handleAddCard() {
-    setTaskModal('create')
+  function handleAddCardToColumn(columnId: string) {
+    setTaskModal({ mode: 'create', columnId })
   }
 
   function handleEditCard(card: Card) {
-    setTaskModal({ edit: card })
+    setTaskModal({ mode: 'edit', card })
   }
 
   async function handleCreateTask(task: Partial<Card>) {
@@ -282,16 +299,6 @@ export function BoardView({ session, boardId }: Props) {
         onDragEnd={handleDragEnd}
       >
         <div className="fb-board__canvas">
-          <div className="fb-board__toolbar">
-            <div className="fb-board__actions">
-              <button type="button" onClick={handleAddCard} disabled={saving} data-testid="board-add-card">
-                Nova tarefa
-              </button>
-              <button type="button" onClick={() => setColModal(true)} disabled={saving} data-testid="board-edit-columns">
-                Colunas
-              </button>
-            </div>
-          </div>
           <div className="fb-board__cols-wrap">
             <div className="fb-board__cols" aria-label="Colunas do Kanban">
               {doc.columns.map((col) => (
@@ -301,8 +308,10 @@ export function BoardView({ session, boardId }: Props) {
                   cardIds={itemsMap[col.columnId] ?? []}
                   cardById={cardById}
                   timeState={timeState}
+                  saving={saving}
                   onEdit={handleEditCard}
                   onDelete={handleDeleteCard}
+                  onAddCard={handleAddCardToColumn}
                 />
               ))}
             </div>
@@ -329,12 +338,16 @@ export function BoardView({ session, boardId }: Props) {
 
       {taskModal !== 'closed' ? (
         <CreateTaskModal
-          key={taskModal === 'create' ? `${boardId}-create` : `${boardId}-edit-${taskModal.edit.cardId}`}
+          key={
+            taskModal.mode === 'create'
+              ? `${boardId}-create-${taskModal.columnId}`
+              : `${boardId}-edit-${taskModal.card.cardId}`
+          }
           isOpen
           onClose={() => setTaskModal('closed')}
-          onSubmit={taskModal === 'create' ? handleCreateTask : handleUpdateTask}
-          editingCard={taskModal === 'create' ? null : taskModal.edit}
-          defaultColumnId={doc.columns.find((c) => c.role === 'backlog')?.columnId}
+          onSubmit={taskModal.mode === 'create' ? handleCreateTask : handleUpdateTask}
+          editingCard={taskModal.mode === 'create' ? null : taskModal.card}
+          defaultColumnId={taskModal.mode === 'create' ? taskModal.columnId : undefined}
         />
       ) : null}
     </div>
@@ -346,15 +359,19 @@ function BoardColumn({
   cardIds,
   cardById,
   timeState,
+  saving,
   onEdit,
   onDelete,
+  onAddCard,
 }: {
   column: Column
   cardIds: string[]
   cardById: Map<string, Card>
   timeState: TimeBoardState
+  saving: boolean
   onEdit: (c: Card) => void
   onDelete: (c: Card) => void
+  onAddCard: (columnId: string) => void
 }) {
   const { setNodeRef } = useDroppable({ id: column.columnId })
 
@@ -397,6 +414,17 @@ function BoardColumn({
           })}
         </div>
       </SortableContext>
+      <button
+        type="button"
+        className="fb-col-add-card"
+        data-testid={`column-add-card-${column.columnId}`}
+        disabled={saving}
+        aria-label={`Adicionar card na coluna ${column.label}`}
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={() => onAddCard(column.columnId)}
+      >
+        + Adicionar card
+      </button>
     </div>
   )
 }

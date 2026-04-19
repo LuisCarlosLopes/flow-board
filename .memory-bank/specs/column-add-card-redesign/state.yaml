@@ -1,0 +1,111 @@
+title: "Redesign da ação criar/adicionar card por coluna (Kanban)"
+slug: "column-add-card-redesign"
+created_at: "2026-04-19"
+context: "apps/flowboard — quadro Kanban com persistência GitHub"
+
+objective: >
+  Substituir/ complementar o fluxo atual (botão global "Nova tarefa" na toolbar) por uma
+  zona de adicionar card no rodapé de cada coluna, alinhada ao protótipo visual: área
+  tracejada arredondada com "+ Adicionar card", tema escuro consistente com os cards,
+  abrindo criação com a coluna correta pré-selecionada.
+
+acceptance_criteria:
+  - "Cada coluna do quadro exibe, abaixo da lista de cards, um controle acessível (botão ou equivalente) com o rótulo '+ Adicionar card' e estilo de borda tracejada conforme protótipo."
+  - "Ao acionar o controle de uma coluna, o usuário entra no fluxo de criação de tarefa com `columnId` dessa coluna (não forçar apenas backlog quando a ação veio da coluna)."
+  - "Estados de carregamento/salvamento existentes (`saving`) desabilitam o controle de adicionar card como nos demais botões do quadro."
+  - "`data-testid` estável por coluna para E2E (ex.: `column-add-card-{columnId}`)."
+  - "Contraste e foco visível no tema atual (WCAG: foco visível em teclado)."
+
+scope:
+  in:
+    - "UI do rodapé da coluna em `BoardView` (ou componente extraído no mesmo feature folder)."
+    - "Estado de modal de criação passando `defaultColumnId` dinâmico conforme coluna clicada."
+    - "Estilos em `BoardView.css` (ou CSS colocalizado) espelhando o protótipo."
+  out:
+    - "Novos campos de domínio (tags coloridas, hashtags) como no mock — fora desta task salvo se já existirem no modelo."
+    - "Alteração do layout do card existente (faixas de cor, footer com #tag) além do necessário para encaixar o novo controle."
+    - "Mudança de contrato de API GitHub além do documento de board já usado."
+
+tech_context: >
+  React + TypeScript; `CreateTaskModal` já aceita `defaultColumnId` e envia `columnId` no payload.
+  `BoardView.tsx` hoje abre criação só via `handleAddCard` na toolbar com `defaultColumnId` fixo do backlog.
+  Referência visual: imagem em
+  `.cursor/projects/Users-luiscarloslopesjr-GitHub-test-cursor-codesteer/assets/image-3829e232-316f-4812-bd15-21ffb573e1b5.png`
+  e HTML/CSS do protótipo em `.memory-bank/specs/personal-kanban/prototypes/index.html` (classe `.add-card`).
+
+squad:
+  status: concluído
+  track: TASK
+  track_override: false
+  score: 4
+  current_phase: null
+  completed_phases:
+    - planner
+    - task-breakdown
+    - implementer
+    - code-reviewer
+    - tester
+  next_phase: null
+  iteration: 1
+  blockers: []
+  hitl_required: false
+
+decisions:
+  - decision: "Onde fica o ponto de entrada principal para 'nova tarefa' após o redesign?"
+    choice: "Manter o botão da toolbar como atalho global (backlog) e adicionar ação por coluna no protótipo."
+    reason: "Compatibilidade com fluxo atual e paridade com o mock por coluna."
+
+pipeline:
+  - phase: planner
+    agent: planner
+    artifact: planner-task.md
+  - phase: task-breakdown
+    agent: task-breakdown
+    artifact: task.md
+  - phase: implementer
+    agent: implementer
+  - phase: code-reviewer
+    agent: code-reviewer
+  - phase: tester
+    agent: tester
+
+history:
+  - phase: planner
+    agent: orchestrator
+    status: ok
+    artifact: planner-task.md
+    note: "IPD leve gerado inline com o pacote inicial da spec."
+  - phase: task-breakdown
+    agent: orchestrator
+    status: ok
+    artifact: task.md
+    note: "task.md criado na mesma entrega."
+  - phase: implementer
+    agent: cursor
+    status: ok
+    artifact: implementer-task.md
+    note: "UI por coluna, estado do modal, CSS, E2E + @playwright/test declarado."
+  - phase: code-reviewer
+    agent: cursor
+    status: ok
+    artifact: code-reviewer-task.md
+    note: "Veredicto go; 2 medium opcionais (data-attribute DOM, ordem E2E)."
+  - phase: tester
+    agent: cursor
+    status: ok
+    artifact: tester-task.md
+    note: "Vitest 56/56; cobertura statements 70.81%; E2E condicionado a sessão."
+
+summary:
+  delivered:
+    - "apps/flowboard/src/features/board/BoardView.tsx"
+    - "apps/flowboard/src/features/board/BoardView.css"
+    - "apps/flowboard/src/features/board/CreateTaskModal.tsx"
+    - "apps/flowboard/tests/e2e/create-task.spec.ts"
+    - "apps/flowboard/package.json (devDependency @playwright/test)"
+  quality:
+    code_review: "go"
+    tests: "vitest 56/56; coverage statements 70.81%"
+  tech_debt:
+    - "Considerar expor data-default-column-id apenas em DEV ou prefixo e2e-only."
+    - "E2E de coluna poderia mirar coluna por papel (role) em vez de .last()."

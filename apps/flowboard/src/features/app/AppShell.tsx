@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { BoardView } from '../board/BoardView'
 import { BoardListView } from '../boards/BoardListView'
 import { HoursView } from '../hours/HoursView'
@@ -14,6 +14,10 @@ type Props = {
 export function AppShell({ session, onLogout }: Props) {
   const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null)
   const [mainView, setMainView] = useState<'kanban' | 'hours'>('kanban')
+  const [columnEditorMenuTick, setColumnEditorMenuTick] = useState(0)
+  const requestOpenColumnEditor = useCallback(() => {
+    setColumnEditorMenuTick((n) => n + 1)
+  }, [])
 
   function logout() {
     clearSession()
@@ -51,6 +55,8 @@ export function AppShell({ session, onLogout }: Props) {
           session={session}
           selectedBoardId={selectedBoardId}
           onSelectBoard={setSelectedBoardId}
+          onOpenColumnEditor={requestOpenColumnEditor}
+          columnEditorDisabled={!selectedBoardId || mainView !== 'kanban'}
           viewTabs={
             <nav className="fb-board-bar__tabs" role="tablist" aria-label="Área principal">
               <button
@@ -86,7 +92,11 @@ export function AppShell({ session, onLogout }: Props) {
           .join(' ')}
       >
         {mainView === 'kanban' && selectedBoardId ? (
-          <BoardView session={session} boardId={selectedBoardId} />
+          <BoardView
+            session={session}
+            boardId={selectedBoardId}
+            columnEditorMenuTick={columnEditorMenuTick}
+          />
         ) : null}
         {mainView === 'hours' ? (
           <HoursView session={session} selectedBoardId={selectedBoardId} />

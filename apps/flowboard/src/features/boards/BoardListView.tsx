@@ -16,9 +16,20 @@ type Props = {
   onSelectBoard: (id: string | null) => void
   /** Tabs Quadro / Horas — na mesma linha do formulário para alinhar à base. */
   viewTabs?: ReactNode
+  /** Abre o editor de colunas do quadro (Kanban). */
+  onOpenColumnEditor?: () => void
+  /** Desabilita a ação "Colunas" (ex.: sem quadro ou fora da aba Quadro). */
+  columnEditorDisabled?: boolean
 }
 
-export function BoardListView({ session, selectedBoardId, onSelectBoard, viewTabs }: Props) {
+export function BoardListView({
+  session,
+  selectedBoardId,
+  onSelectBoard,
+  viewTabs,
+  onOpenColumnEditor,
+  columnEditorDisabled = false,
+}: Props) {
   const [catalog, setCatalog] = useState<CatalogJson | null>(null)
   const [loadError, setLoadError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -273,6 +284,22 @@ export function BoardListView({ session, selectedBoardId, onSelectBoard, viewTab
                   </button>
                 </li>
                 <li className="fb-board-menu__sep" aria-hidden role="presentation" />
+                <li role="none">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="fb-board-menu__item"
+                    disabled={busy || columnEditorDisabled || !onOpenColumnEditor}
+                    onClick={() =>
+                      closeSettingsAnd(() => {
+                        onOpenColumnEditor?.()
+                      })
+                    }
+                    data-testid="board-edit-columns"
+                  >
+                    Colunas
+                  </button>
+                </li>
                 <li role="none">
                   <button
                     type="button"

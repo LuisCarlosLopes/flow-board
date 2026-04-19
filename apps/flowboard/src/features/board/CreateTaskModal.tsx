@@ -172,8 +172,17 @@ export function CreateTaskModal({
     return null
   }
 
+  const effectiveColumnId = editingCard?.columnId ?? defaultColumnId ?? ''
+
   return (
-    <div className="fb-ctm-overlay" role="dialog" aria-modal="true" aria-labelledby="fb-ctm-title">
+    <div
+      className="fb-ctm-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="fb-ctm-title"
+      data-testid="ctm-dialog"
+      data-default-column-id={effectiveColumnId}
+    >
       <div className="fb-ctm">
         <h2 id="fb-ctm-title">{isEditMode ? 'Editar tarefa' : 'Nova Tarefa'}</h2>
 

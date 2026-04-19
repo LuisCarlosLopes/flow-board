@@ -74,7 +74,13 @@ export function ColumnEditorModal({ columns, cards, onClose, onApply }: Props) {
   }
 
   return (
-    <div className="fb-colmod-overlay" role="dialog" aria-modal="true" aria-labelledby="fb-colmod-title">
+    <div
+      className="fb-colmod-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="fb-colmod-title"
+      data-testid="column-editor-dialog"
+    >
       <div className="fb-colmod">
         <h2 id="fb-colmod-title">Colunas do quadro</h2>
         <p className="fb-colmod__hint">

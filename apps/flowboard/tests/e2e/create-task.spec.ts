@@ -1,9 +1,13 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 
 /**
  * End-to-end tests for CreateTaskModal feature
  * Tests complete user flows: create task, validation, copy, cancel, escape
  */
+
+function openCreateTaskFromFirstColumn(page: Page) {
+  return page.locator('[data-testid^="column-add-card-"]').first()
+}
 
 test.describe('CreateTaskModal E2E', () => {
   test.beforeEach(async ({ page }) => {
@@ -14,9 +18,7 @@ test.describe('CreateTaskModal E2E', () => {
   })
 
   test('Happy path: create task with all fields', async ({ page }) => {
-    // Click "Nova tarefa" button
-    const addButton = page.getByTestId('board-add-card')
-    await addButton.click()
+    await openCreateTaskFromFirstColumn(page).click()
 
     // Wait for modal to appear
     await page.waitForSelector('[role="dialog"]')
@@ -62,10 +64,30 @@ test.describe('CreateTaskModal E2E', () => {
     await expect(cardText).toBeVisible()
   })
 
+  test('Column "+ Adicionar card" opens modal with matching column id', async ({ page }) => {
+    const colAddBtn = page.locator('[data-testid^="column-add-card-"]').last()
+    const testId = await colAddBtn.getAttribute('data-testid')
+    const expectedColumnId = testId?.replace('column-add-card-', '') ?? ''
+    expect(expectedColumnId.length).toBeGreaterThan(0)
+    await colAddBtn.click()
+    const dialog = page.getByTestId('ctm-dialog')
+    await expect(dialog).toBeVisible()
+    await expect(dialog).toHaveAttribute('data-default-column-id', expectedColumnId)
+  })
+
+  test('Board settings → Colunas opens column editor', async ({ page }) => {
+    await page.getByTestId('board-settings-trigger').click()
+    await expect(page.locator('#board-settings-menu')).toBeVisible()
+    await page.getByTestId('board-edit-columns').click()
+    const colEditor = page.getByTestId('column-editor-dialog')
+    await expect(colEditor).toBeVisible()
+    await expect(colEditor.getByRole('heading', { name: 'Colunas do quadro' })).toBeVisible()
+    await colEditor.getByRole('button', { name: 'Cancelar' }).click()
+    await expect(colEditor).toBeHidden()
+  })
+
   test('Validation error: empty title', async ({ page }) => {
-    // Click "Nova tarefa" button
-    const addButton = page.getByTestId('board-add-card')
-    await addButton.click()
+    await openCreateTaskFromFirstColumn(page).click()
 
     // Wait for modal
     await page.waitForSelector('[role="dialog"]')
@@ -107,9 +129,7 @@ test.describe('CreateTaskModal E2E', () => {
   })
 
   test('Validation error: negative hours', async ({ page }) => {
-    // Click "Nova tarefa"
-    const addButton = page.getByTestId('board-add-card')
-    await addButton.click()
+    await openCreateTaskFromFirstColumn(page).click()
 
     await page.waitForSelector('[role="dialog"]')
 
@@ -144,9 +164,7 @@ test.describe('CreateTaskModal E2E', () => {
     // Get initial card count
     const initialCards = await page.locator('[data-testid^="card-"]').count()
 
-    // Click "Nova tarefa"
-    const addButton = page.getByTestId('board-add-card')
-    await addButton.click()
+    await openCreateTaskFromFirstColumn(page).click()
 
     await page.waitForSelector('[role="dialog"]')
 
@@ -171,9 +189,7 @@ test.describe('CreateTaskModal E2E', () => {
   })
 
   test('Escape key closes modal', async ({ page }) => {
-    // Click "Nova tarefa"
-    const addButton = page.getByTestId('board-add-card')
-    await addButton.click()
+    await openCreateTaskFromFirstColumn(page).click()
 
     await page.waitForSelector('[role="dialog"]')
 
@@ -185,9 +201,7 @@ test.describe('CreateTaskModal E2E', () => {
   })
 
   test('Copy button feedback', async ({ page }) => {
-    // Click "Nova tarefa"
-    const addButton = page.getByTestId('board-add-card')
-    await addButton.click()
+    await openCreateTaskFromFirstColumn(page).click()
 
     await page.waitForSelector('[role="dialog"]')
 
@@ -218,9 +232,7 @@ test.describe('CreateTaskModal E2E', () => {
   })
 
   test('Form field constraints', async ({ page }) => {
-    // Click "Nova tarefa"
-    const addButton = page.getByTestId('board-add-card')
-    await addButton.click()
+    await openCreateTaskFromFirstColumn(page).click()
 
     await page.waitForSelector('[role="dialog"]')
 
@@ -245,9 +257,7 @@ test.describe('CreateTaskModal E2E', () => {
   })
 
   test('Created At field displays today\'s date', async ({ page }) => {
-    // Click "Nova tarefa"
-    const addButton = page.getByTestId('board-add-card')
-    await addButton.click()
+    await openCreateTaskFromFirstColumn(page).click()
 
     await page.waitForSelector('[role="dialog"]')
 
@@ -261,8 +271,7 @@ test.describe('CreateTaskModal E2E', () => {
   })
 
   test('Modal resets form on reopen', async ({ page }) => {
-    // Click "Nova tarefa"
-    let addButton = page.getByTestId('board-add-card')
+    let addButton = openCreateTaskFromFirstColumn(page)
     await addButton.click()
 
     await page.waitForSelector('[role="dialog"]')
@@ -281,7 +290,7 @@ test.describe('CreateTaskModal E2E', () => {
     await page.waitForSelector('[role="dialog"]', { state: 'hidden' })
 
     // Reopen modal
-    addButton = page.getByTestId('board-add-card')
+    addButton = openCreateTaskFromFirstColumn(page)
     await addButton.click()
 
     await page.waitForSelector('[role="dialog"]')
@@ -302,7 +311,7 @@ test.describe('CreateTaskModal E2E', () => {
   })
 
   test('Edit task: same modal with heading and save', async ({ page }) => {
-    await page.getByTestId('board-add-card').click()
+    await openCreateTaskFromFirstColumn(page).click()
     await page.waitForSelector('[role="dialog"]')
 
     await page.getByTestId('ctm-title-input').fill('Task Before Edit')
