@@ -1,0 +1,331 @@
+import { test, expect } from '@playwright/test'
+
+/**
+ * End-to-end tests for CreateTaskModal feature
+ * Tests complete user flows: create task, validation, copy, cancel, escape
+ */
+
+test.describe('CreateTaskModal E2E', () => {
+  test.beforeEach(async ({ page }) => {
+    // Navigate to the board page
+    await page.goto('/')
+    // Wait for board to load
+    await page.waitForSelector('[data-testid="board-canvas"]', { timeout: 10000 })
+  })
+
+  test('Happy path: create task with all fields', async ({ page }) => {
+    // Click "Nova tarefa" button
+    const addButton = page.getByTestId('board-add-card')
+    await addButton.click()
+
+    // Wait for modal to appear
+    await page.waitForSelector('[role="dialog"]')
+
+    // Fill in title
+    const titleInput = page.getByTestId('ctm-title-input')
+    await titleInput.fill('Implementar autenticação')
+
+    // Fill in description
+    const descInput = page.getByTestId('ctm-description-input')
+    await descInput.fill('Adicionar login com GitHub OAuth')
+
+    // Fill in planned date
+    const dateInput = page.getByTestId('ctm-date-input')
+    await dateInput.fill('2026-05-01')
+
+    // Fill in planned hours
+    const hoursInput = page.getByTestId('ctm-hours-input')
+    await hoursInput.fill('8')
+
+    // Click copy button to test feedback
+    const copyBtn = page.getByTestId('ctm-copy-btn')
+    await copyBtn.click()
+
+    // Verify copy feedback appears
+    const feedback = page.locator('text=✓ Copiado!')
+    await expect(feedback).toBeVisible()
+
+    // Click Create button
+    const submitBtn = page.getByTestId('ctm-submit-btn')
+    await submitBtn.click()
+
+    // Wait for modal to close
+    await page.waitForSelector('[role="dialog"]', { state: 'hidden', timeout: 5000 })
+
+    // Verify task appears in the board
+    const newCard = page.locator('text=Implementar autenticação')
+    await expect(newCard).toBeVisible()
+
+    // Verify 8h is displayed on card (hours registered)
+    await page.waitForTimeout(500) // Small delay for re-render
+    const cardText = page.locator('[data-testid^="card-"]:has-text("Implementar autenticação")')
+    await expect(cardText).toBeVisible()
+  })
+
+  test('Validation error: empty title', async ({ page }) => {
+    // Click "Nova tarefa" button
+    const addButton = page.getByTestId('board-add-card')
+    await addButton.click()
+
+    // Wait for modal
+    await page.waitForSelector('[role="dialog"]')
+
+    // Leave title empty, fill other fields
+    const descInput = page.getByTestId('ctm-description-input')
+    await descInput.fill('Test Description')
+
+    const dateInput = page.getByTestId('ctm-date-input')
+    await dateInput.fill('2026-05-01')
+
+    const hoursInput = page.getByTestId('ctm-hours-input')
+    await hoursInput.fill('5')
+
+    // Click Create
+    const submitBtn = page.getByTestId('ctm-submit-btn')
+    await submitBtn.click()
+
+    // Verify error message
+    const errorMsg = page.locator('text=Título é obrigatório')
+    await expect(errorMsg).toBeVisible()
+
+    // Modal should still be visible
+    const modal = page.locator('[role="dialog"]')
+    await expect(modal).toBeVisible()
+
+    // Fill title to fix
+    const titleInput = page.getByTestId('ctm-title-input')
+    await titleInput.fill('Valid Title')
+
+    // Error should disappear
+    await expect(errorMsg).not.toBeVisible()
+
+    // Click Create again
+    await submitBtn.click()
+
+    // Modal should close
+    await page.waitForSelector('[role="dialog"]', { state: 'hidden' })
+  })
+
+  test('Validation error: negative hours', async ({ page }) => {
+    // Click "Nova tarefa"
+    const addButton = page.getByTestId('board-add-card')
+    await addButton.click()
+
+    await page.waitForSelector('[role="dialog"]')
+
+    // Fill all fields
+    const titleInput = page.getByTestId('ctm-title-input')
+    await titleInput.fill('Task Title')
+
+    const descInput = page.getByTestId('ctm-description-input')
+    await descInput.fill('Task Description')
+
+    const dateInput = page.getByTestId('ctm-date-input')
+    await dateInput.fill('2026-05-01')
+
+    // Set negative hours
+    const hoursInput = page.getByTestId('ctm-hours-input')
+    await hoursInput.fill('-5')
+
+    // Click Create
+    const submitBtn = page.getByTestId('ctm-submit-btn')
+    await submitBtn.click()
+
+    // Verify error
+    const errorMsg = page.locator('text=Horas deve ser um número ≥ 0')
+    await expect(errorMsg).toBeVisible()
+
+    // Modal remains open
+    const modal = page.locator('[role="dialog"]')
+    await expect(modal).toBeVisible()
+  })
+
+  test('Cancel button closes modal without saving', async ({ page }) => {
+    // Get initial card count
+    const initialCards = await page.locator('[data-testid^="card-"]').count()
+
+    // Click "Nova tarefa"
+    const addButton = page.getByTestId('board-add-card')
+    await addButton.click()
+
+    await page.waitForSelector('[role="dialog"]')
+
+    // Fill form partially
+    const titleInput = page.getByTestId('ctm-title-input')
+    await titleInput.fill('Temporary Task')
+
+    // Click Cancel
+    const cancelBtn = page.getByTestId('ctm-cancel-btn')
+    await cancelBtn.click()
+
+    // Modal should close
+    await page.waitForSelector('[role="dialog"]', { state: 'hidden' })
+
+    // Card count should not change
+    const finalCards = await page.locator('[data-testid^="card-"]').count()
+    expect(finalCards).toBe(initialCards)
+
+    // Verify temporary task is not in board
+    const tempCard = page.locator('text=Temporary Task')
+    await expect(tempCard).not.toBeVisible()
+  })
+
+  test('Escape key closes modal', async ({ page }) => {
+    // Click "Nova tarefa"
+    const addButton = page.getByTestId('board-add-card')
+    await addButton.click()
+
+    await page.waitForSelector('[role="dialog"]')
+
+    // Press Escape
+    await page.keyboard.press('Escape')
+
+    // Modal should close
+    await page.waitForSelector('[role="dialog"]', { state: 'hidden' })
+  })
+
+  test('Copy button feedback', async ({ page }) => {
+    // Click "Nova tarefa"
+    const addButton = page.getByTestId('board-add-card')
+    await addButton.click()
+
+    await page.waitForSelector('[role="dialog"]')
+
+    // Copy button should be disabled when description is empty
+    const copyBtn = page.getByTestId('ctm-copy-btn')
+    await expect(copyBtn).toBeDisabled()
+
+    // Fill description
+    const descInput = page.getByTestId('ctm-description-input')
+    await descInput.fill('This is a test description')
+
+    // Copy button should now be enabled
+    await expect(copyBtn).toBeEnabled()
+
+    // Click copy
+    await copyBtn.click()
+
+    // Verify feedback appears
+    const feedback = page.locator('text=✓ Copiado!')
+    await expect(feedback).toBeVisible()
+
+    // Wait for feedback to disappear (after 1.5s)
+    await page.waitForTimeout(2000)
+    await expect(feedback).not.toBeVisible()
+
+    // Button text should revert
+    await expect(copyBtn).toContainText('Copiar')
+  })
+
+  test('Form field constraints', async ({ page }) => {
+    // Click "Nova tarefa"
+    const addButton = page.getByTestId('board-add-card')
+    await addButton.click()
+
+    await page.waitForSelector('[role="dialog"]')
+
+    // Test title max length (200 chars)
+    const titleInput = page.getByTestId('ctm-title-input')
+    const longTitle = 'a'.repeat(300)
+    await titleInput.fill(longTitle)
+
+    // Verify truncation at 200
+    const titleValue = await titleInput.inputValue()
+    expect(titleValue.length).toBeLessThanOrEqual(200)
+
+    // Test hours field accepts decimals
+    const hoursInput = page.getByTestId('ctm-hours-input')
+    await hoursInput.fill('3.5')
+    const hoursValue = await hoursInput.inputValue()
+    expect(hoursValue).toBe('3.5')
+
+    // Test date field has type="date"
+    const dateInput = page.getByTestId('ctm-date-input')
+    await expect(dateInput).toHaveAttribute('type', 'date')
+  })
+
+  test('Created At field displays today\'s date', async ({ page }) => {
+    // Click "Nova tarefa"
+    const addButton = page.getByTestId('board-add-card')
+    await addButton.click()
+
+    await page.waitForSelector('[role="dialog"]')
+
+    // Get today's date in pt-BR format
+    const today = new Date().toLocaleDateString('pt-BR')
+
+    // Verify Created At displays current date
+    const createdAtField = page.getByTestId('ctm-created-at')
+    const fieldText = await createdAtField.textContent()
+    expect(fieldText).toContain(today.split('/')[0]) // At least day should match
+  })
+
+  test('Modal resets form on reopen', async ({ page }) => {
+    // Click "Nova tarefa"
+    let addButton = page.getByTestId('board-add-card')
+    await addButton.click()
+
+    await page.waitForSelector('[role="dialog"]')
+
+    // Fill form
+    const titleInput = page.getByTestId('ctm-title-input')
+    await titleInput.fill('First Task')
+
+    const descInput = page.getByTestId('ctm-description-input')
+    await descInput.fill('First Description')
+
+    // Close with Cancel
+    const cancelBtn = page.getByTestId('ctm-cancel-btn')
+    await cancelBtn.click()
+
+    await page.waitForSelector('[role="dialog"]', { state: 'hidden' })
+
+    // Reopen modal
+    addButton = page.getByTestId('board-add-card')
+    await addButton.click()
+
+    await page.waitForSelector('[role="dialog"]')
+
+    // Verify form is empty
+    const newTitleInput = page.getByTestId('ctm-title-input')
+    const titleValue = await newTitleInput.inputValue()
+    expect(titleValue).toBe('')
+
+    const newDescInput = page.getByTestId('ctm-description-input')
+    const descValue = await newDescInput.inputValue()
+    expect(descValue).toBe('')
+
+    const t = new Date()
+    const todayIso = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`
+    const dateValue = await page.getByTestId('ctm-date-input').inputValue()
+    expect(dateValue).toBe(todayIso)
+  })
+
+  test('Edit task: same modal with heading and save', async ({ page }) => {
+    await page.getByTestId('board-add-card').click()
+    await page.waitForSelector('[role="dialog"]')
+
+    await page.getByTestId('ctm-title-input').fill('Task Before Edit')
+    await page.getByTestId('ctm-description-input').fill('Desc original')
+    await page.getByTestId('ctm-date-input').fill('2026-06-01')
+    await page.getByTestId('ctm-hours-input').fill('2')
+    await page.getByTestId('ctm-submit-btn').click()
+    await page.waitForSelector('[role="dialog"]', { state: 'hidden' })
+
+    await expect(page.getByText('Task Before Edit')).toBeVisible()
+
+    const cardRow = page.locator('[data-testid^="card-"]').filter({ hasText: 'Task Before Edit' })
+    await cardRow.getByRole('button', { name: 'Editar' }).click()
+
+    await page.waitForSelector('[role="dialog"]')
+    await expect(page.getByRole('heading', { name: 'Editar tarefa' })).toBeVisible()
+    await expect(page.getByTestId('ctm-submit-btn')).toContainText('Salvar')
+
+    await page.getByTestId('ctm-title-input').fill('Task After Edit')
+    await page.getByTestId('ctm-submit-btn').click()
+    await page.waitForSelector('[role="dialog"]', { state: 'hidden' })
+
+    await expect(page.getByText('Task After Edit')).toBeVisible()
+    await expect(page.getByText('Task Before Edit')).not.toBeVisible()
+  })
+})

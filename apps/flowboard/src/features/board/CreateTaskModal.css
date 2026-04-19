@@ -1,0 +1,193 @@
+.fb-ctm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  background: var(--backdrop-overlay);
+  display: grid;
+  place-items: center;
+  padding: var(--space-3);
+}
+
+.fb-ctm {
+  width: min(560px, 100%);
+  max-height: min(90vh, 720px);
+  overflow: auto;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xl);
+  padding: var(--space-4);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-md);
+}
+
+.fb-ctm h2 {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+}
+
+.fb-ctm__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.fb-ctm__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.fb-ctm__label {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.fb-ctm__input,
+.fb-ctm__textarea {
+  padding: var(--space-2) var(--space-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-control);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: var(--text-md);
+}
+
+.fb-ctm__input:focus,
+.fb-ctm__textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.fb-ctm__textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.fb-ctm__readonly {
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-muted);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.fb-ctm__error {
+  margin-top: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+  font-size: var(--text-sm);
+  color: var(--danger-text);
+}
+
+.fb-ctm__copy-wrapper {
+  position: relative;
+}
+
+.fb-ctm__copy-btn {
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-control);
+  background: var(--accent-dim-mid);
+  color: var(--text-on-accent);
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.fb-ctm__copy-btn:hover:not(:disabled) {
+  background: var(--accent-dim-strong);
+}
+
+.fb-ctm__copy-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.fb-ctm__copy-feedback {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--success-bg);
+  color: var(--success-text);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  pointer-events: none;
+  animation: fadeInOut 0.4s ease-in-out;
+}
+
+@keyframes fadeInOut {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8);
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.fb-ctm__footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: flex-end;
+  margin-top: var(--space-3);
+  border-top: 1px solid var(--border-muted);
+  padding-top: var(--space-3);
+}
+
+.fb-ctm__ghost {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-control);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.fb-ctm__ghost:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: var(--hover-surface);
+}
+
+.fb-ctm__primary {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  border: none;
+  background: linear-gradient(
+    145deg,
+    var(--accent-gradient-start),
+    var(--accent-gradient-end)
+  );
+  color: var(--accent-fg);
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  transition: filter 0.2s;
+}
+
+.fb-ctm__primary:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.fb-ctm__primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

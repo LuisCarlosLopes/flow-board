@@ -1,0 +1,281 @@
+title: "FlowBoard — Kanban pessoal com rastreamento de tempo (MVP)"
+slug: personal-kanban
+created_at: "2026-04-19"
+context: "Greenfield web desktop-first; persistência GitHub API + PAT + JSON em repo privado"
+
+objective: >
+  Entregar o MVP do produto FlowBoard conforme PRD personal-kanban-dev-v1.0:
+  login (URL do repositório + PAT), múltiplos quadros Kanban com colunas editáveis e papéis
+  Backlog / Em progresso / Concluído, CRUD e movimentação de cards, rastreamento de tempo por
+  segmentos alinhado às transições de coluna, totais por atividade e tela de monitoramento
+  (dia/semana/mês) com escopo por quadro; single-user; dados no repositório do usuário via GitHub API.
+
+acceptance_criteria:
+  - "PRD de referência aprovado no gate de produto (EPIC); escopo MVP seção 7; nome FlowBoard na UI e docs da squad"
+  - "TSD (spec-epic) com contratos, regras formais (D1–D2, D6–D14), decisões e riscos; spec-reviewer 🟢/🟡"
+  - "ARD (architect-epic) com ADRs e diagramas; IPD (planner-epic) com plan-reviewer 🟢/🟡"
+  - "task.md decompõe sub-tarefas com tracks filhos; cada entrega: implementer → code-reviewer → tester sem critical"
+
+scope:
+  in:
+    - "Especificação técnica, arquitetura, plano, código do app FlowBoard e testes por sub-entrega do épico"
+    - "Integração GitHub API para leitura/escrita de JSON conforme decisões da spec"
+  out:
+    - "Fase 2 do PRD (offline-first avançado, colaboração multi-usuário, integrações Issues/PRs)"
+    - "Mobile nativo e billing (explícitos como fora do escopo no PRD)"
+
+tech_context: "A definir na TSD (PRD deixa stack frontend em aberto). Backend lógico = GitHub + JSON. Desktop-first."
+
+prd_reference: ".memory-bank/specs/personal-kanban/personal-kanban-dev-v1.0.prd.md"
+
+# Protótipo HTML (fluxo/UI de referência). O spec-reviewer DEVE usá-lo na auditoria;
+# architect e planner também devem considerá-lo quando relevante.
+prototype_reference: ".memory-bank/specs/personal-kanban/prototypes/index.html"
+
+product:
+  name: FlowBoard
+  tagline: "Kanban pessoal com rastreamento de tempo para desenvolvedores"
+
+squad:
+  status: epico-concluido
+  track: EPIC
+  track_override: true
+  score: 8
+  current_phase: done
+  completed_phases:
+    - phase: product-manager
+      status: skipped
+      reason: "PRD já existente em prd_reference; agente product-manager não reexecutado"
+    - phase: hitl-prd-approval
+      status: approved
+      at: "2026-04-19"
+      note: "Aprovado pelo desenvolvedor; base personal-kanban-dev-v1.0.prd.md"
+    - phase: spec
+      status: completed
+      artifact: spec-epic.md
+      at: "2026-04-19"
+    - phase: spec-reviewer
+      status: completed
+      artifact: spec-reviewer-epic.md
+      verdict: "🟡 aprovado com ressalvas"
+      quality_score: 82
+      at: "2026-04-19"
+    - phase: architect
+      status: completed
+      artifact: architect-epic.md
+      adrs:
+        - ".memory-bank/adrs/001-flowboard-spa-github-persistence.md"
+        - ".memory-bank/adrs/002-flowboard-json-repository-layout.md"
+        - ".memory-bank/adrs/003-flowboard-domain-and-ui-architecture.md"
+        - ".memory-bank/adrs/004-flowboard-session-and-pat-storage.md"
+        - ".memory-bank/adrs/005-flowboard-github-concurrency.md"
+      at: "2026-04-19"
+    - phase: plan
+      status: completed
+      artifact: planner-epic.md
+      at: "2026-04-19"
+    - phase: plan-review
+      status: completed
+      artifact: plan-reviewer-epic.md
+      verdict: "🟡 aprovado com ressalvas"
+      quality_score: 81
+      at: "2026-04-19"
+    - phase: task-breakdown
+      status: completed
+      artifact: task-breakdown-epic.md
+      task_file: task.md
+      at: "2026-04-19"
+    - phase: hitl-decomposition
+      status: approved
+      at: "2026-04-19"
+      note: "Aprovado implicitamente ao solicitar continuação (prossiga)"
+    - phase: implement-wave-a
+      status: completed
+      artifact: implementer-epic-1.md
+      tasks: "T1–T4"
+      at: "2026-04-19"
+    - phase: implement-wave-b
+      status: completed
+      artifact: implementer-epic-2.md
+      tasks: "T5–T7"
+      at: "2026-04-19"
+    - phase: implement-wave-c-d
+      status: completed
+      artifact: implementer-epic-3.md
+      tasks: "T8–T12"
+      at: "2026-04-19"
+    - phase: verify-code-review
+      status: completed
+      artifact: code-reviewer-epic-mvp.md
+      at: "2026-04-19"
+    - phase: verify-test
+      status: completed
+      artifact: tester-epic-mvp.md
+      at: "2026-04-19"
+  next_phase: done
+  iteration: 5
+  blockers: []
+  hitl_required: false
+
+decisions:
+  - decision: "Nome do produto na interface e artefatos"
+    choice: "FlowBoard"
+    reason: "Definido pelo solicitante na sessão squad-codesteer"
+  - decision: "Track de entrega"
+    choice: "EPIC"
+    reason: "Solicitação explícita do desenvolvedor; substitui sugestão anterior FEATURE (score 6)"
+  - decision: "Gate de produto (PRD)"
+    choice: "Aprovado"
+    reason: "Confirmação explícita do desenvolvedor em 2026-04-19"
+  - decision: "Protótipo obrigatório para spec-review e fases seguintes"
+    choice: "Usar .memory-bank/specs/personal-kanban/prototypes/index.html"
+    reason: "Solicitação do desenvolvedor: revisão e planejamento devem cruzar TSD/PRD com o HTML de protótipo"
+  - decision: "Revisão do TSD (spec-reviewer)"
+    choice: "🟡 Aprovado com ressalvas — score 82/100"
+    reason: "Zero críticos; ver avisos em spec-reviewer-epic.md (RF×CA, protótipo vs escopo PRD)"
+  - decision: "Arquitetura FlowBoard (ARD + ADRs)"
+    choice: "SPA + domínio puro + GitHub Contents; catálogo flowboard/catalog.json + boards/<id>.json; PAT sessionStorage MVP"
+    reason: "Ver architect-epic.md e ADR-001–005"
+  - decision: "Plano de implementação (IPD)"
+    choice: "planner-epic.md v1.0 — apps/flowboard greenfield"
+    reason: "Gerado após ARD; confiança 82/100"
+  - decision: "Revisão do IPD (plan-reviewer)"
+    choice: "🟡 Aprovado com ressalvas — score 81/100"
+    reason: "Ver plan-reviewer-epic.md; greenfield validado"
+  - decision: "Decomposição em tasks"
+    choice: "task.md com T1–T12 e ondas A–D"
+    reason: "Ver task-breakdown-epic.md"
+  - decision: "Gate decomposição (HITL)"
+    choice: "Aprovado para implementação"
+    reason: "Sessão prossiga após task.md — sem alterações pendentes"
+  - decision: "MVP implementação T1–T12"
+    choice: "Concluído em apps/flowboard com README + matriz RF×teste"
+    reason: "Sessão prossiga com todas as tasks; implementer-epic-3.md"
+  - decision: "Verificação pós-MVP (code-reviewer + tester)"
+    choice: "Artefatos code-reviewer-epic-mvp.md e tester-epic-mvp.md; ESLint verde"
+    reason: "Pipeline EPIC; pequenos ajustes ESLint (effects + putJsonWithRetry)"
+
+pipeline_planning:
+  - phase: product-manager
+    agent: product-manager
+    artifact: product-manager-epic.md
+    status: skipped
+    substitute: "personal-kanban-dev-v1.0.prd.md"
+  - phase: spec
+    agent: spec
+    artifact: spec-epic.md
+  - phase: spec-review
+    agent: spec-reviewer
+    artifact: spec-reviewer-epic.md
+    required_context:
+      - ".memory-bank/specs/personal-kanban/spec-epic.md"
+      - ".memory-bank/specs/personal-kanban/personal-kanban-dev-v1.0.prd.md"
+      - ".memory-bank/specs/personal-kanban/prototypes/index.html"
+  - phase: architect
+    agent: architect
+    artifact: architect-epic.md
+    note: "Obrigatório no EPIC (diferente do FEATURE)"
+  - phase: plan
+    agent: planner
+    artifact: planner-epic.md
+  - phase: plan-review
+    agent: plan-reviewer
+    artifact: plan-reviewer-epic.md
+  - phase: tasks
+    agent: task-breakdown
+    artifact: task-breakdown-epic.md
+
+pipeline_execution:
+  description: "Por cada sub-tarefa em task.md (após HITL de decomposição): implementer → code-reviewer → tester"
+  artifact_pattern:
+    implementer: "implementer-epic-[N].md"
+    code_reviewer: "code-reviewer-epic-[N].md"
+    tester: "tester-epic-[N].md"
+
+epic_hitl_gates:
+  - gate: "Aprovação do PRD (produto)"
+    status: approved
+  - gate: "Aprovação técnica pós-TSD (spec-reviewer 🟢)"
+    status: approved
+    note: "🟡 ressalvas documentadas em spec-reviewer-epic.md — não bloqueiam architect"
+  - gate: "Aprovação de arquitetura (ARD)"
+    status: approved
+    note: "Avanço automático na sessão; ARD+ADRs entregues"
+  - gate: "Aprovação do plano (plan-reviewer 🟢)"
+    status: approved
+    note: "🟡 score 81 — ver plan-reviewer-epic.md"
+  - gate: "Aprovação da decomposição (task.md e sub-tracks)"
+    status: approved
+    note: "Aprovado ao continuar implementação (prossiga)"
+  - gate: "Aprovação incremental após cada sub-entrega"
+    status: approved
+    note: "code-reviewer-epic-mvp.md + tester-epic-mvp.md — sem críticos"
+
+history:
+  - phase: hitl-prd-approval
+    agent: human
+    status: ok
+    artifact: "personal-kanban-dev-v1.0.prd.md"
+    note: "PRD aprovado; próxima fase agente spec → spec-epic.md"
+  - phase: spec
+    agent: spec
+    status: ok
+    artifact: spec-epic.md
+    note: "TSD v1.0; decisões D1–D14 fechadas; confiança 88/100"
+  - phase: spec-reviewer
+    agent: spec-reviewer
+    status: ok
+    artifact: spec-reviewer-epic.md
+    note: "🟡 score 82; protótipo index.html cruzado com PRD/TSD"
+  - phase: architect
+    agent: architect
+    status: ok
+    artifact: architect-epic.md
+    note: "ARD v1.0; ADR-001–005 em .memory-bank/adrs/"
+  - phase: plan
+    agent: planner
+    status: ok
+    artifact: planner-epic.md
+    note: "IPD v1.0; apps/flowboard greenfield"
+  - phase: plan-review
+    agent: plan-reviewer
+    status: ok
+    artifact: plan-reviewer-epic.md
+    note: "🟡 score 81"
+  - phase: task-breakdown
+    agent: task-breakdown
+    status: ok
+    artifact: task-breakdown-epic.md
+    note: "task.md T1–T12; HITL antes de implementação"
+  - phase: implement-wave-a
+    agent: implementer
+    status: ok
+    artifact: implementer-epic-1.md
+    note: "apps/flowboard T1–T4; npm test + build OK"
+  - phase: implement-wave-b
+    agent: implementer
+    status: ok
+    artifact: implementer-epic-2.md
+    note: "apps/flowboard T5–T7; npm test + build OK"
+  - phase: implement-wave-c-d
+    agent: implementer
+    status: ok
+    artifact: implementer-epic-3.md
+    note: "apps/flowboard T8–T12; README + DoD; npm test + build OK"
+  - phase: verify-code-review
+    agent: code-reviewer
+    status: ok
+    artifact: code-reviewer-epic-mvp.md
+    note: "🟡 score 84; sem críticos"
+  - phase: verify-test
+    agent: tester
+    status: ok
+    artifact: tester-epic-mvp.md
+    note: "lint + 38 testes + build OK; checklist manual pendente operador"
+
+summary:
+  planning_complete: true
+  wave_a_code: "apps/flowboard — domínio + GitHub client"
+  wave_b_code: "apps/flowboard — boardRepository, sessão, login + shell"
+  wave_cd_code: "apps/flowboard — lista quadros, Kanban, horas, a11y básico, README"
+  next_suggested: "Deploy estático ou CI opcional; validação manual com PAT sandbox (tester-epic-mvp §3)"

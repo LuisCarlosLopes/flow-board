@@ -1,0 +1,100 @@
+/**
+ * FlowBoard — preset tech-dark (alinhado ao protótipo em .memory-bank/.../prototypes/index.html)
+ */
+
+:root {
+  --bg-base: #0d0f14;
+  --bg-surface: #141720;
+  --bg-overlay: #1c2030;
+  --bg-subtle: #252a3a;
+  --bg-elevated: rgba(255, 255, 255, 0.03);
+  --bg-card: var(--bg-surface);
+  --bg-input: rgba(0, 0, 0, 0.25);
+  --bg-topbar: rgba(20, 23, 32, 0.85);
+  --bg-board-bar: rgba(13, 15, 20, 0.6);
+
+  --text-primary: #eef0f6;
+  --text-secondary: #8892aa;
+  --text-tertiary: #6b7280;
+  --text-disabled: #4a526a;
+  --text-on-accent: #e0e7ff;
+  --text-code: #c4b5fd;
+  --text-accent-soft: #a5b4fc;
+
+  --border-default: rgba(255, 255, 255, 0.07);
+  --border-muted: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.14);
+  --border-input: rgba(255, 255, 255, 0.14);
+  --border-control: rgba(255, 255, 255, 0.12);
+
+  --accent: oklch(62% 0.2 264);
+  --accent-hover: oklch(67% 0.22 264);
+  --accent-dim: rgba(99, 102, 241, 0.14);
+  --accent-dim-mid: rgba(99, 102, 241, 0.15);
+  --accent-dim-strong: rgba(99, 102, 241, 0.18);
+  --accent-border: rgba(99, 102, 241, 0.45);
+  --accent-border-strong: rgba(99, 102, 241, 0.55);
+  --accent-fg: #ffffff;
+  --accent-gradient-start: #6366f1;
+  --accent-gradient-end: oklch(55% 0.18 290);
+
+  --success: oklch(60% 0.18 145);
+  --warning: oklch(72% 0.18 75);
+  --danger: oklch(58% 0.22 25);
+  --danger-bg: rgba(239, 68, 68, 0.12);
+  --danger-border: rgba(239, 68, 68, 0.35);
+  --danger-text: #fecaca;
+  --danger-text-strong: #fca5a5;
+  --danger-hover-bg: rgba(239, 68, 68, 0.15);
+  --warning-bg: rgba(251, 191, 36, 0.12);
+  --warning-border: rgba(251, 191, 36, 0.35);
+  --warning-text: #fde68a;
+  --error-field-bg: rgba(220, 90, 70, 0.1);
+  --error-field-border: rgba(220, 90, 70, 0.4);
+  --error-field-text: #ffb4a8;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 1rem;
+  --space-4: 1.5rem;
+  --space-5: 2rem;
+  --space-6: 2.5rem;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 12px;
+  --radius-full: 999px;
+
+  --font-display: 'Sora', system-ui, -apple-system, sans-serif;
+  --font-body: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  --text-xs: 0.72rem;
+  --text-sm: 0.8rem;
+  --text-md: 0.9rem;
+  --text-base: 0.95rem;
+  --text-lg: 1.15rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.35rem;
+
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 4px 24px rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.45);
+  --shadow-card: var(--shadow-sm);
+  --shadow-glow: 0 0 0 1px rgba(99, 102, 241, 0.25), 0 8px 40px rgba(0, 0, 0, 0.45);
+  --shadow-overlay: 0 0 0 2px rgba(99, 102, 241, 0.35);
+
+  --z-sticky-top: 50;
+  --z-modal: 100;
+  --z-skip: 300;
+
+  --hover-surface: rgba(255, 255, 255, 0.06);
+  --hover-surface-strong: rgba(255, 255, 255, 0.08);
+  --backdrop-overlay: rgba(0, 0, 0, 0.65);
+  --backdrop-blur: blur(12px);
+
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast: 0.16s;
+  --transition: 160ms ease;
+}

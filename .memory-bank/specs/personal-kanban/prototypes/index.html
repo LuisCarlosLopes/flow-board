@@ -579,12 +579,244 @@
       font-size: 0.875rem;
     }
 
+    /* —— Login (URL do repo + PAT) —— */
+    .login-layout {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-4);
+    }
+
+    .login-card {
+      width: 100%;
+      max-width: 420px;
+      padding: var(--space-4);
+      background: var(--bg-overlay);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-glow);
+    }
+
+    .login-card__brand {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      margin-bottom: var(--space-3);
+    }
+
+    .login-card h1 {
+      font-family: var(--font-display);
+      font-size: 1.35rem;
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      margin-bottom: var(--space-2);
+    }
+
+    .login-card__sub {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      margin-bottom: var(--space-4);
+      line-height: 1.45;
+    }
+
+    .form-field {
+      margin-bottom: var(--space-3);
+    }
+
+    .form-field label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-secondary);
+      margin-bottom: var(--space-2);
+    }
+
+    .form-field input {
+      width: 100%;
+      padding: 12px 14px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      font-size: 0.9375rem;
+      outline: none;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+
+    .form-field input::placeholder {
+      color: var(--text-disabled);
+    }
+
+    .form-field input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-dim);
+    }
+
+    .form-field input.input--mono {
+      font-family: var(--font-mono);
+      font-size: 0.8125rem;
+    }
+
+    .login-hint {
+      font-size: 0.75rem;
+      color: var(--text-disabled);
+      margin-top: var(--space-2);
+      line-height: 1.4;
+    }
+
+    .login-error {
+      display: none;
+      padding: var(--space-2) var(--space-3);
+      margin-bottom: var(--space-3);
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(220, 90, 70, 0.4);
+      background: rgba(220, 90, 70, 0.1);
+      color: oklch(78% 0.12 25);
+      font-size: 0.8125rem;
+    }
+
+    .login-error.is-visible { display: block; }
+
+    .btn-connect {
+      width: 100%;
+      margin-top: var(--space-2);
+      padding: 12px var(--space-3);
+      border: none;
+      border-radius: var(--radius-md);
+      background: var(--accent);
+      color: var(--accent-fg);
+      font-family: var(--font-body);
+      font-size: 0.9375rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background var(--transition), transform var(--transition);
+    }
+
+    .btn-connect:hover:not(:disabled) {
+      background: var(--accent-hover);
+    }
+
+    .btn-connect:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .btn-connect:active:not(:disabled) {
+      transform: scale(0.98);
+    }
+
+    .login-footnote {
+      margin-top: var(--space-4);
+      font-size: 0.75rem;
+      color: var(--text-disabled);
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    .board-picker {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 200px;
+    }
+
+    .board-picker__label {
+      font-size: 0.625rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-disabled);
+    }
+
+    .board-select {
+      padding: 8px 12px;
+      background: var(--bg-overlay);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .board-select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-dim);
+    }
+
+    .repo-chip-display {
+      max-width: 240px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .btn-text {
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      font-family: var(--font-body);
+      font-size: 0.8125rem;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      transition: background var(--transition), color var(--transition);
+    }
+
+    .btn-text:hover {
+      background: var(--bg-overlay);
+      color: var(--text-primary);
+    }
+
+    .hours-board-filter {
+      margin-bottom: var(--space-3);
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      flex-wrap: wrap;
+    }
+
+    .hours-board-filter label {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    .hours-board-filter select {
+      padding: 8px 12px;
+      background: var(--bg-overlay);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-size: 0.8125rem;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
     @media (max-width: 720px) {
       .topbar__search { display: none; }
       .board-canvas { flex-direction: column; }
       .column { flex: 1 1 auto; width: 100%; }
       .board-bar__tabs { margin-left: 0; width: 100%; }
       .tab { flex: 1; text-align: center; }
+      .board-picker { min-width: 100%; }
+      .repo-chip-display { max-width: 100%; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -595,7 +827,34 @@
   </style>
 </head>
 <body>
-  <div class="app-shell">
+  <!-- Tela de login: URL do repositório + PAT (protótipo — sem chamada real à API) -->
+  <div id="screen-login" class="login-layout">
+    <div class="login-card">
+      <div class="login-card__brand">
+        <div class="logo-mark" aria-hidden="true">F</div>
+        <span class="logo-text">FlowBoard</span>
+      </div>
+      <h1>Entrar</h1>
+      <p class="login-card__sub">Conecte um <strong>repositório GitHub privado</strong> onde os dados serão salvos como JSON. Use um Personal Access Token com escopo adequado ao repo.</p>
+      <div id="login-error" class="login-error" role="alert"></div>
+      <form id="login-form" novalidate>
+        <div class="form-field">
+          <label for="repo-url">URL do repositório</label>
+          <input id="repo-url" name="repo-url" type="url" class="input--mono" placeholder="https://github.com/voce/flowboard-data" autocomplete="off" required />
+          <p class="login-hint">Repositório privado que você controla. O app usará a GitHub API para ler/gravar arquivos.</p>
+        </div>
+        <div class="form-field">
+          <label for="repo-pat">Personal Access Token</label>
+          <input id="repo-pat" name="repo-pat" type="password" class="input--mono" placeholder="ghp_••••••••" autocomplete="off" required />
+          <p class="login-hint">Tratado como senha: não é enviado a servidores do FlowBoard neste protótipo (apenas validação local).</p>
+        </div>
+        <button type="submit" class="btn-connect" id="login-submit">Conectar</button>
+      </form>
+      <p class="login-footnote">Protótipo estático: qualquer URL e PAT não vazios simulam sucesso. No produto, valide contra a API.</p>
+    </div>
+  </div>
+
+  <div id="screen-app" class="app-shell" hidden>
     <header class="topbar">
       <div class="topbar__brand">
         <div class="logo-mark" aria-hidden="true">F</div>
@@ -607,19 +866,27 @@
         <kbd>/</kbd>
       </div>
       <div class="topbar__actions">
+        <span class="chip chip--accent repo-chip-display" id="topbar-repo" title="">GitHub · repo</span>
         <button type="button" class="icon-btn" aria-label="Notificações">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         </button>
-        <div class="avatar" title="Conta local">LC</div>
+        <button type="button" class="btn-text" id="btn-logout">Sair</button>
       </div>
     </header>
 
     <div class="board-bar">
       <div class="board-bar__title-row">
-        <h1 class="board-title">Sprint pessoal · API &amp; docs</h1>
-        <span class="chip chip--accent">Dev local</span>
+        <div class="board-picker">
+          <span class="board-picker__label" id="board-picker-label">Quadro ativo</span>
+          <select id="board-select" class="board-select" aria-labelledby="board-picker-label">
+            <option value="empresa">Empresa · API &amp; docs</option>
+            <option value="pessoal">Pessoal · side projects</option>
+          </select>
+        </div>
+        <h1 class="board-title" id="board-title">Empresa · API &amp; docs</h1>
+        <span class="chip">Repo privado</span>
         <span class="chip">⭐ Favorito</span>
-        <span class="chip">Visível só para você</span>
+        <span class="chip">Só você (PAT)</span>
       </div>
       <div class="board-bar__tabs" role="tablist" aria-label="Áreas do produto">
         <button type="button" class="tab" role="tab" id="tab-board" aria-selected="true" aria-controls="view-board" data-view="board">Quadro</button>
@@ -737,7 +1004,14 @@
           <div class="hours-header">
             <div>
               <h2>Horas no período</h2>
-              <p>Soma dos segmentos concluídos (Working → Done), filtrados pelo intervalo.</p>
+              <p>Soma dos segmentos concluídos (Em progresso → Concluído), filtrados pelo intervalo.</p>
+              <div class="hours-board-filter">
+                <label for="hours-board-scope">Escopo</label>
+                <select id="hours-board-scope" aria-label="Quadro no relatório de horas">
+                  <option value="current">Quadro atual</option>
+                  <option value="all">Todos os quadros</option>
+                </select>
+              </div>
             </div>
             <div class="period-toggle" role="group" aria-label="Período">
               <button type="button" data-period="day" aria-pressed="false">Dia</button>
@@ -785,6 +1059,106 @@
 
   <script>
     (function () {
+      var SESSION_KEY = "flowboard_demo_auth";
+      var REPO_KEY = "flowboard_demo_repo";
+
+      var screenLogin = document.getElementById("screen-login");
+      var screenApp = document.getElementById("screen-app");
+      var loginForm = document.getElementById("login-form");
+      var loginError = document.getElementById("login-error");
+      var loginSubmit = document.getElementById("login-submit");
+      var topbarRepo = document.getElementById("topbar-repo");
+      var btnLogout = document.getElementById("btn-logout");
+      var boardSelect = document.getElementById("board-select");
+      var boardTitle = document.getElementById("board-title");
+      var hoursBoardScope = document.getElementById("hours-board-scope");
+
+      var BOARD_LABELS = {
+        empresa: "Empresa · API & docs",
+        pessoal: "Pessoal · side projects",
+      };
+
+      function shortRepoDisplay(url) {
+        try {
+          var u = url.replace(/\/$/, "");
+          var m = u.match(/github\.com[/:]([^/]+\/[^/]+?)(?:\.git)?$/i);
+          if (m) return m[1];
+          if (u.length > 32) return u.slice(0, 29) + "…";
+          return u;
+        } catch (e) {
+          return url;
+        }
+      }
+
+      function showLogin() {
+        screenLogin.hidden = false;
+        screenApp.hidden = true;
+      }
+
+      function showApp(repoUrl) {
+        screenLogin.hidden = true;
+        screenApp.hidden = false;
+        var shorty = shortRepoDisplay(repoUrl);
+        topbarRepo.textContent = "GitHub · " + shorty;
+        topbarRepo.title = repoUrl;
+      }
+
+      function persistSession(repoUrl) {
+        sessionStorage.setItem(SESSION_KEY, "1");
+        sessionStorage.setItem(REPO_KEY, repoUrl);
+      }
+
+      function clearSession() {
+        sessionStorage.removeItem(SESSION_KEY);
+        sessionStorage.removeItem(REPO_KEY);
+      }
+
+      function tryRestoreSession() {
+        if (sessionStorage.getItem(SESSION_KEY) === "1") {
+          var url = sessionStorage.getItem(REPO_KEY) || "";
+          if (url) showApp(url);
+          else showLogin();
+        } else {
+          showLogin();
+        }
+      }
+
+      loginForm.addEventListener("submit", function (e) {
+        e.preventDefault();
+        loginError.classList.remove("is-visible");
+        loginError.textContent = "";
+        var url = (document.getElementById("repo-url").value || "").trim();
+        var pat = (document.getElementById("repo-pat").value || "").trim();
+        if (!url || !pat) {
+          loginError.textContent = "Preencha a URL do repositório e o PAT.";
+          loginError.classList.add("is-visible");
+          return;
+        }
+        try {
+          new URL(url);
+        } catch (err) {
+          loginError.textContent = "URL inválida. Use um endereço completo (ex.: https://github.com/owner/repo).";
+          loginError.classList.add("is-visible");
+          return;
+        }
+        loginSubmit.disabled = true;
+        loginSubmit.textContent = "Validando…";
+        window.setTimeout(function () {
+          loginSubmit.disabled = false;
+          loginSubmit.textContent = "Conectar";
+          persistSession(url);
+          showApp(url);
+        }, 550);
+      });
+
+      btnLogout.addEventListener("click", function () {
+        clearSession();
+        showLogin();
+        document.getElementById("repo-pat").value = "";
+      });
+
+      tryRestoreSession();
+
       const PERIODS = {
         day: {
           label: "Hoje · " + new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "short" }),
@@ -856,10 +1230,11 @@
 
       function renderHours(periodKey) {
         const d = PERIODS[periodKey];
+        var scopeAll = hoursBoardScope && hoursBoardScope.value === "all";
         sumTotal.textContent = d.total;
         sumTasks.textContent = String(d.tasks);
         sumAvg.textContent = d.avg;
-        sumRange.textContent = d.label;
+        sumRange.textContent = d.label + (scopeAll ? " · agregado (todos os quadros)" : " · " + (BOARD_LABELS[boardSelect.value] || "quadro atual"));
         tbody.innerHTML = "";
         d.rows.forEach(function (r) {
           const tr = document.createElement("tr");
@@ -881,43 +1256,53 @@
         });
       });
 
+      boardSelect.addEventListener("change", function () {
+        var v = boardSelect.value;
+        boardTitle.textContent = BOARD_LABELS[v] || boardSelect.options[boardSelect.selectedIndex].text;
+        var w = document.querySelector('.period-toggle button[aria-pressed="true"]');
+        renderHours(w ? w.getAttribute("data-period") : "week");
+      });
+
+      hoursBoardScope.addEventListener("change", function () {
+        var w = document.querySelector('.period-toggle button[aria-pressed="true"]');
+        renderHours(w ? w.getAttribute("data-period") : "week");
+      });
+
       renderHours("week");
 
-      /* Drag-and-drop leve entre colunas (protótipo) */
-      let dragEl = null;
-      document.querySelectorAll(".card").forEach(function (card) {
-        card.addEventListener("dragstart", function (e) {
-          dragEl = card;
-          e.dataTransfer.effectAllowed = "move";
-          card.style.opacity = "0.5";
+      function initDragDrop() {
+        var dragEl = null;
+        document.querySelectorAll(".card").forEach(function (card) {
+          card.addEventListener("dragstart", function (e) {
+            dragEl = card;
+            e.dataTransfer.effectAllowed = "move";
+            card.style.opacity = "0.5";
+          });
+          card.addEventListener("dragend", function () {
+            card.style.opacity = "";
+            dragEl = null;
+          });
         });
-        card.addEventListener("dragend", function () {
-          card.style.opacity = "";
-          dragEl = null;
-        });
-      });
-      document.querySelectorAll(".cards").forEach(function (list) {
-        list.addEventListener("dragover", function (e) {
-          e.preventDefault();
-          e.dataTransfer.dropEffect = "move";
-        });
-        list.addEventListener("drop", function (e) {
-          e.preventDefault();
-          if (dragEl && list !== dragEl.parentNode) {
-            list.appendChild(dragEl);
-            const col = list.closest(".column");
-            const counter = col && col.querySelector(".column__meta");
-            if (counter) {
-              counter.textContent = String(list.querySelectorAll(".card").length);
+        document.querySelectorAll(".cards").forEach(function (list) {
+          list.addEventListener("dragover", function (e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+          });
+          list.addEventListener("drop", function (e) {
+            e.preventDefault();
+            if (dragEl && list !== dragEl.parentNode) {
+              list.appendChild(dragEl);
+              document.querySelectorAll(".column").forEach(function (c) {
+                var cards = c.querySelectorAll(".card");
+                var m = c.querySelector(".column__meta");
+                if (m) m.textContent = String(cards.length);
+              });
             }
-            document.querySelectorAll(".column").forEach(function (c) {
-              const cards = c.querySelectorAll(".card");
-              const m = c.querySelector(".column__meta");
-              if (m) m.textContent = String(cards.length);
-            });
-          }
+          });
         });
-      });
+      }
+
+      initDragDrop();
     })();
   </script>
 </body>
