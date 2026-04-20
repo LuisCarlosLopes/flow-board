@@ -37,9 +37,13 @@ type Props = {
   boardId: string
   /** Incremented from the shell (e.g. board settings menu) to open the column editor. */
   columnEditorMenuTick?: number
+  /** Card ID to open for editing (from search modal) */
+  cardToEditId?: string | null
+  /** Callback when card editing is complete */
+  onCardEditComplete?: () => void
 }
 
-export function BoardView({ session, boardId, columnEditorMenuTick = 0 }: Props) {
+export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEditId, onCardEditComplete }: Props) {
   const client = useMemo(() => createClientFromSession(session), [session])
   const repo = useMemo(() => createBoardRepository(client), [client])
 
@@ -91,6 +95,16 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0 }: Props)
       setColModal(true)
     }
   }, [boardId, columnEditorMenuTick])
+
+  // Handle card opening from search modal
+  useEffect(() => {
+    if (cardToEditId && doc?.cards) {
+      const cardToEdit = doc.cards.find((c) => c.cardId === cardToEditId)
+      if (cardToEdit) {
+        setTaskModal({ mode: 'edit', card: cardToEdit })
+      }
+    }
+  }, [cardToEditId, doc?.cards])
 
   const cardById = useMemo(() => new Map(doc?.cards.map((c) => [c.cardId, c]) ?? []), [doc])
 
@@ -344,7 +358,10 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0 }: Props)
               : `${boardId}-edit-${taskModal.card.cardId}`
           }
           isOpen
-          onClose={() => setTaskModal('closed')}
+          onClose={() => {
+            setTaskModal('closed')
+            onCardEditComplete?.()
+          }}
           onSubmit={taskModal.mode === 'create' ? handleCreateTask : handleUpdateTask}
           editingCard={taskModal.mode === 'create' ? null : taskModal.card}
           defaultColumnId={taskModal.mode === 'create' ? taskModal.columnId : undefined}
