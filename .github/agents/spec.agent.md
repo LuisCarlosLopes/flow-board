@@ -1,4 +1,5 @@
 ---
+type: agent
 name: spec
 description: 'Gera Technical Specification Documents (TSDs) de alta qualidade. Explora
   o repositório para mapear entidades, contratos e regras de negócio existentes, calcula
@@ -6,12 +7,6 @@ description: 'Gera Technical Specification Documents (TSDs) de alta qualidade. E
   contratos, edge cases) — nunca no COMO implementar. Agnóstico de stack.
 
   '
-triggers:
-- spec
-- especificação
-- TSD
-- requisitos técnicos
-- technical specification
 ---
 
 # Agente: spec
@@ -21,8 +16,10 @@ instruções canônicas do agente referenciadas abaixo ANTES de responder a
 qualquer solicitação do usuário. Siga o workflow, fases e formato de saída
 definidos pelo agente exatamente como especificado.
 
-Leia e siga as instruções canônicas do agente no arquivo abaixo antes de prosseguir:
+<instruction>
+<description>Gera Technical Specification Documents (TSDs) de alta qualidade. Explora o repositório para mapear entidades, contratos e regras de negócio existentes, calcula confiança antes de escrever e produz uma spec focada no O QUÊ (requisitos, regras, contratos, edge cases) — nunca no COMO implementar. Agnóstico de stack.
+</description>
+<file>_codesteer/agents/spec/spec.agent.md</file>
+</instruction>
 
-@_codesteer/agents/spec/spec.agent.md
-
-Você DEVE internalizar o workflow completo, fases e formato de saída do agente antes de responder.
+Leia e siga TODAS as instruções do arquivo canônico do agente acima antes de responder.

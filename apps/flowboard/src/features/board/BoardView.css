@@ -137,6 +137,27 @@
   min-height: 120px;
 }
 
+/* Coluna Concluído: lista virtual (ADR-006) — scroll interno, DOM proporcional à viewport */
+.fb-board__col-body--virtual {
+  flex: 1 1 0;
+  min-height: 460px;
+  max-height: min(72vh, 780px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
+}
+
+.fb-board__col-virtual-scroll {
+  box-sizing: border-box;
+}
+
+/* padding (não margin) para o measureElement do virtualizer incluir o espaçamento vertical */
+.fb-board__col-virtual-row {
+  padding-bottom: var(--space-2);
+  box-sizing: border-box;
+}
+
 .fb-col-add-card {
   box-sizing: border-box;
   width: 100%;

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import {
   DndContext,
   DragOverlay,
@@ -512,21 +513,32 @@ function BoardColumn({
         <span className={roleClass}>{roleLabel}</span>
       </div>
       <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
-        <div className="fb-board__col-body">
-          {cardIds.map((id) => {
-            const card = cardById.get(id)
-            return card ? (
-              <SortableCard
-                key={id}
-                card={card}
-                columnRole={column.role}
-                timeState={timeState}
-                onEdit={() => onEdit(card)}
-                onDelete={() => onDelete(card)}
-              />
-            ) : null
-          })}
-        </div>
+        {column.role === 'done' ? (
+          <VirtualizedDoneColumnBody
+            cardIds={cardIds}
+            cardById={cardById}
+            columnRole={column.role}
+            timeState={timeState}
+            onEdit={onEdit}
+            onDelete={onDelete}
+          />
+        ) : (
+          <div className="fb-board__col-body">
+            {cardIds.map((id) => {
+              const card = cardById.get(id)
+              return card ? (
+                <SortableCard
+                  key={id}
+                  card={card}
+                  columnRole={column.role}
+                  timeState={timeState}
+                  onEdit={() => onEdit(card)}
+                  onDelete={() => onDelete(card)}
+                />
+              ) : null
+            })}
+          </div>
+        )}
       </SortableContext>
       <button
         type="button"
@@ -744,6 +756,86 @@ function SortableCard({
             <line x1="14" x2="14" y1="11" y2="17" />
           </svg>
         </button>
+      </div>
+    </div>
+  )
+}
+
+function VirtualizedDoneColumnBody({
+  cardIds,
+  cardById,
+  columnRole,
+  timeState,
+  onEdit,
+  onDelete,
+}: {
+  cardIds: string[]
+  cardById: Map<string, Card>
+  columnRole: ColumnRole
+  timeState: TimeBoardState
+  onEdit: (c: Card) => void
+  onDelete: (c: Card) => void
+}) {
+  const parentRef = useRef<HTMLDivElement>(null)
+
+  /* TanStack Virtual: retorno não memoizável pelo React Compiler — uso local apenas. */
+  // eslint-disable-next-line react-hooks/incompatible-library -- virtualizer intentionally not memoized by compiler
+  const virtualizer = useVirtualizer({
+    count: cardIds.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 112,
+    overscan: 6,
+    getItemKey: (index) => cardIds[index]!,
+  })
+
+  if (cardIds.length === 0) {
+    return <div className="fb-board__col-body fb-board__col-body--virtual" data-testid="done-column-empty" />
+  }
+
+  return (
+    <div
+      ref={parentRef}
+      className="fb-board__col-body fb-board__col-body--virtual"
+      data-testid="done-column-virtual"
+    >
+      <div
+        className="fb-board__col-virtual-scroll"
+        style={{
+          height: virtualizer.getTotalSize(),
+          position: 'relative',
+          width: '100%',
+        }}
+      >
+        {virtualizer.getVirtualItems().map((vi) => {
+          const id = cardIds[vi.index]!
+          const card = cardById.get(id)
+          if (!card) {
+            return null
+          }
+          return (
+            <div
+              key={vi.key}
+              data-index={vi.index}
+              ref={virtualizer.measureElement}
+              className="fb-board__col-virtual-row"
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                transform: `translateY(${vi.start}px)`,
+              }}
+            >
+              <SortableCard
+                card={card}
+                columnRole={columnRole}
+                timeState={timeState}
+                onEdit={() => onEdit(card)}
+                onDelete={() => onDelete(card)}
+              />
+            </div>
+          )
+        })}
       </div>
     </div>
   )

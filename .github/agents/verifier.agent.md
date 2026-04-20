@@ -1,4 +1,5 @@
 ---
+type: agent
 name: verifier
 description: 'Agente de verificação pós-entrega que cruza IPD × Delivery Report ×
   código real, executa validações automatizadas (lint, testes, typecheck), detecta
@@ -6,13 +7,6 @@ description: 'Agente de verificação pós-entrega que cruza IPD × Delivery Rep
   gate antes do code-review.
 
   '
-triggers:
-- verifica entrega
-- verify delivery
-- valida implementação
-- verification
-- quality gate
-- pós-entrega
 ---
 
 # Agente: verifier
@@ -22,8 +16,10 @@ instruções canônicas do agente referenciadas abaixo ANTES de responder a
 qualquer solicitação do usuário. Siga o workflow, fases e formato de saída
 definidos pelo agente exatamente como especificado.
 
-Leia e siga as instruções canônicas do agente no arquivo abaixo antes de prosseguir:
+<instruction>
+<description>Agente de verificação pós-entrega que cruza IPD × Delivery Report × código real, executa validações automatizadas (lint, testes, typecheck), detecta divergências e emite Verification Report ou Adjustment Report com evidências. Último gate antes do code-review.
+</description>
+<file>_codesteer/agents/verifier/verifier.agent.md</file>
+</instruction>
 
-@_codesteer/agents/verifier/verifier.agent.md
-
-Você DEVE internalizar o workflow completo, fases e formato de saída do agente antes de responder.
+Leia e siga TODAS as instruções do arquivo canônico do agente acima antes de responder.

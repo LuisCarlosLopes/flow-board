@@ -55,7 +55,7 @@ export function firstWorkingWindowStartMs(fromMs: number, wh: BoardWorkingHours)
   if (fromMs < wEndEx) {
     return fromMs
   }
-  const nextDayStart = dayStart + 86_400_000
+  const nextDayStart = localDayRange(new Date(fromMs)).endMs + 1
   return nextDayStart + wh.startMinute * 60 * 1000
 }
 

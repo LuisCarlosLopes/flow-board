@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { localDayRange } from './hoursProjection'
 import {
   clipIntervalToWorkingHours,
+  firstWorkingWindowStartMs,
   materializeCountableIntervals,
   partitionActiveWork,
   snapStartForEnteringInProgress,
@@ -61,6 +62,17 @@ describe('partitionActiveWork', () => {
     const r = partitionActiveWork(2000, now, undefined)
     expect(r.nextActiveStartMs).toBe(2000)
     expect(r.completedSegments).toHaveLength(0)
+  })
+})
+
+describe('firstWorkingWindowStartMs', () => {
+  it('após expediente usa meia-noite do dia civil seguinte (não soma 24h fixos)', () => {
+    const from = new Date(2026, 3, 20, 19, 0, 0, 0).getTime()
+    const nextMidnight = new Date(from)
+    nextMidnight.setDate(nextMidnight.getDate() + 1)
+    nextMidnight.setHours(0, 0, 0, 0)
+    const expected = nextMidnight.getTime() + wh918.startMinute * 60 * 1000
+    expect(firstWorkingWindowStartMs(from, wh918)).toBe(expected)
   })
 })
 
