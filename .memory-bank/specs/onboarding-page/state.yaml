@@ -1,0 +1,129 @@
+title: "Criar página de onboarding para autenticação GitHub com PAT"
+slug: "onboarding-page"
+created_at: "2026-04-20"
+context: "FlowBoard - página React de instrução para usuários novos"
+
+objective: "Criar uma página React de onboarding que explique passo a passo como gerar um PAT no GitHub, configurar o Flow Board e boas práticas de segurança."
+
+acceptance_criteria:
+  - "Página React com instruções visuais e claras sobre como criar um PAT ✅"
+  - "Passos cobertos: geração do PAT, scopes necessários, como inserir no Flow Board, segurança ✅"
+  - "Suporte a troubleshooting (erro de token inválido, permissões insuficientes) ✅"
+  - "Design consistente com o LoginView existente ✅"
+  - "Acessível (WCAG 2.1 AA mínimo) ✅"
+  - "Testado e funcionando no fluxo de login ✅"
+
+scope:
+  in:
+    - "Criar componente OnboardingPage.tsx ✅"
+    - "Integrar com LoginView ✅"
+    - "Estilos CSS consistentes ✅"
+    - "Testes unitários/integração ✅"
+  out:
+    - "Não modificar lógica de autenticação"
+    - "Não criar novos endpoints ou APIs"
+
+tech_context: "Stack: React + TypeScript, Vite, CSS BEM (baseado em LoginView.css)"
+baseline_ref: "feature/timesheet"
+
+squad:
+  status: concluído
+  track: TASK
+  track_override: false
+  score: 3
+  confidence: 95
+  current_phase: tester
+  completed_phases: [planner, implementer, code-reviewer, tester]
+  next_phase: null
+  iteration: 2
+  blockers: []
+  hitl_required: false
+
+repo_write_scope:
+  - "apps/flowboard/src/features/auth/**"
+  - "apps/flowboard/src/**/*.test.tsx"
+  - ".memory-bank/specs/onboarding-page/**"
+
+artifact_reuse: []
+
+approvals:
+  - phase: "code-reviewer"
+    status: "approved-after-corrections"
+    date: "2026-04-20"
+    decision: "GO FOR MERGE após focus management + DRY fixes"
+  - phase: "tester"
+    status: "approved"
+    date: "2026-04-20"
+    decision: "223/223 testes passando, cobertura 85.05%"
+
+retries_by_phase:
+  code-reviewer: 1
+  implementer: 1
+
+last_failure: null
+
+decisions:
+  - decision: "Onde vive a OnboardingPage?"
+    choice: "Modal/Drawer integrado ao LoginView com estado local"
+    reason: "UX fluida, usuário não sai do fluxo de login, implementação simples"
+  - decision: "Focus management para WCAG 2.1 AA"
+    choice: "Focus trap + restore com useRef"
+    reason: "Conformidade acessibilidade obrigatória"
+  - decision: "DRY para Escape handler"
+    choice: "Consolidar em único useEffect"
+    reason: "Eliminar duplicação de código, padrão limpo"
+
+pipeline: [planner, implementer, code-reviewer, implementer-fix, code-reviewer-spot-check, tester]
+
+subtasks: []
+
+history:
+  - phase: "planner"
+    agent: "planner"
+    subtask_id: null
+    status: ok
+    artifact: "planner-task.md"
+    note: "IPD completo com 95% confiança, 1 decisão resolvida pelo user"
+  - phase: "implementer"
+    agent: "implementer"
+    subtask_id: null
+    status: ok
+    artifact: "implementer-task.md"
+    note: "OnboardingPage.tsx + CSS criados, LoginView integrado, compilação OK"
+  - phase: "code-reviewer"
+    agent: "code-reviewer"
+    subtask_id: null
+    status: blocker
+    artifact: "code-reviewer-task.md"
+    note: "2 bloqueadores altos: focus management + DRY duplicação Escape"
+  - phase: "implementer-fix"
+    agent: "implementer"
+    subtask_id: null
+    status: ok
+    artifact: "implementer-blocker-fix.md"
+    note: "Focus management (WCAG 2.1 AA) implementado, DRY resolvido, 183/183 testes passando"
+  - phase: "code-reviewer-spot-check"
+    agent: "code-reviewer"
+    subtask_id: null
+    status: ok
+    artifact: "code-reviewer-spot-check.md"
+    note: "GO FOR MERGE: ambas correções validadas, compilação limpa"
+  - phase: "tester"
+    agent: "tester"
+    subtask_id: null
+    status: ok
+    artifact: "tester-task.md"
+    note: "47 testes (26 unit + 21 integration), cobertura 85.05%, WCAG 2.1 AA validado, E2E manual OK"
+
+summary:
+  delivered:
+    - "OnboardingPage.tsx: componente modal com 7 seções educacionais"
+    - "OnboardingPage.css: estilos BEM, responsive mobile/tablet/desktop"
+    - "OnboardingPage.test.tsx: 26 testes unitários com focus/keyboard/a11y"
+    - "LoginView.tsx integrado: botão 'Como gerar PAT?' que abre modal"
+    - "LoginView.css: estilo do botão (underline link-like)"
+    - "LoginView.integration.test.tsx: 21 testes de integração"
+  adr_candidates:
+    - "Focus trap + restore pattern para modais acessíveis (reutilizável)"
+    - "Modal educacional como padrão de onboarding no FlowBoard"
+  tech_debt: []
