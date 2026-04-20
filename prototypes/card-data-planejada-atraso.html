@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FlowBoard — protótipo: data planejada e atraso</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Sora:wght@500;600;700&display=swap"
+    rel="stylesheet"
+  />
+  <style>
+    /**
+     * Tokens espelhados de apps/flowboard/src/styles/tokens.css
+     */
+    :root {
+      --bg-base: #0d0f14;
+      --bg-surface: #141720;
+      --bg-overlay: #1c2030;
+      --bg-subtle: #252a3a;
+      --bg-elevated: rgba(255, 255, 255, 0.03);
+      --bg-card: var(--bg-surface);
+      --bg-input: rgba(0, 0, 0, 0.25);
+      --bg-topbar: rgba(20, 23, 32, 0.85);
+      --bg-board-bar: rgba(13, 15, 20, 0.6);
+
+      --text-primary: #eef0f6;
+      --text-secondary: #8892aa;
+      --text-tertiary: #6b7280;
+      --text-disabled: #4a526a;
+      --text-on-accent: #e0e7ff;
+      --text-code: #c4b5fd;
+      --text-accent-soft: #a5b4fc;
+
+      --border-default: rgba(255, 255, 255, 0.07);
+      --border-muted: rgba(255, 255, 255, 0.08);
+      --border-strong: rgba(255, 255, 255, 0.14);
+      --border-input: rgba(255, 255, 255, 0.14);
+      --border-control: rgba(255, 255, 255, 0.12);
+
+      --accent: oklch(62% 0.2 264);
+      --accent-hover: oklch(67% 0.22 264);
+      --accent-dim: rgba(99, 102, 241, 0.14);
+      --accent-dim-mid: rgba(99, 102, 241, 0.15);
+      --accent-dim-strong: rgba(99, 102, 241, 0.18);
+      --accent-border: rgba(99, 102, 241, 0.45);
+      --accent-border-strong: rgba(99, 102, 241, 0.55);
+      --accent-fg: #ffffff;
+      --accent-gradient-start: #6366f1;
+      --accent-gradient-end: oklch(55% 0.18 290);
+
+      --success: oklch(60% 0.18 145);
+      --warning: oklch(72% 0.18 75);
+      --danger: oklch(58% 0.22 25);
+      --danger-bg: rgba(239, 68, 68, 0.12);
+      --danger-border: rgba(239, 68, 68, 0.35);
+      --danger-text: #fecaca;
+      --danger-text-strong: #fca5a5;
+      --danger-hover-bg: rgba(239, 68, 68, 0.15);
+      --warning-bg: rgba(251, 191, 36, 0.12);
+      --warning-border: rgba(251, 191, 36, 0.35);
+      --warning-text: #fde68a;
+      --error-field-bg: rgba(220, 90, 70, 0.1);
+      --error-field-border: rgba(220, 90, 70, 0.4);
+      --error-field-text: #ffb4a8;
+
+      --space-1: 0.25rem;
+      --space-2: 0.5rem;
+      --space-3: 1rem;
+      --space-4: 1.5rem;
+      --space-5: 2rem;
+      --space-6: 2.5rem;
+
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --radius-xl: 12px;
+      --radius-full: 999px;
+
+      --font-display: 'Sora', system-ui, -apple-system, sans-serif;
+      --font-body: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+      --text-xs: 0.72rem;
+      --text-sm: 0.8rem;
+      --text-md: 0.9rem;
+      --text-base: 0.95rem;
+      --text-lg: 1.15rem;
+      --text-xl: 1.25rem;
+      --text-2xl: 1.35rem;
+
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.35);
+      --shadow-md: 0 4px 24px rgba(0, 0, 0, 0.25);
+      --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.45);
+      --shadow-card: var(--shadow-sm);
+
+      --z-sticky-top: 50;
+      --z-modal: 100;
+      --z-skip: 300;
+
+      --hover-surface: rgba(255, 255, 255, 0.06);
+      --hover-surface-strong: rgba(255, 255, 255, 0.08);
+      --backdrop-overlay: rgba(0, 0, 0, 0.65);
+      --backdrop-blur: blur(12px);
+
+      --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+      --duration-fast: 0.16s;
+      --transition: 160ms ease;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      color-scheme: dark;
+      font-size: 16px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    h1,
+    h2,
+    h3 {
+      font-family: var(--font-display);
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      min-height: 100dvh;
+      font-family: var(--font-body);
+      line-height: 1.5;
+      background-color: var(--bg-base);
+      background-image:
+        radial-gradient(ellipse 120% 80% at 50% -20%, rgba(99, 102, 241, 0.12), transparent 55%),
+        linear-gradient(var(--border-default) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border-default) 1px, transparent 1px);
+      background-size: 100% 100%, 32px 32px, 32px 32px;
+      color: var(--text-primary);
+      padding: var(--space-5);
+      padding-bottom: var(--space-6);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+
+      .fb-card__btn:active {
+        transform: none;
+      }
+    }
+
+    :focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .demo-header {
+      max-width: 1100px;
+      margin: 0 auto var(--space-4);
+    }
+
+    .demo-header h1 {
+      font-size: var(--text-xl);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    .demo-header p {
+      margin-top: var(--space-2);
+      font-size: var(--text-md);
+      color: var(--text-secondary);
+      max-width: 62ch;
+    }
+
+    .demo-header .demo-note {
+      margin-top: var(--space-3);
+      font-size: var(--text-sm);
+      color: var(--text-tertiary);
+      max-width: 62ch;
+    }
+
+    /* Legenda rápida — linguagem das barras laterais */
+    .demo-legend {
+      list-style: none;
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2) var(--space-3);
+      max-width: 1100px;
+      margin: 0 auto var(--space-5);
+      padding: var(--space-3);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-default);
+      background: var(--bg-overlay);
+    }
+
+    .demo-legend li {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+      font-size: var(--text-sm);
+      color: var(--text-secondary);
+    }
+
+    .demo-legend__swatch {
+      width: 4px;
+      height: 1.1rem;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    .demo-legend__swatch--accent {
+      background: var(--accent-border-strong);
+    }
+
+    .demo-legend__swatch--warn {
+      background: var(--warning);
+    }
+
+    .demo-legend__swatch--danger {
+      background: var(--danger);
+    }
+
+    .demo-legend__swatch--neutral {
+      background: var(--border-strong);
+    }
+
+    .demo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: var(--space-4);
+      max-width: 1100px;
+      margin: 0 auto;
+      align-items: start;
+    }
+
+    .demo-col__title {
+      margin: 0 0 var(--space-2);
+      font-size: 0.8125rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-secondary);
+    }
+
+    .demo-col__hint {
+      margin: 0 0 var(--space-3);
+      font-size: var(--text-xs);
+      color: var(--text-tertiary);
+      line-height: 1.4;
+    }
+
+    /* ─── Card (BoardView.css) ─── */
+    .fb-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-md);
+      padding: var(--space-3);
+      box-shadow: var(--shadow-card);
+      cursor: default;
+      touch-action: auto;
+      transition:
+        border-color var(--transition),
+        box-shadow var(--transition);
+    }
+
+    .fb-card:hover {
+      border-color: var(--border-strong);
+      box-shadow:
+        var(--shadow-card),
+        0 0 0 1px rgba(99, 102, 241, 0.15);
+    }
+
+    .fb-card__main {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: var(--space-2);
+      margin-bottom: var(--space-2);
+    }
+
+    .fb-card__title {
+      font-weight: 600;
+      font-size: 0.9375rem;
+      line-height: 1.35;
+      word-break: break-word;
+      color: var(--text-primary);
+    }
+
+    .fb-card__hours {
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      padding: 4px 8px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-overlay);
+      border: 1px solid var(--border-default);
+      color: var(--text-primary);
+      flex-shrink: 0;
+    }
+
+    .fb-card__meta {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: var(--space-2);
+    }
+
+    .fb-card__meta + .fb-card__actions {
+      margin-top: var(--space-2);
+    }
+
+    .fb-card__actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-1);
+      justify-content: flex-end;
+    }
+
+    .fb-card__btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2);
+      min-height: 44px;
+      min-width: 44px;
+      padding: var(--space-2);
+      font-size: var(--text-xs);
+      font-weight: 500;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-control);
+      background: var(--bg-elevated);
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-family: var(--font-body);
+      transition:
+        color var(--transition),
+        background var(--transition),
+        border-color var(--transition),
+        transform var(--duration-fast) var(--ease-spring);
+    }
+
+    .fb-card__btn:hover:not(:disabled) {
+      color: var(--text-primary);
+      background: var(--hover-surface);
+      border-color: var(--border-strong);
+    }
+
+    .fb-card__btn:active:not(:disabled) {
+      transform: scale(0.96);
+    }
+
+    .fb-card__btn--danger {
+      color: var(--danger-text-strong);
+      border-color: var(--danger-border);
+      background: color-mix(in srgb, var(--danger-bg) 40%, var(--bg-elevated));
+    }
+
+    .fb-card__btn--danger:hover:not(:disabled) {
+      background: var(--danger-hover-bg);
+      border-color: var(--danger-border);
+      color: var(--danger-text);
+    }
+
+    .fb-card__btn-svg {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+      pointer-events: none;
+    }
+
+    @supports not (background: color-mix(in srgb, red 50%, blue)) {
+      .fb-card__btn--danger {
+        background: var(--bg-elevated);
+      }
+    }
+
+    /* Barra lateral = código de estado à primeira vista */
+    .fb-card--accent-planned {
+      box-shadow: inset 3px 0 0 0 var(--accent-border), var(--shadow-card);
+    }
+
+    .fb-card--accent-planned:hover {
+      box-shadow:
+        inset 3px 0 0 0 var(--accent-border),
+        var(--shadow-card),
+        0 0 0 1px rgba(99, 102, 241, 0.15);
+    }
+
+    .fb-card--due-soon {
+      border-color: var(--warning-border);
+      box-shadow: inset 3px 0 0 0 var(--warning), var(--shadow-card);
+    }
+
+    .fb-card--due-soon:hover {
+      box-shadow:
+        inset 3px 0 0 0 var(--warning),
+        var(--shadow-card),
+        0 0 0 1px rgba(99, 102, 241, 0.15);
+    }
+
+    .fb-card--overdue {
+      border-color: var(--danger-border);
+      background: linear-gradient(165deg, var(--danger-bg) 0%, var(--bg-surface) 48%);
+      box-shadow: inset 3px 0 0 0 var(--danger), var(--shadow-card);
+    }
+
+    .fb-card--overdue:hover {
+      box-shadow:
+        inset 3px 0 0 0 var(--danger),
+        var(--shadow-card),
+        0 0 0 1px rgba(99, 102, 241, 0.15);
+    }
+
+    .fb-card--plain {
+      /* sem data: igual ao app hoje */
+    }
+
+    /* Alerta */
+    .fb-card__alert {
+      display: inline-flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: var(--space-2) var(--space-3);
+      border-radius: var(--radius-sm);
+      font-size: var(--text-xs);
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .fb-card__alert--warn {
+      background: var(--warning-bg);
+      border: 1px solid var(--warning-border);
+      color: var(--warning-text);
+      text-transform: uppercase;
+    }
+
+    .fb-card__alert--danger {
+      background: var(--danger-bg);
+      border: 1px solid var(--danger-border);
+      color: var(--danger-text);
+    }
+
+    .fb-card__alert-icon {
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .fb-card__alert-body {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .fb-card__alert-kicker {
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: var(--danger-text-strong);
+    }
+
+    .fb-card__alert-msg {
+      font-size: var(--text-sm);
+      font-weight: 600;
+      text-transform: none;
+      letter-spacing: 0;
+      line-height: 1.35;
+      color: var(--danger-text);
+    }
+
+    @keyframes fb-card-overdue-glow {
+      0%,
+      100% {
+        box-shadow:
+          inset 3px 0 0 0 var(--danger),
+          var(--shadow-card),
+          0 0 0 0 rgba(239, 68, 68, 0);
+      }
+      50% {
+        box-shadow:
+          inset 3px 0 0 0 var(--danger),
+          var(--shadow-card),
+          0 0 12px -4px rgba(239, 68, 68, 0.35);
+      }
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .fb-card--overdue {
+        animation: fb-card-overdue-glow 2.8s ease-in-out infinite;
+      }
+
+      .fb-card--overdue:hover {
+        animation: none;
+        box-shadow:
+          inset 3px 0 0 0 var(--danger),
+          var(--shadow-card),
+          0 0 0 1px rgba(99, 102, 241, 0.15);
+      }
+    }
+
+    /* Data planejada */
+    .fb-card__planned {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      min-height: 44px;
+      padding: var(--space-2) var(--space-3);
+      border-radius: var(--radius-md);
+      background: var(--bg-overlay);
+      border: 1px solid var(--border-default);
+    }
+
+    .fb-card__planned-icon {
+      flex-shrink: 0;
+      opacity: 0.9;
+    }
+
+    .fb-card__planned-label {
+      font-size: 0.625rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-disabled);
+      display: block;
+      line-height: 1.2;
+    }
+
+    .fb-card__planned-value {
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .fb-card--due-soon .fb-card__planned {
+      background: color-mix(in srgb, var(--warning-bg) 85%, transparent);
+      border-color: var(--warning-border);
+    }
+
+    .fb-card--due-soon .fb-card__planned-value {
+      color: var(--warning-text);
+    }
+
+    .fb-card--overdue .fb-card__planned {
+      background: color-mix(in srgb, var(--danger-bg) 90%, transparent);
+      border-color: var(--danger-border);
+    }
+
+    .fb-card--overdue .fb-card__planned-value {
+      color: var(--danger-text-strong);
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    @supports not (background: color-mix(in srgb, red 50%, blue)) {
+      .fb-card--due-soon .fb-card__planned {
+        background: var(--warning-bg);
+      }
+      .fb-card--overdue .fb-card__planned {
+        background: var(--danger-bg);
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="demo-header">
+    <h1>FlowBoard — data planejada e atraso (revisão)</h1>
+    <p>
+      Extensão proposta para o card do Kanban: mesmos tokens de
+      <code style="font-family: var(--font-mono); font-size: 0.85em; color: var(--text-code)">tokens.css</code>
+      e a mesma hierarquia de
+      <code style="font-family: var(--font-mono); font-size: 0.85em; color: var(--text-code)">SortableCard</code>
+      (título, horas, ações), com bloco de planejamento e alerta quando a data passou ou vence hoje.
+    </p>
+    <p class="demo-note">
+      <strong style="color: var(--text-secondary); font-weight: 600">Leitura rápida:</strong>
+      barra à esquerda + chip de alerta (quando aplicável) + bloco “Planejado” com data. Atraso usa
+      <code style="font-family: var(--font-mono); font-size: 0.85em; color: var(--text-code)">role="alert"</code>
+      e brilho suave no cartão (desligado com “reduzir movimento” no SO). Ações do card: ícones com
+      <code style="font-family: var(--font-mono); font-size: 0.85em; color: var(--text-code)">aria-label</code>
+      (leitores de tela) e <code style="font-family: var(--font-mono); font-size: 0.85em; color: var(--text-code)">title</code> para dica no hover.
+    </p>
+  </header>
+
+  <ul class="demo-legend" aria-label="Legenda dos estados visuais">
+    <li>
+      <span class="demo-legend__swatch demo-legend__swatch--accent" aria-hidden="true"></span>
+      Planejado, dentro do prazo
+    </li>
+    <li>
+      <span class="demo-legend__swatch demo-legend__swatch--warn" aria-hidden="true"></span>
+      Vence hoje
+    </li>
+    <li>
+      <span class="demo-legend__swatch demo-legend__swatch--danger" aria-hidden="true"></span>
+      Atrasado
+    </li>
+    <li>
+      <span class="demo-legend__swatch demo-legend__swatch--neutral" aria-hidden="true"></span>
+      Sem data (comportamento atual)
+    </li>
+  </ul>
+
+  <div class="demo-grid">
+    <div class="demo-col">
+      <h2 class="demo-col__title">Sem data</h2>
+      <p class="demo-col__hint">Baseline igual ao app hoje — nada de barra lateral nem bloco de data.</p>
+      <article class="fb-card fb-card--plain" aria-labelledby="card-title-a">
+        <div class="fb-card__main">
+          <div class="fb-card__title" id="card-title-a">Deploy app</div>
+          <span class="fb-card__hours" title="Horas registradas (segmentos concluídos)">0h</span>
+        </div>
+        <div class="fb-card__actions">
+          <button type="button" class="fb-card__btn" aria-label="Editar card" title="Editar">
+            <svg class="fb-card__btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+              <path d="m15 5 4 4" />
+            </svg>
+          </button>
+          <button type="button" class="fb-card__btn fb-card__btn--danger" aria-label="Excluir card" title="Excluir">
+            <svg class="fb-card__btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 6h18" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+              <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              <line x1="10" x2="10" y1="11" y2="17" />
+              <line x1="14" x2="14" y1="11" y2="17" />
+            </svg>
+          </button>
+        </div>
+      </article>
+    </div>
+
+    <div class="demo-col">
+      <h2 class="demo-col__title">No prazo</h2>
+      <p class="demo-col__hint">Barra accent; data legível em mono, como o chip de horas.</p>
+      <article
+        class="fb-card fb-card--accent-planned"
+        aria-labelledby="card-title-b"
+      >
+        <div class="fb-card__main">
+          <div class="fb-card__title" id="card-title-b">Integrar API de faturamento</div>
+          <span class="fb-card__hours" title="Horas registradas (segmentos concluídos)">3.25h</span>
+        </div>
+        <div class="fb-card__meta">
+          <div class="fb-card__planned" aria-label="Data planejada: 28 de abril de 2026">
+            <svg class="fb-card__planned-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" stroke-width="2" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="18" rx="2" />
+              <path d="M16 2v4M8 2v4M3 10h18" />
+            </svg>
+            <div>
+              <span class="fb-card__planned-label">Planejado</span>
+              <span class="fb-card__planned-value">28 abr 2026</span>
+            </div>
+          </div>
+        </div>
+        <div class="fb-card__actions">
+          <button type="button" class="fb-card__btn" aria-label="Editar card" title="Editar">
+            <svg class="fb-card__btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+              <path d="m15 5 4 4" />
+            </svg>
+          </button>
+          <button type="button" class="fb-card__btn fb-card__btn--danger" aria-label="Excluir card" title="Excluir">
+            <svg class="fb-card__btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 6h18" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+              <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              <line x1="10" x2="10" y1="11" y2="17" />
+              <line x1="14" x2="14" y1="11" y2="17" />
+            </svg>
+          </button>
+        </div>
+      </article>
+    </div>
+
+    <div class="demo-col">
+      <h2 class="demo-col__title">Vence hoje</h2>
+      <p class="demo-col__hint">Alerta em faixa total; data reforçada em warning.</p>
+      <article class="fb-card fb-card--due-soon" aria-labelledby="card-title-c">
+        <div class="fb-card__main">
+          <div class="fb-card__title" id="card-title-c">Revisão de copy do e-mail</div>
+          <span class="fb-card__hours" title="Horas registradas (segmentos concluídos)">0.00h</span>
+        </div>
+        <div class="fb-card__meta">
+          <span class="fb-card__alert fb-card__alert--warn" role="status">
+            <svg class="fb-card__alert-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 8v5M12 16h.01" />
+            </svg>
+            Vence hoje — priorize encerrar ou reagendar
+          </span>
+          <div class="fb-card__planned" aria-label="Data planejada: hoje, 20 de abril de 2026">
+            <svg class="fb-card__planned-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" stroke-width="2" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="18" rx="2" />
+              <path d="M16 2v4M8 2v4M3 10h18" />
+            </svg>
+            <div>
+              <span class="fb-card__planned-label">Planejado</span>
+              <span class="fb-card__planned-value">Hoje · 20 abr 2026</span>
+            </div>
+          </div>
+        </div>
+        <div class="fb-card__actions">
+          <button type="button" class="fb-card__btn" aria-label="Editar card" title="Editar">
+            <svg class="fb-card__btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+              <path d="m15 5 4 4" />
+            </svg>
+          </button>
+          <button type="button" class="fb-card__btn fb-card__btn--danger" aria-label="Excluir card" title="Excluir">
+            <svg class="fb-card__btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 6h18" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+              <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              <line x1="10" x2="10" y1="11" y2="17" />
+              <line x1="14" x2="14" y1="11" y2="17" />
+            </svg>
+          </button>
+        </div>
+      </article>
+    </div>
+
+    <div class="demo-col">
+      <h2 class="demo-col__title">Atrasado</h2>
+      <p class="demo-col__hint">Alerta com detalhe (“5 dias”); cartão com leve wash + pulso de sombra.</p>
+      <article class="fb-card fb-card--overdue" aria-labelledby="card-title-d">
+        <div class="fb-card__main">
+          <div class="fb-card__title" id="card-title-d">Publicar relatório Q1</div>
+          <span class="fb-card__hours" title="Horas registradas (segmentos concluídos)">12.50h</span>
+        </div>
+        <div class="fb-card__meta">
+          <div class="fb-card__alert fb-card__alert--danger" role="alert">
+            <svg class="fb-card__alert-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+              <path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+            </svg>
+            <div class="fb-card__alert-body">
+              <span class="fb-card__alert-kicker">Fora do prazo</span>
+              <span class="fb-card__alert-msg">Atrasado há 5 dias úteis — atualize a data ou mova o card.</span>
+            </div>
+          </div>
+          <span class="sr-only">Esta tarefa está atrasada em relação à data planejada.</span>
+          <div class="fb-card__planned" aria-label="Data planejada era 15 de abril de 2026">
+            <svg class="fb-card__planned-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--danger-text-strong)" stroke-width="2" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="18" rx="2" />
+              <path d="M16 2v4M8 2v4M3 10h18" />
+            </svg>
+            <div>
+              <span class="fb-card__planned-label">Planejado</span>
+              <span class="fb-card__planned-value">15 abr 2026</span>
+            </div>
+          </div>
+        </div>
+        <div class="fb-card__actions">
+          <button type="button" class="fb-card__btn" aria-label="Editar card" title="Editar">
+            <svg class="fb-card__btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+              <path d="m15 5 4 4" />
+            </svg>
+          </button>
+          <button type="button" class="fb-card__btn fb-card__btn--danger" aria-label="Excluir card" title="Excluir">
+            <svg class="fb-card__btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 6h18" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+              <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              <line x1="10" x2="10" y1="11" y2="17" />
+              <line x1="14" x2="14" y1="11" y2="17" />
+            </svg>
+          </button>
+        </div>
+      </article>
+    </div>
+  </div>
+</body>
+</html>

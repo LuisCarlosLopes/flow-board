@@ -20,8 +20,8 @@ import {
   itemsRecordToCards,
   migrateCardsAfterColumnEdit,
 } from '../../domain/boardLayout'
-import { applyCardMove, totalCompletedMs } from '../../domain/timeEngine'
-import type { Card, Column, TimeBoardState } from '../../domain/types'
+import { applyCardMove, reconcileBoardTimeState, totalCompletedMs } from '../../domain/timeEngine'
+import type { BoardWorkingHours, Card, Column, TimeBoardState } from '../../domain/types'
 import { GitHubHttpError } from '../../infrastructure/github/client'
 import { createClientFromSession } from '../../infrastructure/github/fromSession'
 import type { BoardDocumentJson } from '../../infrastructure/persistence/types'
@@ -74,7 +74,46 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
     }
     setDoc(got.doc)
     setSha(got.sha)
-    setTimeState(docToTimeBoardState(got.doc))
+    const loaded = docToTimeBoardState(got.doc)
+    const reconciled = reconcileBoardTimeState(loaded, got.doc.cards, got.doc.columns, Date.now(), got.doc.workingHours)
+    if (JSON.stringify(loaded) !== JSON.stringify(reconciled)) {
+      const nextDoc = structuredClone(got.doc)
+      writeTimeBoardStateToDoc(nextDoc, reconciled)
+      appendNewSegments(nextDoc, loaded, reconciled)
+      setDoc(nextDoc)
+      setTimeState(reconciled)
+      setSaving(true)
+      setPersistError('')
+      try {
+        await repo.saveBoard(nextDoc.boardId, nextDoc, got.sha)
+        const got2 = await repo.loadBoard(boardId)
+        if (got2) {
+          setDoc(got2.doc)
+          setSha(got2.sha)
+          setTimeState(docToTimeBoardState(got2.doc))
+        }
+      } catch (e) {
+        if (e instanceof GitHubHttpError && e.status === 409) {
+          setPersistError('Conflito ao salvar após reconciliação. Recarregando dados.')
+        } else {
+          setPersistError(e instanceof Error ? e.message : 'Erro ao salvar.')
+        }
+        try {
+          const got3 = await repo.loadBoard(boardId)
+          if (got3) {
+            setDoc(got3.doc)
+            setSha(got3.sha)
+            setTimeState(docToTimeBoardState(got3.doc))
+          }
+        } catch {
+          /* ignore */
+        }
+      } finally {
+        setSaving(false)
+      }
+    } else {
+      setTimeState(loaded)
+    }
   }, [boardId, repo])
 
   useEffect(() => {
@@ -101,6 +140,8 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
     if (cardToEditId && doc?.cards) {
       const cardToEdit = doc.cards.find((c) => c.cardId === cardToEditId)
       if (cardToEdit) {
+        // Sincroniza prop externa (search) → modal; não há API de assinatura melhor aqui.
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- controlled open from shell
         setTaskModal({ mode: 'edit', card: cardToEdit })
       }
     }
@@ -150,6 +191,42 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
     [boardId, repo, sha],
   )
 
+  const docRef = useRef(doc)
+  useEffect(() => {
+    docRef.current = doc
+  }, [doc])
+
+  useEffect(() => {
+    const tick = () => {
+      const cur = docRef.current
+      if (!cur) {
+        return
+      }
+      const prev = docToTimeBoardState(cur)
+      const next = reconcileBoardTimeState(prev, cur.cards, cur.columns, Date.now(), cur.workingHours)
+      if (JSON.stringify(prev) === JSON.stringify(next)) {
+        return
+      }
+      const nextDoc = structuredClone(cur)
+      writeTimeBoardStateToDoc(nextDoc, next)
+      appendNewSegments(nextDoc, prev, next)
+      setTimeState(next)
+      setDoc(nextDoc)
+      void saveDocument(nextDoc)
+    }
+    const id = window.setInterval(tick, 60_000)
+    const onVis = () => {
+      if (document.visibilityState === 'visible') {
+        tick()
+      }
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => {
+      clearInterval(id)
+      document.removeEventListener('visibilitychange', onVis)
+    }
+  }, [doc?.boardId, saveDocument])
+
   function commitAfterDrag(nextItems: Record<string, string[]>, movedCardId: string) {
     if (!doc) {
       return
@@ -162,7 +239,15 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
 
     let nextTime = timeState
     if (fromCol && toCol && fromCol !== toCol) {
-      nextTime = applyCardMove(timeState, movedCardId, fromCol, toCol, nextDoc.columns, Date.now())
+      nextTime = applyCardMove(
+        timeState,
+        movedCardId,
+        fromCol,
+        toCol,
+        nextDoc.columns,
+        Date.now(),
+        nextDoc.workingHours,
+      )
     }
     appendNewSegments(nextDoc, timeState, nextTime)
     writeTimeBoardStateToDoc(nextDoc, nextTime)
@@ -261,7 +346,7 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
     void saveDocument(nextDoc)
   }
 
-  function handleColumnApply(cols: Column[]) {
+  function handleColumnApply(cols: Column[], workingHours?: BoardWorkingHours | null) {
     if (!doc) {
       return
     }
@@ -274,7 +359,11 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
     const nextDoc = structuredClone(doc)
     nextDoc.columns = cols
     nextDoc.cards = migrated
-    writeTimeBoardStateToDoc(nextDoc, timeState)
+    nextDoc.workingHours = workingHours?.enabled ? workingHours : undefined
+    let nextTime = timeState
+    nextTime = reconcileBoardTimeState(nextTime, nextDoc.cards, nextDoc.columns, Date.now(), nextDoc.workingHours)
+    writeTimeBoardStateToDoc(nextDoc, nextTime)
+    setTimeState(nextTime)
     setDoc(nextDoc)
     void saveDocument(nextDoc)
   }
@@ -345,6 +434,7 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
           key={`${boardId}-${doc.columns.map((c) => c.columnId).join('|')}`}
           columns={doc.columns}
           cards={doc.cards}
+          workingHours={doc.workingHours}
           onClose={() => setColModal(false)}
           onApply={handleColumnApply}
         />

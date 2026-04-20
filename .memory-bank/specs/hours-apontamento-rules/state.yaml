@@ -1,0 +1,122 @@
+title: "Regras de soma de horas e apontamentos por dia"
+slug: "hours-apontamento-rules"
+created_at: "2026-04-20"
+context: "FlowBoard — domínio de tempo (timeEngine, timeSegments, agregação de horas)"
+
+objective: >
+  Ajustar regras para que (1) apenas tempo em coluna com papel Em Progresso (in_progress)
+  contribua para horas registradas; colunas com outro papel não acumulam tempo.
+  (2) Ao atravessar a meia-noite no fuso local, o trabalho contínuo deve virar múltiplos
+  apontamentos (segmentos), um por dia civil.
+  (3) Permitir configurar no board uma janela de trabalho (expediente local) e somar horas
+  somente dentro dessa faixa, evitando inflar tempo quando o card permanece em progresso fora do horário útil.
+
+acceptance_criteria:
+  - "Card em coluna com role diferente de in_progress não acumula duração: não há segmento concluído nem relógio ativo que conte fora desse papel (estado inconsistente é saneado sem somar tempo inválido)."
+  - "Sessão de trabalho que cruza meia-noite local gera N segmentos concluídos (N = número de dias civis cobertos), cada um com startMs/endMs dentro do mesmo dia local."
+  - "Com workingHours configurado no board, tempo fora da faixa no dia local não entra em segmentos persistidos; com workingHours ausente, comportamento permanece equivalente ao legado (24h)."
+  - "Documento persistido (BoardDocumentJson + timeSegments + cardTimeState) permanece consistente com appendNewSegments / repositório GitHub."
+  - "Testes de domínio cobrem: split por dia; reconciliação de janela (ex.: esquecimento fora do expediente); card fora de in_progress sem activeStartMs fantasma; regressão sem janela."
+  - "lint + test do pacote apps/flowboard passam."
+
+scope:
+  in:
+    - "apps/flowboard/src/infrastructure/persistence/types.ts e boardFactory (campo opcional workingHours)"
+    - "apps/flowboard/src/domain/timeEngine.ts, hoursProjection.ts e/ou workingHours.ts e testes"
+    - "apps/flowboard/src/features/board/BoardView.tsx (reconciliação dia + bordas de janela)"
+    - "UI de configuração da janela no board (modal ou extensão do editor existente)"
+    - "apps/flowboard/src/features/board/timeBridge.ts se a escrita de segmentos exigir ajuste"
+  out:
+    - "Mudança de PRD/TSD completos (apenas plano + implementação futura)"
+    - "Backend próprio; alteração de contrato GitHub além do JSON já usado"
+    - "Fuso por usuário ou por board (MVP: mesma interpretação local do browser)"
+    - "Janela que cruza meia-noite (turno noturno) no primeiro release desta feature"
+
+tech_context: "TypeScript, React, Vite, Vitest; regras no domínio (Constitution I); segmentos em timeSegments + cardTimeState."
+
+squad:
+  status: concluído
+  track: TASK
+  track_override: false
+  score: 4
+  current_phase: null
+  completed_phases:
+    - planner
+    - plan-reviewer
+    - task-breakdown
+    - implementer
+    - code-reviewer
+    - tester
+  next_phase: null
+  iteration: 1
+  blockers: []
+  hitl_required: false
+
+decisions:
+  - decision: "Definição de 'virar o dia'"
+    choice: "Dia civil local do cliente, alinhado a localDayRange em hoursProjection."
+    reason: "Consistência com relatório de horas por dia/semana/mês já baseado em calendário local."
+  - decision: "Onde armazenar a janela de trabalho"
+    choice: "Campo opcional workingHours no BoardDocumentJson; ausente = 24h contábil (legado)."
+    reason: "Persistência já é por board no GitHub; evita backend e mantém um único documento."
+  - decision: "Ordem das transformações no tempo contábil"
+    choice: "Recortar por dia civil, depois intersecionar com a janela do dia; descartar intervalos vazios."
+    reason: "Invariantes claras: um segmento gravado ⊆ um dia local ⊆ expediente quando configurado."
+  - decision: "plan-reviewer 2ª rodada"
+    choice: "🟡 APROVADO COM RESSALVAS — score 80/100; ver A1 (D4×D5 activeStartMs) e A2 (D6 opção A vs B) em plan-reviewer-TASK.md"
+    reason: "IPD atualizado com D5/D6; bloqueadores de implementação são ressalvas, não críticos."
+  - decision: "D6 — comportamento após fim da janela"
+    choice: "Opção A: próximo activeStartMs = início da próxima janela válida; não exige novo movimento de card."
+    reason: "Fechamento da ressalva A2 do plan-reviewer; alinhado ao IPD e ao task.md."
+  - decision: "D4×D5 — activeStartMs após meia-noite com expediente"
+    choice: "Usar início da janela do dia civil corrente quando workingHours ativo (ver task.md travamento A1)."
+    reason: "Implementação da ação A1 do plan-reviewer."
+
+pipeline:
+  - planner
+  - task-breakdown
+  - implementer
+  - code-reviewer
+  - tester
+
+history:
+  - phase: planner
+    agent: planner
+    status: ok
+    artifact: "planner-TASK.md"
+    note: "IPD com mapa de alterações, decisões D1–D6 e critérios de pronto (revisão 2026-04-20: janela de trabalho por board)"
+  - phase: plan-reviewer
+    agent: plan-reviewer
+    status: ok
+    artifact: "plan-reviewer-TASK.md"
+    note: "2ª rodada 🟡 80/100 — 0 críticos; A1 D4×D5 activeStartMs+janela; A2 fechar opção D6 antes do implementer"
+  - phase: task-breakdown
+    agent: task-breakdown
+    status: ok
+    artifact: "task.md"
+    note: "9 tasks (T1–T9); D6 Opção A e A1 travados no cabeçalho + state.yaml"
+  - phase: implementer
+    agent: implementer
+    status: ok
+    artifact: "implementer-TASK.md"
+    note: "T1–T8 no código flowboard; T9 lint+test+build; ver implementer-TASK.md"
+  - phase: code-reviewer
+    agent: code-reviewer
+    status: ok
+    artifact: "code-reviewer-TASK.md"
+    note: "🟢 82/100; 0 critical; M1 concorrência save, M2 JSON.stringify estado"
+  - phase: tester
+    agent: tester
+    status: ok
+    artifact: "tester-TASK.md"
+    note: "150 testes OK; cobertura stmts ~76%; veredito pass TASK"
+
+summary:
+  delivered:
+    - "Domínio: hoursProjection (split dia), workingHours (clip + pipeline), timeEngine (apply + reconcile)"
+    - "UI: ColumnEditorModal expediente; BoardView reconciliação load + 60s + visibility"
+    - "Testes: timeEngine, workingHours, hoursProjection, timeBridge"
+  tech_debt:
+    - "Debouncar/filar save na reconciliação vs drag (code-reviewer M1)"
+    - "Comparador de TimeBoardState sem JSON.stringify (M2)"
+    - "Opcional: mais testes em workingHours (fim janela, multi-dia)"

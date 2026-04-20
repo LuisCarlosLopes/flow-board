@@ -35,3 +35,10 @@ export type CardTimeState = {
 
 /** cardId -> time state */
 export type TimeBoardState = Record<string, CardTimeState>
+
+/** Expediente local no mesmo fuso do browser; `endMinute` é exclusivo (primeiro minuto fora da janela). */
+export type BoardWorkingHours = {
+  enabled: boolean
+  startMinute: number
+  endMinute: number
+}
