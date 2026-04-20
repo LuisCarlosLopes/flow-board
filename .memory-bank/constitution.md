@@ -39,6 +39,7 @@ Alterações que mudem comportamento observável do produto devem ser **verific�
 
 - **Antes de concluir trabalho:** executar verificações locais previstas no pacote afetado (ex.: `lint`, `test`, `build` onde existirem).
 - **Revisão:** mudanças que alterem persistência, segurança de sessão, contratos de dados ou regras de domínio devem ser revisadas com **referência explícita** ao trecho de spec ou ADR correspondente.
+- **Idioma e Padrões:** O desenvolvimento segue o padrão de código em **Inglês** (nomenclatura de variáveis, funções, arquivos), com comentários internos ao código, documentação técnica (especificações, ADRs), planos de implementação e tarefas sempre em **Português**.
 - **Documentação viva:** quando uma mudança invalidar um ADR, o fluxo esperado é **deprecar ou substituir** o ADR com status e data, não deixar decisões contraditórias sem resolução.
 
 ## Governance
@@ -47,4 +48,4 @@ Alterações que mudem comportamento observável do produto devem ser **verific�
 - **Emendas** alteram este arquivo, incrementam a versão de forma coerente com o impacto e atualizam `Last Amended`.
 - O conjunto **ADR + specs ativas + esta Constitution** forma a hierarquia de governança técnica do workspace; implementação deve ser rastreável até um desses artefatos para decisões não triviais.
 
-**Version**: 1.0.0 | **Ratified**: 2026-04-19 | **Last Amended**: 2026-04-19
+**Version**: 1.0.1 | **Ratified**: 2026-04-19 | **Last Amended**: 2026-04-20

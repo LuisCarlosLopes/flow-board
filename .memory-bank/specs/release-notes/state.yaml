@@ -1,0 +1,159 @@
+title: "Release Notes Page with Versioning"
+slug: "release-notes-feature"
+created_at: "2026-04-20"
+context: "FlowBoard MVP — Personal Kanban with Time Tracking"
+
+objective: |
+  Implement a versioning system and dedicated Release Notes page for FlowBoard.
+  Display current app version visually in UI. Create a release notes page with
+  organized changelog. Use JSON-based release data (simple, no external dependencies).
+
+acceptance_criteria:
+  - "Current app version displayed in App Shell (header or footer)"
+  - "Release Notes page accessible at /releases route"
+  - "releases.json contains at least 2 versions (0.1.0 and 0.2.0) with typed structure"
+  - "Release cards show version, date, type icons (feature/fix/improvement), and descriptions"
+  - "Page is responsive and matches FlowBoard design tokens"
+  - "Version can be updated by editing single source of truth (releases.json)"
+  - "E2E test verifies release notes page loads and displays content"
+  - "Unit tests for ReleaseNotesPage and useCurrentVersion hook"
+
+scope:
+  in:
+    - "Create src/data/releases.json with structured release data"
+    - "Create src/features/release-notes/ with components and hooks"
+    - "Add /releases route to App.tsx router"
+    - "Display version badge in App Shell (topbar or footer)"
+    - "Create useCurrentVersion hook to access app version"
+    - "Add tests for release notes components"
+  out:
+    - "Dynamic backend API for releases (future scope)"
+    - "GitHub Actions auto-versioning (future scope)"
+    - "Markdown changelog parsing (use JSON for simplicity)"
+    - "Multi-language support (English only for MVP)"
+
+tech_context: |
+  Stack: React 19, Vite, TypeScript (strict), Vitest, Playwright
+
+  Design tokens available at: src/styles/tokens.css
+  Routing: React Router (implicit from App.tsx structure)
+
+  Folder structure: feature-based (src/features/*)
+
+  Testing: Vitest for unit tests, Playwright for E2E
+
+  Release data format (JSON):
+  - releases: array of objects with version, date, status, changes array
+  - changes: type (feature|fix|improvement|breaking), title, description
+  - version follows semantic versioning (major.minor.patch)
+
+baseline_ref: "feature/timesheet"
+
+squad:
+  status: "concluído"
+  track: "FEATURE"
+  track_override: false
+  score: 5
+  confidence: 92
+  current_phase: null
+  completed_phases:
+    - "spec"
+    - "spec-reviewer"
+    - "architect"
+    - "planner"
+    - "plan-reviewer"
+    - "task-breakdown"
+    - "implementer"
+    - "verifier"
+    - "code-reviewer"
+    - "tester"
+  next_phase: null
+  iteration: 1
+  blockers: []
+  hitl_required: false
+
+repo_write_scope:
+  - "apps/flowboard/package.json"
+  - "apps/flowboard/package-lock.json"
+  - "apps/flowboard/tsconfig.app.json"
+  - "apps/flowboard/src/vitest.setup.ts"
+  - "apps/flowboard/src/App.tsx"
+  - "apps/flowboard/src/data/releases.json"
+  - "apps/flowboard/src/features/app/AppShell.tsx"
+  - "apps/flowboard/src/features/app/AppShell.css"
+  - "apps/flowboard/src/features/auth/LoginView.integration.test.tsx"
+  - "apps/flowboard/src/features/release-notes/**"
+  - "apps/flowboard/tests/e2e/release-notes.spec.ts"
+
+artifact_reuse: []
+
+approvals:
+  - phase: "pre-implementer-hitl"
+    status: "approved"
+    date: "2026-04-20"
+    decision: "Utilizador pediu prosseguir (prossiga); plano executável em task-breakdown-feature.md"
+    based_on_artifacts:
+      - "task-breakdown-feature.md"
+      - "plan-reviewer-feature.md"
+      - "spec-feature.md"
+
+retries_by_phase: {}
+
+last_failure: null
+
+decisions:
+  - decision: "Release data storage mechanism"
+    choice: "JSON static (Option A)"
+    reason: "User selected: simple, no external deps, scales well for MVP, supports future migration"
+
+pipeline:
+  - "spec"
+  - "spec-reviewer"
+  - "architect"
+  - "planner"
+  - "plan-reviewer"
+  - "task-breakdown"
+  - "implementer"
+  - "verifier"
+  - "code-reviewer"
+  - "tester"
+
+subtasks: []
+
+history:
+  - phase: "implementer"
+    agent: "implementer"
+    subtask_id: null
+    status: "ok"
+    artifact: "implementer-feature.md"
+    note: "Feature release-notes em apps/flowboard"
+  - phase: "verifier"
+    agent: "verifier"
+    subtask_id: null
+    status: "ok"
+    artifact: "verifier-feature.md"
+    note: "Conformidade com AC; lint corrigido em LoginView.integration.test.tsx"
+  - phase: "code-reviewer"
+    agent: "code-reviewer"
+    subtask_id: null
+    status: "ok"
+    artifact: "code-reviewer-feature.md"
+    note: "Merge aprovado sem bloqueios"
+  - phase: "tester"
+    agent: "tester"
+    subtask_id: null
+    status: "ok"
+    artifact: "tester-feature.md"
+    note: "Vitest + Playwright documentados"
+
+summary:
+  delivered:
+    - "Rota /releases com ReleaseNotesPage e dados em src/data/releases.json"
+    - "Badge de versão no AppShell com link para /releases"
+    - "Testes unitários (página + hook) e E2E (rota pública + badge condicional)"
+    - "react-router-dom integrado em App.tsx (ADR-007)"
+  adr_candidates: []
+  tech_debt:
+    - "Opcional: fallback se não houver release ativo em releases.json"
+    - "Avisos ESLint em ficheiros gerados sob coverage/ (considerar excluir no eslint.config)"
+    - "CI: garantir playwright install para todos os browsers configurados"

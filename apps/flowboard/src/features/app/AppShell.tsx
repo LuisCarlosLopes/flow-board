@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { BoardView } from '../board/BoardView'
 import { BoardListView } from '../boards/BoardListView'
 import { HoursView } from '../hours/HoursView'
@@ -7,6 +8,7 @@ import { useSearchHotkey } from '../../hooks/useSearchHotkey'
 import { formatRepoChipLabel } from '../../infrastructure/github/url'
 import { clearActiveBoardId, loadActiveBoardId, saveActiveBoardId } from '../../infrastructure/session/boardSelectionStore'
 import { clearSession, type FlowBoardSession } from '../../infrastructure/session/sessionStore'
+import { useCurrentVersion } from '../release-notes/hooks/useCurrentVersion'
 import './AppShell.css'
 
 type Props = {
@@ -15,6 +17,8 @@ type Props = {
 }
 
 export function AppShell({ session, onLogout }: Props) {
+  const navigate = useNavigate()
+  const { version } = useCurrentVersion()
   const [selectedBoardId, setSelectedBoardId] = useState<string | null>(() => loadActiveBoardId(session))
   const [mainView, setMainView] = useState<'kanban' | 'hours'>('kanban')
   const [columnEditorMenuTick, setColumnEditorMenuTick] = useState(0)
@@ -70,6 +74,15 @@ export function AppShell({ session, onLogout }: Props) {
           <kbd className="fb-topbar__kbd">/</kbd>
         </div>
         <div className="fb-topbar__actions">
+          <button
+            type="button"
+            className="fb-version-badge"
+            data-testid="fb-version-badge"
+            title="View release notes"
+            onClick={() => navigate('/releases')}
+          >
+            v{version}
+          </button>
           <span className="fb-chip fb-chip--accent fb-repo-chip" title={session.webUrl}>
             GitHub · {repoChip}
           </span>

@@ -6,8 +6,9 @@ import { LoginView } from './LoginView'
 // Mock GitHub client
 vi.mock('../../infrastructure/github/client', () => {
   const mockVerifyAccess = vi.fn().mockResolvedValue(undefined)
+  type MockClient = { verifyRepositoryAccess: typeof mockVerifyAccess }
   return {
-    GitHubContentsClient: vi.fn(function(this: any) {
+    GitHubContentsClient: vi.fn(function (this: MockClient) {
       this.verifyRepositoryAccess = mockVerifyAccess
     }),
     GitHubHttpError: class GitHubHttpError extends Error {
