@@ -1,0 +1,40 @@
+[
+  {
+    "version": "0.1.0",
+    "releaseDate": "2026-03-15T00:00:00.000Z",
+    "archived": true,
+    "changes": [
+      {
+        "id": "c1",
+        "type": "feature",
+        "title": "Initial release",
+        "description": "First FlowBoard MVP with GitHub-backed boards and cards."
+      },
+      {
+        "id": "c2",
+        "type": "fix",
+        "title": "Drag and drop edge case",
+        "description": "Resolved incorrect drop target when columns were reordered."
+      }
+    ]
+  },
+  {
+    "version": "0.2.0",
+    "releaseDate": "2026-04-20T00:00:00.000Z",
+    "archived": false,
+    "changes": [
+      {
+        "id": "c3",
+        "type": "feature",
+        "title": "Version history UI",
+        "description": "Version badge in the shell and a dedicated /releases changelog."
+      },
+      {
+        "id": "c4",
+        "type": "improvement",
+        "title": "Performance optimization",
+        "description": "Reduced re-renders on board updates for large columns."
+      }
+    ]
+  }
+]

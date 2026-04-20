@@ -91,6 +91,24 @@
   min-width: 0;
 }
 
+.fb-version-badge {
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  background: var(--bg-card);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--transition), color var(--transition);
+}
+
+.fb-version-badge:hover {
+  background: var(--bg-surface);
+  color: var(--accent);
+}
+
 .fb-repo-chip {
   flex: 1 1 auto;
   min-width: 0;

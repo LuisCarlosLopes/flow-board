@@ -108,6 +108,22 @@ Valores de `apps/flowboard/package.json` (ajuste se bump): **React ^19.2.4**, **
 - Persistir PAT ou segredos nos JSON `flowboard/` do repositório de dados nem no código versionado.
 - Assumir OAuth GitHub no MVP: o fluxo é **URL do repo + PAT** (ver ADR em `.memory-bank/adrs/001-flowboard-spa-github-persistence.md`).
 
+### Release notes — incluir um novo release
+
+A lista pública de versões e o **badge de versão** no shell leem só de **`apps/flowboard/src/data/releases.json`**. A UI ordena por **data decrescente** (`releaseDate`), depois **semver decrescente**; a **ordem dos objetos no JSON não importa**.
+
+Ao publicar uma versão nova, siga estes passos:
+
+1. **Uma versão “ativa” por ficheiro** — deve existir **exatamente um** release com `"archived": false`. Esse é o que o hook `useCurrentVersion` usa no badge. Todas as versões anteriores devem ter `"archived": true`.
+2. **Adicionar o novo bloco** no array (ou editar o último, se for correção do mesmo número) com:
+   - `version`: semver `major.minor.patch` (ex.: `0.3.0`).
+   - `releaseDate`: **ISO 8601 em UTC** (ex.: `"2026-05-01T00:00:00.000Z"`).
+   - `archived`: `false` para o release atual; passar o release que era atual para `true`.
+   - `changes`: lista de objetos com `id` (único no ficheiro), `type` ∈ `feature` | `fix` | `improvement` | `breaking`, `title`, `description` (texto do changelog em **inglês**, alinhado ao MVP da página `/releases`).
+3. **Validar** com `npm test` em `apps/flowboard` (há testes em `src/features/release-notes/*.test.*`). Se alterar só dados, `npx vitest run src/features/release-notes/` costuma bastar.
+
+Não introduzir API dinâmica nem outro ficheiro como fonte da versão sem spec/ADR; o contrato atual é JSON estático + tipos em `src/features/release-notes/types/releases.types.ts`.
+
 ---
 
 ## Variáveis de ambiente
