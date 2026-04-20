@@ -23,9 +23,12 @@ export function createBoardRepository(client: GitHubContentsClient) {
       await client.putFileJson(CATALOG_PATH, catalog, previousSha)
     },
 
-    async loadBoard(boardId: string): Promise<{ doc: BoardDocumentJson; sha: string } | null> {
+    async loadBoard(
+      boardId: string,
+      options?: { signal?: AbortSignal },
+    ): Promise<{ doc: BoardDocumentJson; sha: string } | null> {
       const path = boardFilePath(boardId)
-      const got = await client.tryGetFileJson(path)
+      const got = await client.tryGetFileJson(path, options?.signal)
       if (!got) {
         return null
       }
