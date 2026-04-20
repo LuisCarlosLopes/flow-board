@@ -3,6 +3,7 @@ import { GitHubContentsClient, GitHubHttpError } from '../../infrastructure/gith
 import { parseRepoUrl } from '../../infrastructure/github/url'
 import { bootstrapFlowBoardData } from '../../infrastructure/persistence/boardRepository'
 import { createSession, saveSession, type FlowBoardSession } from '../../infrastructure/session/sessionStore'
+import { OnboardingPage } from './OnboardingPage'
 import './LoginView.css'
 
 type Props = {
@@ -14,6 +15,7 @@ export function LoginView({ onConnected }: Props) {
   const [pat, setPat] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -64,6 +66,14 @@ export function LoginView({ onConnected }: Props) {
           <span className="fb-login__name">FlowBoard</span>
         </div>
         <h1 className="fb-login__title">Entrar</h1>
+        <button
+          type="button"
+          className="fb-login__onboarding-btn"
+          onClick={() => setIsOnboardingOpen(true)}
+          aria-label="Como gerar Personal Access Token"
+        >
+          Como gerar PAT?
+        </button>
         <p className="fb-login__lead">
           Conecte um <strong>repositório GitHub privado</strong> onde os dados serão salvos como JSON.
           Use um PAT com escopo adequado (tipicamente <code>repo</code> para repos privados).
@@ -106,6 +116,7 @@ export function LoginView({ onConnected }: Props) {
             {busy ? 'Conectando…' : 'Conectar'}
           </button>
         </form>
+        <OnboardingPage isOpen={isOnboardingOpen} onClose={() => setIsOnboardingOpen(false)} />
       </div>
     </main>
   )
