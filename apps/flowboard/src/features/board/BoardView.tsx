@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import {
   DndContext,
   DragOverlay,
@@ -12,6 +13,12 @@ import {
 } from '@dnd-kit/core'
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import {
+  formatPlannedDateForCard,
+  getCalendarDaysOverdue,
+  getPlannedDateUiStatusForColumn,
+  type PlannedDateUiStatus,
+} from '../../domain/plannedDateStatus'
 import { validateColumnLayout } from '../../domain/boardRules'
 import {
   applyDragEnd,
@@ -20,8 +27,8 @@ import {
   itemsRecordToCards,
   migrateCardsAfterColumnEdit,
 } from '../../domain/boardLayout'
-import { applyCardMove, totalCompletedMs } from '../../domain/timeEngine'
-import type { Card, Column, TimeBoardState } from '../../domain/types'
+import { applyCardMove, reconcileBoardTimeState, totalCompletedMs } from '../../domain/timeEngine'
+import type { BoardWorkingHours, Card, Column, ColumnRole, TimeBoardState } from '../../domain/types'
 import { GitHubHttpError } from '../../infrastructure/github/client'
 import { createClientFromSession } from '../../infrastructure/github/fromSession'
 import type { BoardDocumentJson } from '../../infrastructure/persistence/types'
@@ -74,7 +81,46 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
     }
     setDoc(got.doc)
     setSha(got.sha)
-    setTimeState(docToTimeBoardState(got.doc))
+    const loaded = docToTimeBoardState(got.doc)
+    const reconciled = reconcileBoardTimeState(loaded, got.doc.cards, got.doc.columns, Date.now(), got.doc.workingHours)
+    if (JSON.stringify(loaded) !== JSON.stringify(reconciled)) {
+      const nextDoc = structuredClone(got.doc)
+      writeTimeBoardStateToDoc(nextDoc, reconciled)
+      appendNewSegments(nextDoc, loaded, reconciled)
+      setDoc(nextDoc)
+      setTimeState(reconciled)
+      setSaving(true)
+      setPersistError('')
+      try {
+        await repo.saveBoard(nextDoc.boardId, nextDoc, got.sha)
+        const got2 = await repo.loadBoard(boardId)
+        if (got2) {
+          setDoc(got2.doc)
+          setSha(got2.sha)
+          setTimeState(docToTimeBoardState(got2.doc))
+        }
+      } catch (e) {
+        if (e instanceof GitHubHttpError && e.status === 409) {
+          setPersistError('Conflito ao salvar após reconciliação. Recarregando dados.')
+        } else {
+          setPersistError(e instanceof Error ? e.message : 'Erro ao salvar.')
+        }
+        try {
+          const got3 = await repo.loadBoard(boardId)
+          if (got3) {
+            setDoc(got3.doc)
+            setSha(got3.sha)
+            setTimeState(docToTimeBoardState(got3.doc))
+          }
+        } catch {
+          /* ignore */
+        }
+      } finally {
+        setSaving(false)
+      }
+    } else {
+      setTimeState(loaded)
+    }
   }, [boardId, repo])
 
   useEffect(() => {
@@ -101,6 +147,8 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
     if (cardToEditId && doc?.cards) {
       const cardToEdit = doc.cards.find((c) => c.cardId === cardToEditId)
       if (cardToEdit) {
+        // Sincroniza prop externa (search) → modal; não há API de assinatura melhor aqui.
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- controlled open from shell
         setTaskModal({ mode: 'edit', card: cardToEdit })
       }
     }
@@ -150,6 +198,42 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
     [boardId, repo, sha],
   )
 
+  const docRef = useRef(doc)
+  useEffect(() => {
+    docRef.current = doc
+  }, [doc])
+
+  useEffect(() => {
+    const tick = () => {
+      const cur = docRef.current
+      if (!cur) {
+        return
+      }
+      const prev = docToTimeBoardState(cur)
+      const next = reconcileBoardTimeState(prev, cur.cards, cur.columns, Date.now(), cur.workingHours)
+      if (JSON.stringify(prev) === JSON.stringify(next)) {
+        return
+      }
+      const nextDoc = structuredClone(cur)
+      writeTimeBoardStateToDoc(nextDoc, next)
+      appendNewSegments(nextDoc, prev, next)
+      setTimeState(next)
+      setDoc(nextDoc)
+      void saveDocument(nextDoc)
+    }
+    const id = window.setInterval(tick, 60_000)
+    const onVis = () => {
+      if (document.visibilityState === 'visible') {
+        tick()
+      }
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => {
+      clearInterval(id)
+      document.removeEventListener('visibilitychange', onVis)
+    }
+  }, [doc?.boardId, saveDocument])
+
   function commitAfterDrag(nextItems: Record<string, string[]>, movedCardId: string) {
     if (!doc) {
       return
@@ -162,7 +246,15 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
 
     let nextTime = timeState
     if (fromCol && toCol && fromCol !== toCol) {
-      nextTime = applyCardMove(timeState, movedCardId, fromCol, toCol, nextDoc.columns, Date.now())
+      nextTime = applyCardMove(
+        timeState,
+        movedCardId,
+        fromCol,
+        toCol,
+        nextDoc.columns,
+        Date.now(),
+        nextDoc.workingHours,
+      )
     }
     appendNewSegments(nextDoc, timeState, nextTime)
     writeTimeBoardStateToDoc(nextDoc, nextTime)
@@ -261,7 +353,7 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
     void saveDocument(nextDoc)
   }
 
-  function handleColumnApply(cols: Column[]) {
+  function handleColumnApply(cols: Column[], workingHours?: BoardWorkingHours | null) {
     if (!doc) {
       return
     }
@@ -274,7 +366,11 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
     const nextDoc = structuredClone(doc)
     nextDoc.columns = cols
     nextDoc.cards = migrated
-    writeTimeBoardStateToDoc(nextDoc, timeState)
+    nextDoc.workingHours = workingHours?.enabled ? workingHours : undefined
+    let nextTime = timeState
+    nextTime = reconcileBoardTimeState(nextTime, nextDoc.cards, nextDoc.columns, Date.now(), nextDoc.workingHours)
+    writeTimeBoardStateToDoc(nextDoc, nextTime)
+    setTimeState(nextTime)
     setDoc(nextDoc)
     void saveDocument(nextDoc)
   }
@@ -345,6 +441,7 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
           key={`${boardId}-${doc.columns.map((c) => c.columnId).join('|')}`}
           columns={doc.columns}
           cards={doc.cards}
+          workingHours={doc.workingHours}
           onClose={() => setColModal(false)}
           onApply={handleColumnApply}
         />
@@ -416,20 +513,32 @@ function BoardColumn({
         <span className={roleClass}>{roleLabel}</span>
       </div>
       <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
-        <div className="fb-board__col-body">
-          {cardIds.map((id) => {
-            const card = cardById.get(id)
-            return card ? (
-              <SortableCard
-                key={id}
-                card={card}
-                timeState={timeState}
-                onEdit={() => onEdit(card)}
-                onDelete={() => onDelete(card)}
-              />
-            ) : null
-          })}
-        </div>
+        {column.role === 'done' ? (
+          <VirtualizedDoneColumnBody
+            cardIds={cardIds}
+            cardById={cardById}
+            columnRole={column.role}
+            timeState={timeState}
+            onEdit={onEdit}
+            onDelete={onDelete}
+          />
+        ) : (
+          <div className="fb-board__col-body">
+            {cardIds.map((id) => {
+              const card = cardById.get(id)
+              return card ? (
+                <SortableCard
+                  key={id}
+                  card={card}
+                  columnRole={column.role}
+                  timeState={timeState}
+                  onEdit={() => onEdit(card)}
+                  onDelete={() => onDelete(card)}
+                />
+              ) : null
+            })}
+          </div>
+        )}
       </SortableContext>
       <button
         type="button"
@@ -446,13 +555,52 @@ function BoardColumn({
   )
 }
 
+function cardClassForPlannedStatus(status: PlannedDateUiStatus): string {
+  switch (status) {
+    case 'scheduled':
+      return 'fb-card fb-card--accent-planned'
+    case 'due_today':
+      return 'fb-card fb-card--due-soon'
+    case 'overdue':
+      return 'fb-card fb-card--overdue'
+    default:
+      return 'fb-card'
+  }
+}
+
+function CalendarGlyph({ stroke }: { stroke: string }) {
+  return (
+    <svg
+      className="fb-card__planned-icon"
+      width={18}
+      height={18}
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden
+    >
+      <rect x="3" y="4" width="18" height="18" rx="2" stroke={stroke} strokeWidth={2} />
+      <path d="M16 2v4M8 2v4M3 10h18" stroke={stroke} strokeWidth={2} />
+    </svg>
+  )
+}
+
+function overdueMessage(plannedDate: string, now: Date): string {
+  const daysLate = getCalendarDaysOverdue(plannedDate, now)
+  if (daysLate === 1) return 'Atrasado há 1 dia — atualize a data ou mova o card.'
+  if (daysLate != null && daysLate > 1)
+    return `Atrasado há ${daysLate} dias — atualize a data ou mova o card.`
+  return 'Atrasado — atualize a data ou mova o card.'
+}
+
 function SortableCard({
   card,
+  columnRole,
   timeState,
   onEdit,
   onDelete,
 }: {
   card: Card
+  columnRole: ColumnRole
   timeState: TimeBoardState
   onEdit: () => void
   onDelete: () => void
@@ -470,11 +618,27 @@ function SortableCard({
   const ms = totalCompletedMs(st)
   const hours = ms > 0 ? (ms / 3_600_000).toFixed(2) : '0'
 
+  const now = new Date()
+  const plannedStatus = getPlannedDateUiStatusForColumn(card.plannedDate, columnRole, now)
+  const showPlanned = plannedStatus !== 'none' && card.plannedDate
+  const displayDate = card.plannedDate ? formatPlannedDateForCard(card.plannedDate) : ''
+  const plannedStroke =
+    plannedStatus === 'due_today'
+      ? 'var(--warning)'
+      : plannedStatus === 'overdue'
+        ? 'var(--danger-text-strong)'
+        : 'var(--text-secondary)'
+  const plannedValueLabel = plannedStatus === 'due_today' ? `Hoje · ${displayDate}` : displayDate
+  const plannedAria =
+    plannedStatus === 'overdue'
+      ? `Data planejada era ${displayDate}`
+      : `Data planejada: ${displayDate}`
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className="fb-card"
+      className={cardClassForPlannedStatus(plannedStatus)}
       data-testid={`card-${card.cardId}`}
       {...attributes}
       {...listeners}
@@ -485,30 +649,193 @@ function SortableCard({
           {hours}h
         </span>
       </div>
+      {showPlanned ? (
+        <div className="fb-card__meta">
+          {plannedStatus === 'due_today' ? (
+            <span className="fb-card__alert fb-card__alert--warn" role="status">
+              <svg
+                className="fb-card__alert-icon"
+                width={14}
+                height={14}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2.5}
+                aria-hidden
+              >
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 8v5M12 16h.01" />
+              </svg>
+              Vence hoje — priorize encerrar ou reagendar
+            </span>
+          ) : null}
+          {plannedStatus === 'overdue' ? (
+            <div className="fb-card__alert fb-card__alert--danger" role="alert">
+              <svg
+                className="fb-card__alert-icon"
+                width={14}
+                height={14}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2.5}
+                aria-hidden
+              >
+                <path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              </svg>
+              <div className="fb-card__alert-body">
+                <span className="fb-card__alert-kicker">Fora do prazo</span>
+                <span className="fb-card__alert-msg">
+                  {card.plannedDate ? overdueMessage(card.plannedDate, now) : ''}
+                </span>
+              </div>
+            </div>
+          ) : null}
+          <div className="fb-card__planned" aria-label={plannedAria}>
+            <CalendarGlyph stroke={plannedStroke} />
+            <div>
+              <span className="fb-card__planned-label">Planejado</span>
+              <span className="fb-card__planned-value">{plannedValueLabel}</span>
+            </div>
+          </div>
+        </div>
+      ) : null}
       <div className="fb-card__actions">
         <button
           type="button"
           className="fb-card__btn"
           data-testid={`card-edit-${card.cardId}`}
+          aria-label="Editar card"
+          title="Editar"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation()
             onEdit()
           }}
         >
-          Editar
+          <svg
+            className="fb-card__btn-svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+            <path d="m15 5 4 4" />
+          </svg>
         </button>
         <button
           type="button"
           className="fb-card__btn fb-card__btn--danger"
+          data-testid={`card-delete-${card.cardId}`}
+          aria-label="Excluir card"
+          title="Excluir"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation()
             onDelete()
           }}
         >
-          Excluir
+          <svg
+            className="fb-card__btn-svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <path d="M3 6h18" />
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+            <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            <line x1="10" x2="10" y1="11" y2="17" />
+            <line x1="14" x2="14" y1="11" y2="17" />
+          </svg>
         </button>
+      </div>
+    </div>
+  )
+}
+
+function VirtualizedDoneColumnBody({
+  cardIds,
+  cardById,
+  columnRole,
+  timeState,
+  onEdit,
+  onDelete,
+}: {
+  cardIds: string[]
+  cardById: Map<string, Card>
+  columnRole: ColumnRole
+  timeState: TimeBoardState
+  onEdit: (c: Card) => void
+  onDelete: (c: Card) => void
+}) {
+  const parentRef = useRef<HTMLDivElement>(null)
+
+  /* TanStack Virtual: retorno não memoizável pelo React Compiler — uso local apenas. */
+  // eslint-disable-next-line react-hooks/incompatible-library -- virtualizer intentionally not memoized by compiler
+  const virtualizer = useVirtualizer({
+    count: cardIds.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 112,
+    overscan: 6,
+    getItemKey: (index) => cardIds[index]!,
+  })
+
+  if (cardIds.length === 0) {
+    return <div className="fb-board__col-body fb-board__col-body--virtual" data-testid="done-column-empty" />
+  }
+
+  return (
+    <div
+      ref={parentRef}
+      className="fb-board__col-body fb-board__col-body--virtual"
+      data-testid="done-column-virtual"
+    >
+      <div
+        className="fb-board__col-virtual-scroll"
+        style={{
+          height: virtualizer.getTotalSize(),
+          position: 'relative',
+          width: '100%',
+        }}
+      >
+        {virtualizer.getVirtualItems().map((vi) => {
+          const id = cardIds[vi.index]!
+          const card = cardById.get(id)
+          if (!card) {
+            return null
+          }
+          return (
+            <div
+              key={vi.key}
+              data-index={vi.index}
+              ref={virtualizer.measureElement}
+              className="fb-board__col-virtual-row"
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                transform: `translateY(${vi.start}px)`,
+              }}
+            >
+              <SortableCard
+                card={card}
+                columnRole={columnRole}
+                timeState={timeState}
+                onEdit={() => onEdit(card)}
+                onDelete={() => onDelete(card)}
+              />
+            </div>
+          )
+        })}
       </div>
     </div>
   )

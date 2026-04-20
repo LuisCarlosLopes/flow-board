@@ -1,0 +1,56 @@
+title: "Persistir seleção do quadro ativo"
+slug: "board-selection-persistence"
+created_at: "2026-04-20"
+context: "apps/flowboard — seleção de quadro no AppShell"
+
+objective: >
+  Manter o quadro selecionado como "ativo" mesmo após refresh ou navegação fora/volta,
+  restaurando automaticamente a seleção ao abrir o app novamente (por repositório GitHub da sessão),
+  sem persistir credenciais.
+
+acceptance_criteria:
+  - "Ao selecionar um quadro no seletor, o app persiste o boardId localmente (namespaced pelo repo atual)."
+  - "Ao dar refresh na página, o app restaura o mesmo quadro ativo (se ele ainda existir no catálogo do repo)."
+  - "Ao trocar de repositório (nova sessão), a seleção persistida anterior não vaza para o novo repo."
+  - "Ao fazer logout, a seleção persistida do repo atual é removida."
+  - "Nenhuma credencial (PAT) é persistida fora do sessionStorage já existente."
+
+scope:
+  in:
+    - "Adicionar um pequeno store de persistência para boardId ativo (localStorage ou sessionStorage)."
+    - "Integrar restauração/persistência no `AppShell`."
+    - "Testes unitários do store."
+  out:
+    - "Persistir qualquer dado do quadro (cards/colunas) fora do GitHub."
+    - "Alterar o modelo de sessão/PAT (exige ADR)."
+    - "Adicionar rotas URL ou deep linking de board."
+
+tech_context: >
+  React + TypeScript (Vite). Session atual é salva em sessionStorage (flowboard.session.v1).
+  A seleção do board fica em state no `AppShell` e é passada para `BoardListView`/`BoardView`.
+
+squad:
+  status: "em-progresso"
+  track: "TASK"
+  track_override: false
+  score: 4
+  current_phase: "implementer"
+  completed_phases: []
+  next_phase: "code-reviewer"
+  iteration: 1
+  blockers: []
+  hitl_required: false
+
+decisions:
+  - decision: "Onde persistir a seleção do quadro"
+    choice: "localStorage (namespaced por repo)"
+    reason: "Persistência sobrevive ao refresh e reabertura; não contém segredo; evita acoplar a sessionStorage do PAT."
+
+pipeline:
+  - "implementer"
+  - "code-reviewer"
+  - "tester"
+
+history: []
+
+summary: null

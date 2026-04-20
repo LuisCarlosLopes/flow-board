@@ -14,7 +14,7 @@ export default function App() {
       {!session ? (
         <LoginView onConnected={setSession} />
       ) : (
-        <AppShell session={session} onLogout={() => setSession(null)} />
+        <AppShell key={`${session.owner}/${session.repo}`} session={session} onLogout={() => setSession(null)} />
       )}
     </>
   )

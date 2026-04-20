@@ -42,7 +42,7 @@ cd apps/flowboard
 npx vitest run src/caminho/para/arquivo.test.ts
 ```
 
-Cobertura (`@vitest/coverage-v8` está instalado; não há script npm dedicado):
+Cobertura (`@vitest/coverage-v8` está instalado; não há script npm dedicado). **Meta obrigatória:** cobertura de testes unitários (linhas) **> 80%** no conjunto relevante ao que foi alterado; antes de concluir mudanças em lógica de domínio, rode `npx vitest run --coverage` e confira o relatório.
 
 ```bash
 cd apps/flowboard
@@ -100,6 +100,7 @@ Valores de `apps/flowboard/package.json` (ajuste se bump): **React ^19.2.4**, **
 ### Sempre
 
 - Alterar comportamento de domínio/persistência com testes Vitest nas áreas tocadas (`boardRules`, `timeEngine`, cliente GitHub, etc., conforme README do app).
+- Manter **cobertura de testes unitários (Vitest) acima de 80%** nas linhas cobertas pelo escopo da mudança (ou no projeto, quando a alteração for ampla); não entregar código novo ou refatoração de domínio sem testes que preservem ou elevem essa barra.
 - Respeitar o MVP: sem busca global na topbar, notificações, favoritos ou labels persistidos, salvo mudança explícita de spec.
 
 ### Nunca

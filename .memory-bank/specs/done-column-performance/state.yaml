@@ -1,0 +1,93 @@
+title: "Performance da coluna Concluído (paginação / janela de renderização)"
+slug: "done-column-performance"
+created_at: "2026-04-20"
+context: "apps/flowboard — coluna com role done no BoardView"
+
+objective: >
+  Manter a performance do app quando a coluna Concluído acumula muitos cards,
+  adotando uma estratégia de paginação ou equivalente (janela de renderização)
+  sem alterar o modelo de persistência GitHub nem as regras de domínio do quadro.
+
+acceptance_criteria:
+  - "Com N grande na coluna Concluído, o custo de renderização e interação permanece aceitável (sem degradação linear óbvia no DOM)."
+  - "Arrastar cards para/de outras colunas e dentro de Concluído continua coerente com as regras atuais de layout (applyDragEnd / dnd-kit)."
+  - "O documento JSON do quadro e o contrato de persistência (ADR-002) permanecem inalterados."
+  - "Regras de domínio (boardLayout, timeEngine) não são duplicadas na UI; apenas fatias de apresentação."
+
+scope:
+  in:
+    - "Estratégia de UI para limitar trabalho de render na coluna role=done."
+    - "Integração com @dnd-kit existente (SortableContext / useSortable)."
+    - "Testes de regressão em domínio existente onde aplicável."
+  out:
+    - "Backend ou paginação de API (não há servidor de dados próprio no MVP)."
+    - "Mudar formato do JSON do board no GitHub."
+    - "Virtualizar outras colunas além de Concluído (a menos que o IPD estenda)."
+
+tech_context: >
+  React 19 + Vite + TypeScript; @dnd-kit/core e @dnd-kit/sortable; cartões em BoardColumn
+  mapeiam cardIds completos. Estado do quadro é BoardDocumentJson carregado por completo do cliente.
+
+baseline_ref: "HEAD"
+
+squad:
+  status: em-progresso
+  track: FEATURE
+  track_override: false
+  score: 6
+  confidence: 86
+  current_phase: verifier
+  completed_phases:
+    - architect
+    - implementer
+  next_phase: code-reviewer
+  iteration: 1
+  blockers: []
+  hitl_required: false
+
+repo_write_scope:
+  - "apps/flowboard/src/features/board/**"
+  - "apps/flowboard/src/domain/**"
+  - ".memory-bank/specs/done-column-performance/**"
+  - ".memory-bank/adrs/006-flowboard-done-column-ui-windowing.md"
+
+artifact_reuse: []
+
+approvals: []
+
+retries_by_phase: {}
+
+last_failure: null
+
+decisions:
+  - decision: "Estratégia de apresentação para coluna Concluído"
+    choice: "Opção A — virtualização (@tanstack/react-virtual) na UI da coluna role=done"
+    reason: "Confirmação explícita do time; ADR-006 já recomendava virtualização como caminho principal."
+
+pipeline:
+  - architect
+  - planner
+  - plan-reviewer
+  - task-breakdown
+  - implementer
+  - verifier
+  - code-reviewer
+  - tester
+
+subtasks: []
+
+history:
+  - phase: architect
+    agent: architect
+    subtask_id: null
+    status: ok
+    artifact: "architect-FEATURE.md"
+    note: "ARD + trade-offs; ADR-006 proposto"
+  - phase: implementer
+    agent: implementer
+    subtask_id: null
+    status: ok
+    artifact: "apps/flowboard BoardView + BoardView.css"
+    note: "Opção A: @tanstack/react-virtual na coluna role=done; ADR-006 aceito"
+
+summary: null

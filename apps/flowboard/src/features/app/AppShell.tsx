@@ -1,10 +1,11 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { BoardView } from '../board/BoardView'
 import { BoardListView } from '../boards/BoardListView'
 import { HoursView } from '../hours/HoursView'
 import { SearchModal } from './SearchModal'
 import { useSearchHotkey } from '../../hooks/useSearchHotkey'
 import { formatRepoChipLabel } from '../../infrastructure/github/url'
+import { clearActiveBoardId, loadActiveBoardId, saveActiveBoardId } from '../../infrastructure/session/boardSelectionStore'
 import { clearSession, type FlowBoardSession } from '../../infrastructure/session/sessionStore'
 import './AppShell.css'
 
@@ -14,11 +15,16 @@ type Props = {
 }
 
 export function AppShell({ session, onLogout }: Props) {
-  const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null)
+  const [selectedBoardId, setSelectedBoardId] = useState<string | null>(() => loadActiveBoardId(session))
   const [mainView, setMainView] = useState<'kanban' | 'hours'>('kanban')
   const [columnEditorMenuTick, setColumnEditorMenuTick] = useState(0)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [cardToEditId, setCardToEditId] = useState<string | null>(null)
+
+  // Persist selection per repository (does not contain secrets).
+  useEffect(() => {
+    saveActiveBoardId(session, selectedBoardId)
+  }, [session, selectedBoardId])
 
   const requestOpenColumnEditor = useCallback(() => {
     setColumnEditorMenuTick((n) => n + 1)
@@ -28,6 +34,7 @@ export function AppShell({ session, onLogout }: Props) {
   useSearchHotkey(() => setIsSearchOpen(true))
 
   function logout() {
+    clearActiveBoardId(session)
     clearSession()
     onLogout()
   }

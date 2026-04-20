@@ -4,6 +4,7 @@ import {
   localMonthRange,
   localWeekRange,
   segmentsCompletedInPeriod,
+  splitWallIntervalByLocalDays,
   sumDurationMs,
 } from './hoursProjection'
 import type { CompletedSegment } from './types'
@@ -59,6 +60,27 @@ describe('localWeekRange', () => {
     expect(start.getDay()).toBe(1)
     expect(end.getDay()).toBe(0)
     expect(end.getTime() - start.getTime()).toBeGreaterThan(0)
+  })
+})
+
+describe('splitWallIntervalByLocalDays', () => {
+  it('não cruza meia-noite em um único segmento', () => {
+    const startMs = new Date(2026, 3, 20, 22, 0, 0, 0).getTime()
+    const endMs = new Date(2026, 3, 21, 2, 0, 0, 0).getTime()
+    const segs = splitWallIntervalByLocalDays(startMs, endMs)
+    expect(segs.length).toBeGreaterThanOrEqual(2)
+    for (const s of segs) {
+      const r = localDayRange(new Date(s.startMs))
+      expect(s.endMs).toBeLessThanOrEqual(r.endMs)
+      expect(s.startMs).toBeGreaterThanOrEqual(r.startMs)
+    }
+  })
+
+  it('borda 23:59:59.999 fica no mesmo dia', () => {
+    const d = new Date(2026, 3, 20, 23, 59, 59, 999)
+    const r = localDayRange(d)
+    const segs = splitWallIntervalByLocalDays(r.startMs, r.endMs)
+    expect(segs).toHaveLength(1)
   })
 })
 

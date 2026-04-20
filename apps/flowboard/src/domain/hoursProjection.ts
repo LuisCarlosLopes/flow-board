@@ -3,6 +3,31 @@ import type { CompletedSegment } from './types'
 /** Inclusive range in ms (UTC timestamps). */
 export type PeriodRange = { startMs: number; endMs: number }
 
+/** Início do dia civil local (00:00:00.000) para o instante `d`. */
+export function dayStartMs(d: Date): number {
+  const x = new Date(d)
+  x.setHours(0, 0, 0, 0)
+  return x.getTime()
+}
+
+/**
+ * Divide [startMs, endMs] em segmentos, cada um contido num único dia civil local (wall-clock).
+ */
+export function splitWallIntervalByLocalDays(startMs: number, endMs: number): CompletedSegment[] {
+  if (endMs <= startMs) {
+    return []
+  }
+  const out: CompletedSegment[] = []
+  let cur = startMs
+  while (cur < endMs) {
+    const { endMs: dayEnd } = localDayRange(new Date(cur))
+    const segEnd = Math.min(endMs, dayEnd)
+    out.push({ startMs: cur, endMs: segEnd })
+    cur = dayEnd + 1
+  }
+  return out
+}
+
 /**
  * R09: segments count in period by **completion instant** (endMs).
  */
