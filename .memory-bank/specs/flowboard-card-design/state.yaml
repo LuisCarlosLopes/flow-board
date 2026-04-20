@@ -1,0 +1,88 @@
+title: "Melhorar design do card do Kanban (data planejada, alertas, ações com ícone)"
+slug: "flowboard-card-design"
+created_at: "2026-04-20"
+context: "apps/flowboard — quadro Kanban com persistência GitHub"
+
+objective: >
+  Evoluir o card do quadro para refletir o protótipo em prototypes/card-data-planejada-atraso.html:
+  exibir data planejada quando existir, estados visuais para “vence hoje” e “atrasado”, e botões
+  Editar/Excluir como ícones acessíveis — mantendo tokens e padrões do FlowBoard.
+
+acceptance_criteria:
+  - "Com `plannedDate` preenchido (ISO `YYYY-MM-DD`), o card mostra bloco legível de planejamento (rótulo + data formatada em pt-BR ou equivalente consistente com o app)."
+  - "Sem `plannedDate`, o card permanece visualmente equivalente ao baseline atual (sem barra lateral de estado nem bloco de data)."
+  - "Estado ‘vence hoje’ (data planejada = dia civil local atual): barra/acento warning + alerta textual visível, sem quebrar contraste WCAG no tema escuro."
+  - "Estado ‘atrasado’ (data planejada < dia civil local atual): barra danger + alerta com `role=\"alert\"` e mensagem clara; animação de ênfase respeita `prefers-reduced-motion`."
+  - "Botões de ação usam ícones (editar / excluir) com `aria-label` em PT-BR, área mínima de toque compatível (~44px) e `data-testid` estável para o fluxo de edição existente."
+  - "Regra de comparação de datas é função pura testada em Vitest (domínio ou módulo dedicado), sem lógica duplicada só na UI."
+  - "`npm test` (Vitest) e `npm run lint` passam no pacote `apps/flowboard`; build não regressa."
+
+scope:
+  in:
+    - "`SortableCard` e estilos em `BoardView.tsx` / `BoardView.css`."
+    - "Função(ões) puras para classificar data planejada vs ‘hoje’ local + testes."
+    - "SVG inline ou componente mínimo de ícone alinhado ao protótipo (sem nova dependência npm salvo decisão explícita)."
+  out:
+    - "Mudança do contrato JSON persistido (campo `plannedDate` já existe em `Card`)."
+    - "Fluxo de confirmação modal para excluir (pode ficar para task futura)."
+    - "Alteração de `CreateTaskModal` além do necessário para consistência de cópia (campo já existe)."
+    - "E2E obrigatório com sessão GitHub real — opcional smoke com mock se já houver padrão no repo."
+
+tech_context: >
+  React 19 + TS + Vite; tema em `apps/flowboard/src/styles/tokens.css`.
+  Referência visual e classes candidatas: `prototypes/card-data-planejada-atraso.html` (raiz do repositório).
+  `Card.plannedDate` opcional em `apps/flowboard/src/domain/types.ts`; modal já coleta data na criação/edição.
+
+squad:
+  status: em-progresso
+  track: TASK
+  track_override: false
+  score: 4
+  current_phase: tester
+  completed_phases:
+    - task-breakdown
+    - implementer
+    - code-reviewer
+  next_phase: tester
+  iteration: 1
+  blockers: []
+  hitl_required: false
+
+decisions:
+  - decision: "‘Hoje’ e atraso usam qual fuso?"
+    choice: "Mesmo critério do browser: dia civil local (`Date` / componentes existentes), documentado no teste."
+    reason: "Paridade com apontamento de horas e expectativa do usuário no MVP."
+
+pipeline:
+  - planner
+  - task-breakdown
+  - implementer
+  - code-reviewer
+  - tester
+
+history:
+  - phase: task-breakdown
+    agent: orchestrator
+    status: ok
+    artifact: task.md
+    note: "task.md criado com subtasks e referência ao protótipo; planner pode ser skipped se IPD já implícito."
+  - phase: implementer
+    agent: cursor
+    status: ok
+    artifact: "(código)"
+    note: "plannedDateStatus + SortableCard com meta/alertas/ícones; BoardView.css; Vitest 163/163; build OK."
+  - phase: code-reviewer
+    agent: code-reviewer
+    status: ok
+    artifact: code-reviewer-task.md
+    note: "Veredicto go with notes; 0 critical; 1 medium (alert vs sr-only); low DST/now/test gaps."
+
+summary:
+  delivered:
+    - "apps/flowboard/src/domain/plannedDateStatus.ts"
+    - "apps/flowboard/src/domain/plannedDateStatus.test.ts"
+    - "apps/flowboard/src/features/board/BoardView.tsx"
+    - "apps/flowboard/src/features/board/BoardView.css"
+  pending_gates:
+    - "tester"
+  code_review: "go with notes — ver code-reviewer-task.md"

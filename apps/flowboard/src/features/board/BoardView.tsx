@@ -12,6 +12,12 @@ import {
 } from '@dnd-kit/core'
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import {
+  formatPlannedDateForCard,
+  getCalendarDaysOverdue,
+  getPlannedDateUiStatusForColumn,
+  type PlannedDateUiStatus,
+} from '../../domain/plannedDateStatus'
 import { validateColumnLayout } from '../../domain/boardRules'
 import {
   applyDragEnd,
@@ -21,7 +27,7 @@ import {
   migrateCardsAfterColumnEdit,
 } from '../../domain/boardLayout'
 import { applyCardMove, reconcileBoardTimeState, totalCompletedMs } from '../../domain/timeEngine'
-import type { BoardWorkingHours, Card, Column, TimeBoardState } from '../../domain/types'
+import type { BoardWorkingHours, Card, Column, ColumnRole, TimeBoardState } from '../../domain/types'
 import { GitHubHttpError } from '../../infrastructure/github/client'
 import { createClientFromSession } from '../../infrastructure/github/fromSession'
 import type { BoardDocumentJson } from '../../infrastructure/persistence/types'
@@ -513,6 +519,7 @@ function BoardColumn({
               <SortableCard
                 key={id}
                 card={card}
+                columnRole={column.role}
                 timeState={timeState}
                 onEdit={() => onEdit(card)}
                 onDelete={() => onDelete(card)}
@@ -536,13 +543,52 @@ function BoardColumn({
   )
 }
 
+function cardClassForPlannedStatus(status: PlannedDateUiStatus): string {
+  switch (status) {
+    case 'scheduled':
+      return 'fb-card fb-card--accent-planned'
+    case 'due_today':
+      return 'fb-card fb-card--due-soon'
+    case 'overdue':
+      return 'fb-card fb-card--overdue'
+    default:
+      return 'fb-card'
+  }
+}
+
+function CalendarGlyph({ stroke }: { stroke: string }) {
+  return (
+    <svg
+      className="fb-card__planned-icon"
+      width={18}
+      height={18}
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden
+    >
+      <rect x="3" y="4" width="18" height="18" rx="2" stroke={stroke} strokeWidth={2} />
+      <path d="M16 2v4M8 2v4M3 10h18" stroke={stroke} strokeWidth={2} />
+    </svg>
+  )
+}
+
+function overdueMessage(plannedDate: string, now: Date): string {
+  const daysLate = getCalendarDaysOverdue(plannedDate, now)
+  if (daysLate === 1) return 'Atrasado há 1 dia — atualize a data ou mova o card.'
+  if (daysLate != null && daysLate > 1)
+    return `Atrasado há ${daysLate} dias — atualize a data ou mova o card.`
+  return 'Atrasado — atualize a data ou mova o card.'
+}
+
 function SortableCard({
   card,
+  columnRole,
   timeState,
   onEdit,
   onDelete,
 }: {
   card: Card
+  columnRole: ColumnRole
   timeState: TimeBoardState
   onEdit: () => void
   onDelete: () => void
@@ -560,11 +606,27 @@ function SortableCard({
   const ms = totalCompletedMs(st)
   const hours = ms > 0 ? (ms / 3_600_000).toFixed(2) : '0'
 
+  const now = new Date()
+  const plannedStatus = getPlannedDateUiStatusForColumn(card.plannedDate, columnRole, now)
+  const showPlanned = plannedStatus !== 'none' && card.plannedDate
+  const displayDate = card.plannedDate ? formatPlannedDateForCard(card.plannedDate) : ''
+  const plannedStroke =
+    plannedStatus === 'due_today'
+      ? 'var(--warning)'
+      : plannedStatus === 'overdue'
+        ? 'var(--danger-text-strong)'
+        : 'var(--text-secondary)'
+  const plannedValueLabel = plannedStatus === 'due_today' ? `Hoje · ${displayDate}` : displayDate
+  const plannedAria =
+    plannedStatus === 'overdue'
+      ? `Data planejada era ${displayDate}`
+      : `Data planejada: ${displayDate}`
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className="fb-card"
+      className={cardClassForPlannedStatus(plannedStatus)}
       data-testid={`card-${card.cardId}`}
       {...attributes}
       {...listeners}
@@ -575,29 +637,112 @@ function SortableCard({
           {hours}h
         </span>
       </div>
+      {showPlanned ? (
+        <div className="fb-card__meta">
+          {plannedStatus === 'due_today' ? (
+            <span className="fb-card__alert fb-card__alert--warn" role="status">
+              <svg
+                className="fb-card__alert-icon"
+                width={14}
+                height={14}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2.5}
+                aria-hidden
+              >
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 8v5M12 16h.01" />
+              </svg>
+              Vence hoje — priorize encerrar ou reagendar
+            </span>
+          ) : null}
+          {plannedStatus === 'overdue' ? (
+            <div className="fb-card__alert fb-card__alert--danger" role="alert">
+              <svg
+                className="fb-card__alert-icon"
+                width={14}
+                height={14}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2.5}
+                aria-hidden
+              >
+                <path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              </svg>
+              <div className="fb-card__alert-body">
+                <span className="fb-card__alert-kicker">Fora do prazo</span>
+                <span className="fb-card__alert-msg">
+                  {card.plannedDate ? overdueMessage(card.plannedDate, now) : ''}
+                </span>
+              </div>
+            </div>
+          ) : null}
+          <div className="fb-card__planned" aria-label={plannedAria}>
+            <CalendarGlyph stroke={plannedStroke} />
+            <div>
+              <span className="fb-card__planned-label">Planejado</span>
+              <span className="fb-card__planned-value">{plannedValueLabel}</span>
+            </div>
+          </div>
+        </div>
+      ) : null}
       <div className="fb-card__actions">
         <button
           type="button"
           className="fb-card__btn"
           data-testid={`card-edit-${card.cardId}`}
+          aria-label="Editar card"
+          title="Editar"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation()
             onEdit()
           }}
         >
-          Editar
+          <svg
+            className="fb-card__btn-svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+            <path d="m15 5 4 4" />
+          </svg>
         </button>
         <button
           type="button"
           className="fb-card__btn fb-card__btn--danger"
+          data-testid={`card-delete-${card.cardId}`}
+          aria-label="Excluir card"
+          title="Excluir"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation()
             onDelete()
           }}
         >
-          Excluir
+          <svg
+            className="fb-card__btn-svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <path d="M3 6h18" />
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+            <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            <line x1="10" x2="10" y1="11" y2="17" />
+            <line x1="14" x2="14" y1="11" y2="17" />
+          </svg>
         </button>
       </div>
     </div>
