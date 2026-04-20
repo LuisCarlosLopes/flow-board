@@ -2,6 +2,8 @@ import { useCallback, useState } from 'react'
 import { BoardView } from '../board/BoardView'
 import { BoardListView } from '../boards/BoardListView'
 import { HoursView } from '../hours/HoursView'
+import { SearchModal } from './SearchModal'
+import { useSearchHotkey } from '../../hooks/useSearchHotkey'
 import { formatRepoChipLabel } from '../../infrastructure/github/url'
 import { clearSession, type FlowBoardSession } from '../../infrastructure/session/sessionStore'
 import './AppShell.css'
@@ -15,9 +17,15 @@ export function AppShell({ session, onLogout }: Props) {
   const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null)
   const [mainView, setMainView] = useState<'kanban' | 'hours'>('kanban')
   const [columnEditorMenuTick, setColumnEditorMenuTick] = useState(0)
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [cardToEditId, setCardToEditId] = useState<string | null>(null)
+
   const requestOpenColumnEditor = useCallback(() => {
     setColumnEditorMenuTick((n) => n + 1)
   }, [])
+
+  // Register search hotkey listener
+  useSearchHotkey(() => setIsSearchOpen(true))
 
   function logout() {
     clearSession()
@@ -35,7 +43,14 @@ export function AppShell({ session, onLogout }: Props) {
           </span>
           <span className="fb-topbar__name">FlowBoard</span>
         </div>
-        <div className="fb-topbar__search" role="search" aria-label="Busca no quadro">
+        <div
+          className="fb-topbar__search"
+          role="button"
+          tabIndex={0}
+          onClick={() => setIsSearchOpen(true)}
+          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setIsSearchOpen(true)}
+          aria-label="Busca no quadro"
+        >
           <span aria-hidden="true">⌕</span>
           <span>Buscar cards, etiquetas, tempo…</span>
           <kbd className="fb-topbar__kbd">/</kbd>
@@ -96,12 +111,25 @@ export function AppShell({ session, onLogout }: Props) {
             session={session}
             boardId={selectedBoardId}
             columnEditorMenuTick={columnEditorMenuTick}
+            cardToEditId={cardToEditId}
+            onCardEditComplete={() => setCardToEditId(null)}
           />
         ) : null}
         {mainView === 'hours' ? (
           <HoursView session={session} selectedBoardId={selectedBoardId} />
         ) : null}
       </main>
+
+      <SearchModal
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        boardId={selectedBoardId || ''}
+        session={session}
+        onSelectResult={(cardId) => {
+          setIsSearchOpen(false)
+          setCardToEditId(cardId)
+        }}
+      />
     </div>
   )
 }

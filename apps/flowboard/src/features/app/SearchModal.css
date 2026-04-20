@@ -1,0 +1,540 @@
+/**
+ * FlowBoard Search Modal Styles
+ * 
+ * BEM Naming Convention:
+ * - .fb-sm-* (FlowBoard, SearchModal)
+ * - Block: .fb-sm-backdrop, .fb-sm-modal
+ * - Elements: .fb-sm-input, .fb-sm-results, etc.
+ * - Modifiers: .fb-sm-*--disabled, etc.
+ * 
+ * Responsive:
+ * - Mobile-first (320px)
+ * - Tablet (768px+)
+ * - Desktop (1024px+)
+ */
+
+/* ========================================
+   BACKDROP & OVERLAY
+   ======================================== */
+
+.fb-sm-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--backdrop-overlay);
+  backdrop-filter: var(--backdrop-blur);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-modal);
+  pointer-events: auto;
+  animation: fb-sm-fade-in var(--duration-fast) ease-out;
+}
+
+@keyframes fb-sm-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Respect user's motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .fb-sm-backdrop {
+    animation: none;
+    backdrop-filter: none;
+  }
+}
+
+/* ========================================
+   MODAL BOX & LAYOUT
+   ======================================== */
+
+.fb-sm-modal {
+  position: relative;
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-default);
+  box-shadow: var(--shadow-lg), var(--shadow-glow);
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+  max-height: 90dvh;
+  /* Mobile-first: 90% width */
+  width: 90vw;
+  max-width: 500px;
+  animation: fb-sm-slide-in var(--duration-fast) var(--ease-spring);
+  overflow: hidden;
+}
+
+@keyframes fb-sm-slide-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fb-sm-modal {
+    animation: none;
+  }
+}
+
+/* Tablet: 80% width */
+@media (min-width: 768px) {
+  .fb-sm-modal {
+    width: 80vw;
+    max-width: 600px;
+  }
+}
+
+/* Desktop: 50% width */
+@media (min-width: 1024px) {
+  .fb-sm-modal {
+    width: 50vw;
+    max-width: 800px;
+  }
+}
+
+/* ========================================
+   MODAL HEADER & INPUT
+   ======================================== */
+
+.fb-sm-header {
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--border-default);
+  flex-shrink: 0;
+}
+
+.fb-sm-input {
+  width: 100%;
+  height: var(--text-2xl);
+  min-height: 44px;
+  padding: var(--space-3) var(--space-2);
+  font-size: var(--text-lg);
+  font-family: inherit;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-md);
+  transition: all var(--transition);
+  outline: none;
+}
+
+.fb-sm-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.fb-sm-input:focus {
+  border-color: var(--accent);
+  background: var(--bg-overlay);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1), inset 0 0 0 1px var(--accent-border);
+}
+
+.fb-sm-input:disabled {
+  background: var(--bg-subtle);
+  color: var(--text-disabled);
+  cursor: not-allowed;
+}
+
+/* ========================================
+   RESULTS CONTAINER
+   ======================================== */
+
+.fb-sm-results-container {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  max-height: 400px;
+}
+
+/* Custom scrollbar for better UX */
+.fb-sm-results-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.fb-sm-results-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.fb-sm-results-container::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 4px;
+  transition: background var(--transition);
+}
+
+.fb-sm-results-container::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+}
+
+/* Firefox scrollbar */
+.fb-sm-results-container {
+  scrollbar-color: var(--border-strong) transparent;
+  scrollbar-width: thin;
+}
+
+/* ========================================
+   RESULTS LIST & ITEMS
+   ======================================== */
+
+.fb-sm-results-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.fb-sm-result-item {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-default);
+  cursor: pointer;
+  transition: all var(--transition);
+  background: transparent;
+}
+
+.fb-sm-result-item:last-child {
+  border-bottom: none;
+}
+
+.fb-sm-result-item:hover {
+  background: var(--hover-surface-strong);
+  padding-left: calc(var(--space-4) + 4px);
+  border-left: 4px solid var(--accent-border);
+  padding-left: calc(var(--space-4) - 4px);
+}
+
+.fb-sm-result-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  background: var(--hover-surface-strong);
+}
+
+/* Ensure minimum touch target size (44px) */
+.fb-sm-result-item {
+  min-height: 44px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* ========================================
+   RESULT CONTENT
+   ======================================== */
+
+.fb-sm-result-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.fb-sm-result-title {
+  margin: 0;
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--text-primary);
+  flex: 1;
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+.fb-sm-score-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 28px;
+  padding: 0 var(--space-2);
+  background: var(--accent-dim-mid);
+  color: var(--text-accent-soft);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.fb-sm-result-snippet {
+  margin: var(--space-1) 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+/* ========================================
+   RESULT METADATA
+   ======================================== */
+
+.fb-sm-result-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.fb-sm-meta-column,
+.fb-sm-meta-date,
+.fb-sm-meta-hours {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  background: var(--accent-dim);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.fb-sm-meta-column {
+  background: var(--accent-dim);
+  color: var(--text-accent-soft);
+}
+
+.fb-sm-meta-date {
+  background: var(--warning-bg);
+  color: var(--warning-text);
+}
+
+.fb-sm-meta-hours {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+/* ========================================
+   EMPTY STATES
+   ======================================== */
+
+.fb-sm-hint,
+.fb-sm-no-results,
+.fb-sm-empty-state {
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: var(--text-md);
+}
+
+.fb-sm-hint {
+  padding: var(--space-8) var(--space-4);
+}
+
+.fb-sm-hint p,
+.fb-sm-no-results p,
+.fb-sm-empty-state p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.fb-sm-no-results p {
+  color: var(--text-secondary);
+  font-size: var(--text-base);
+}
+
+.fb-sm-empty-state {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-overlay);
+}
+
+/* ========================================
+   OVERFLOW INDICATOR
+   ======================================== */
+
+.fb-sm-results-overflow {
+  padding: var(--space-3) var(--space-4);
+  text-align: center;
+  background: var(--accent-dim);
+  border-top: 1px solid var(--border-default);
+}
+
+.fb-sm-overflow-text {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-accent-soft);
+  font-weight: 500;
+}
+
+/* ========================================
+   ACCESSIBILITY & FOCUS STATES
+   ======================================== */
+
+/* High contrast mode support */
+@media (prefers-contrast: more) {
+  .fb-sm-input {
+    border-width: 2px;
+  }
+
+  .fb-sm-input:focus {
+    outline: 3px solid var(--accent);
+    outline-offset: 2px;
+    border: none;
+  }
+
+  .fb-sm-result-item:hover {
+    text-decoration: underline;
+  }
+}
+
+/* Dark mode is already default; light mode would be additional */
+@media (prefers-color-scheme: light) {
+  /* Light mode not implemented for MVP (dark theme only) */
+}
+
+/* ========================================
+   ANIMATIONS & TRANSITIONS
+   ======================================== */
+
+/* Smooth transitions for state changes */
+.fb-sm-input,
+.fb-sm-result-item {
+  transition: all var(--transition);
+}
+
+/* Disable animations for users preferring reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .fb-sm-input,
+  .fb-sm-result-item,
+  .fb-sm-results-container::-webkit-scrollbar-thumb {
+    transition: none;
+  }
+}
+
+/* ========================================
+   RESPONSIVE ADJUSTMENTS
+   ======================================== */
+
+/* Extra small devices (mobile) */
+@media (max-width: 480px) {
+  .fb-sm-modal {
+    width: 95vw;
+    max-height: 95vh;
+    max-height: 95dvh;
+  }
+
+  .fb-sm-header {
+    padding: var(--space-3);
+  }
+
+  .fb-sm-result-item {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .fb-sm-result-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .fb-sm-score-badge {
+    align-self: flex-start;
+    margin-top: var(--space-2);
+  }
+
+  .fb-sm-result-meta {
+    font-size: var(--text-xs);
+  }
+}
+
+/* Large desktop screens */
+@media (min-width: 1920px) {
+  .fb-sm-modal {
+    width: 40vw;
+    max-width: 900px;
+  }
+
+  .fb-sm-results-container {
+    max-height: 500px;
+  }
+}
+
+/* ========================================
+   LOADING STATES
+   ======================================== */
+
+.fb-sm-loading-spinner {
+  position: absolute;
+  right: var(--space-3);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--text-tertiary);
+  border-top-color: var(--text-primary);
+  border-radius: 50%;
+  animation: fb-sm-spin 0.8s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes fb-sm-spin {
+  to {
+    transform: translateY(-50%) rotate(360deg);
+  }
+}
+
+.fb-sm-loading-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.fb-sm-loading-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+  animation: fb-sm-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes fb-sm-pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ========================================
+   Z-INDEX & STACKING
+   ======================================== */
+
+/* Ensure modal sits above all other content */
+.fb-sm-backdrop {
+  z-index: var(--z-modal);
+}
+
+.fb-sm-modal {
+  z-index: calc(var(--z-modal) + 1);
+}
+
+/* ========================================
+   UTILITY & DEBUG
+   ======================================== */
+
+/* Optional: Debug outline for component boundaries */
+/* Uncomment to debug layout issues
+.fb-sm-backdrop,
+.fb-sm-modal,
+.fb-sm-result-item {
+  outline: 1px solid red;
+}
+*/
