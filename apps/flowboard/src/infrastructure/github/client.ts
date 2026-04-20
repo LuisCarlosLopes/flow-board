@@ -60,9 +60,10 @@ export class GitHubContentsClient {
     return `${this.apiBase}/repos/${this.owner}/${this.repo}/contents/${encoded}`
   }
 
-  async getFileJson(path: string): Promise<{ sha: string; json: unknown }> {
+  async getFileJson(path: string, signal?: AbortSignal): Promise<{ sha: string; json: unknown }> {
     const res = await this.fetchImpl(this.url(path), {
       headers: this.headers(),
+      signal,
     })
     if (res.status === 401 || res.status === 403 || res.status === 404) {
       throw new GitHubHttpError(`GitHub ${res.status}`, res.status)
@@ -77,9 +78,10 @@ export class GitHubContentsClient {
   }
 
   /** GET file JSON; `null` if path missing (404). Other errors throw. */
-  async tryGetFileJson(path: string): Promise<{ sha: string; json: unknown } | null> {
+  async tryGetFileJson(path: string, signal?: AbortSignal): Promise<{ sha: string; json: unknown } | null> {
     const res = await this.fetchImpl(this.url(path), {
       headers: this.headers(),
+      signal,
     })
     if (res.status === 404) {
       return null

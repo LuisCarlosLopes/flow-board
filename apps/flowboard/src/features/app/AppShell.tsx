@@ -48,7 +48,14 @@ export function AppShell({ session, onLogout }: Props) {
           role="button"
           tabIndex={0}
           onClick={() => setIsSearchOpen(true)}
-          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setIsSearchOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === ' ') {
+              e.preventDefault()
+              setIsSearchOpen(true)
+            } else if (e.key === 'Enter') {
+              setIsSearchOpen(true)
+            }
+          }}
           aria-label="Busca no quadro"
         >
           <span aria-hidden="true">⌕</span>

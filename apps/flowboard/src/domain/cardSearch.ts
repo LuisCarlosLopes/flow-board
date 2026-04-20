@@ -79,26 +79,34 @@ export function scoreCard(card: Card, query: string): number {
  * @returns Array of CardSearchResult sorted by relevance
  */
 export function searchCards(query: string, cards: Card[], maxResults: number = 100): CardSearchResult[] {
+  return searchCardsWithTotal(query, cards, maxResults).results
+}
+
+/**
+ * Like {@link searchCards}, but also returns how many cards matched before applying `maxResults`.
+ */
+export function searchCardsWithTotal(
+  query: string,
+  cards: Card[],
+  maxResults: number = 100,
+): { results: CardSearchResult[]; totalMatched: number } {
   const normalizedQuery = query.toLowerCase().trim()
 
-  // Empty query returns empty results
   if (!normalizedQuery) {
-    return []
+    return { results: [], totalMatched: 0 }
   }
 
-  // Empty cards array returns empty results
   if (!cards || cards.length === 0) {
-    return []
+    return { results: [], totalMatched: 0 }
   }
 
-  const results: CardSearchResult[] = []
+  const matches: CardSearchResult[] = []
 
   for (const card of cards) {
     const score = scoreCard(card, query)
 
-    // Only include cards with a score > 0
     if (score > 0) {
-      results.push({
+      matches.push({
         cardId: card.cardId,
         title: card.title,
         description: card.description,
@@ -111,24 +119,20 @@ export function searchCards(query: string, cards: Card[], maxResults: number = 1
     }
   }
 
-  // Sort by score DESC, then createdAt DESC, then cardId ASC
-  results.sort((a, b) => {
-    // Primary sort: score (descending)
+  matches.sort((a, b) => {
     if (b.score !== a.score) {
       return b.score - a.score
     }
 
-    // Secondary sort: createdAt (descending - newer first)
     if (a.createdAt !== b.createdAt) {
       const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0
       const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0
       return bTime - aTime
     }
 
-    // Tertiary sort: cardId (ascending - deterministic)
     return a.cardId.localeCompare(b.cardId)
   })
 
-  // Limit results to maxResults
-  return results.slice(0, maxResults)
+  const totalMatched = matches.length
+  return { results: matches.slice(0, maxResults), totalMatched }
 }

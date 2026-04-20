@@ -1,6 +1,14 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useCallback,
+  type ChangeEvent,
+  type KeyboardEvent,
+} from 'react'
 import type { BoardDocumentJson } from '../../infrastructure/persistence/types'
-import { searchCards, type CardSearchResult } from '../../domain/cardSearch'
+import { searchCardsWithTotal, type CardSearchResult } from '../../domain/cardSearch'
 import { createClientFromSession } from '../../infrastructure/github/fromSession'
 import { createBoardRepository } from '../../infrastructure/persistence/boardRepository'
 import type { FlowBoardSession } from '../../infrastructure/session/sessionStore'
@@ -14,8 +22,27 @@ interface SearchModalProps {
   onSelectResult?: (cardId: string) => void
 }
 
-// In-memory board cache to avoid reloading on modal close/reopen
+// In-memory board cache to avoid reloading on modal close/reopen (scoped per GitHub repo + board)
 const boardCache = new Map<string, { doc: BoardDocumentJson; timestamp: number }>()
+
+function boardCacheKey(session: FlowBoardSession, boardId: string): string {
+  return `${session.owner}/${session.repo}/${boardId}`
+}
+
+/** Clears the modal board cache (for tests and rare session resets). */
+// eslint-disable-next-line react-refresh/only-export-components -- test helper; keep cache private to this module otherwise
+export function clearSearchModalBoardCache(): void {
+  boardCache.clear()
+}
+
+const SEARCH_RESULTS_LIMIT = 100
+
+function isAbortError(err: unknown): boolean {
+  if (err instanceof DOMException && err.name === 'AbortError') {
+    return true
+  }
+  return err instanceof Error && err.name === 'AbortError'
+}
 
 /**
  * SearchModal - A modal component for searching cards in the active board.
@@ -25,7 +52,7 @@ const boardCache = new Map<string, { doc: BoardDocumentJson; timestamp: number }
  * - In-memory caching to avoid reloading on modal close/reopen (1-hour TTL)
  * - Real-time search as user types
  * - Results sorted by relevance score
- * - Keyboard navigation (Escape to close)
+ * - Keyboard: Tab focus trap, Escape closes from anywhere inside the dialog
  * - Click overlay or Escape to dismiss
  * - Click result to open card
  * - Accessible (ARIA labels, semantic HTML)
@@ -38,9 +65,9 @@ export function SearchModal({
   session,
   onSelectResult,
 }: SearchModalProps) {
+  const modalRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState<CardSearchResult[]>([])
   const [board, setBoard] = useState<BoardDocumentJson | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -49,8 +76,11 @@ export function SearchModal({
   // Load board with caching strategy
   useEffect(() => {
     if (!isOpen || !boardId) {
+      /* Clear stale board when the modal closes or no board is selected (not async I/O). */
+      /* eslint-disable react-hooks/set-state-in-effect */
       setBoard(null)
       setError(null)
+      /* eslint-enable react-hooks/set-state-in-effect */
       return
     }
 
@@ -60,7 +90,8 @@ export function SearchModal({
         setError(null)
 
         // Check cache first (1-hour TTL)
-        const cached = boardCache.get(boardId)
+        const cacheKey = boardCacheKey(session, boardId)
+        const cached = boardCache.get(cacheKey)
         const now = Date.now()
         const CACHE_TTL = 60 * 60 * 1000 // 1 hour
 
@@ -76,17 +107,21 @@ export function SearchModal({
         }
         abortControllerRef.current = new AbortController()
 
+        setBoard(null)
+
         const client = createClientFromSession(session)
         const repo = createBoardRepository(client)
-        const loadedBoard = await repo.loadBoard(boardId)
+        const signal = abortControllerRef.current.signal
+        const loadedBoard = await repo.loadBoard(boardId, { signal })
         if (loadedBoard) {
           // Cache the board
-          boardCache.set(boardId, { doc: loadedBoard.doc, timestamp: now })
+          boardCache.set(cacheKey, { doc: loadedBoard.doc, timestamp: now })
           setBoard(loadedBoard.doc)
+        } else {
+          setBoard(null)
         }
       } catch (err) {
-        // Ignore abort errors (from component unmount)
-        if (err instanceof Error && err.name === 'AbortError') {
+        if (isAbortError(err)) {
           return
         }
         const errorMsg = err instanceof Error ? err.message : 'Failed to load board'
@@ -119,25 +154,62 @@ export function SearchModal({
     }
   }, [isOpen])
 
-  // Update search results when query or board changes
-  useEffect(() => {
-    let newResults: CardSearchResult[] = []
+  const { results, totalMatched: searchTotalMatched } = useMemo(() => {
+    if (!board?.cards || !query.trim()) {
+      return { results: [] as CardSearchResult[], totalMatched: 0 }
+    }
+    return searchCardsWithTotal(query, board.cards, SEARCH_RESULTS_LIMIT)
+  }, [query, board])
 
-    if (board?.cards && query.trim()) {
-      newResults = searchCards(query, board.cards, 100)
+  // Keep keyboard focus inside the dialog while it is open (Tab / Shift+Tab wrap).
+  useEffect(() => {
+    if (!isOpen) return
+    const modal = modalRef.current
+    if (!modal) return
+
+    const focusableSelector =
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
+    const listFocusable = (): HTMLElement[] => {
+      const nodes = modal.querySelectorAll<HTMLElement>(focusableSelector)
+      return [...nodes].filter(
+        (el) => el.getAttribute('aria-hidden') !== 'true' && modal.contains(el),
+      )
     }
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setResults(newResults)
-  }, [query, board, boardId])
+    const onDocumentKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (e.key !== 'Tab') return
+      const focusable = listFocusable()
+      if (focusable.length === 0) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      const active = document.activeElement
+      if (!(active instanceof HTMLElement) || !modal.contains(active)) {
+        e.preventDefault()
+        ;(e.shiftKey ? last : first).focus()
+        return
+      }
+      if (e.shiftKey && active === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
 
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    document.addEventListener('keydown', onDocumentKeyDown)
+    return () => document.removeEventListener('keydown', onDocumentKeyDown)
+  }, [isOpen, results.length, isLoading, error])
+
+  const handleInputChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     setQuery(e.currentTarget.value)
   }, [])
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleDialogKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLDivElement>) => {
       if (e.key === 'Escape') {
+        e.stopPropagation()
         onClose()
       }
     },
@@ -150,10 +222,7 @@ export function SearchModal({
 
   const handleSelectResult = useCallback(
     (cardId: string) => {
-      // Call the callback (typically used to open/select card in parent)
       onSelectResult?.(cardId)
-      // Trigger a custom event so SearchModal can be closed by parent if needed
-      // Or let parent handle the closing
     },
     [onSelectResult],
   )
@@ -176,21 +245,29 @@ export function SearchModal({
   }
 
   const hasResults = results.length > 0
+  const overflowExtraCount =
+    searchTotalMatched > SEARCH_RESULTS_LIMIT ? searchTotalMatched - SEARCH_RESULTS_LIMIT : 0
   const showNoResults =
     !hasResults && query.trim().length > 0 && !isLoading && !error && board
   const showHint = !hasResults && query.trim().length === 0 && !isLoading && !error
   const showLoadingState = isLoading
-  const isInputDisabled = isLoading || !!error
+  const isInputDisabled = !!error
 
   return (
     <div className="fb-sm-backdrop" onClick={handleBackdropClick} role="presentation">
       <div
+        ref={modalRef}
         className="fb-sm-modal"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={handleDialogKeyDown}
         role="dialog"
         aria-modal="true"
+        aria-busy={isLoading}
         aria-labelledby="search-modal-title"
       >
+        <h2 id="search-modal-title" className="fb-sm-sr-only">
+          Buscar no quadro
+        </h2>
         <div className="fb-sm-header">
           <input
             ref={inputRef}
@@ -199,27 +276,24 @@ export function SearchModal({
             placeholder="Buscar cards, descrições, datas…"
             value={query}
             onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
             aria-label="Buscar no quadro"
             autoComplete="off"
             spellCheck="false"
             disabled={isInputDisabled}
           />
-          {showLoadingState && (
-            <div className="fb-sm-loading-spinner" aria-label="Carregando" />
-          )}
+          {showLoadingState && <div className="fb-sm-loading-spinner" aria-hidden="true" />}
         </div>
 
         <div className="fb-sm-results-container">
           {showLoadingState && (
-            <div className="fb-sm-loading-message">
+            <div className="fb-sm-loading-message" role="status" aria-live="polite">
               <p>Carregando quadro…</p>
-              <span className="fb-sm-loading-dot" />
+              <span className="fb-sm-loading-dot" aria-hidden="true" />
             </div>
           )}
 
           {error && (
-            <div className="fb-sm-no-results">
+            <div className="fb-sm-no-results" role="alert" aria-live="assertive">
               <p>Erro ao carregar quadro: {error}</p>
             </div>
           )}
@@ -231,75 +305,74 @@ export function SearchModal({
           )}
 
           {showNoResults && (
-            <div className="fb-sm-no-results">
+            <div className="fb-sm-no-results" role="status" aria-live="polite">
               <p>Nenhum resultado encontrado para &quot;{query}&quot;</p>
             </div>
           )}
 
           {hasResults && (
-            <ul className="fb-sm-results-list" role="listbox">
-              {results.map((result) => (
-                <li
-                  key={result.cardId}
-                  className="fb-sm-result-item"
-                  role="option"
-                  onClick={() => handleSelectResult(result.cardId)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault()
-                      handleSelectResult(result.cardId)
-                    }
-                  }}
-                  tabIndex={0}
-                  data-testid={`search-result-${result.cardId}`}
-                >
-                  <div className="fb-sm-result-header">
-                    <h3 className="fb-sm-result-title">{result.title}</h3>
-                    <div className="fb-sm-result-score">
-                      <span className="fb-sm-score-badge">{result.score}</span>
+            <ul className="fb-sm-results-list">
+              {results.map((result) => {
+                const columnLabel = getColumnLabel(result.columnId)
+                return (
+                <li key={result.cardId} className="fb-sm-result-row">
+                  <button
+                    type="button"
+                    className="fb-sm-result-item"
+                    onClick={() => handleSelectResult(result.cardId)}
+                    data-testid={`search-result-${result.cardId}`}
+                  >
+                    <div className="fb-sm-result-header">
+                      <h3 className="fb-sm-result-title">{result.title}</h3>
+                      <div className="fb-sm-result-score">
+                        <span className="fb-sm-score-badge">{result.score}</span>
+                      </div>
                     </div>
-                  </div>
 
-                  {result.description && (
-                    <p className="fb-sm-result-snippet">
-                      {truncateText(result.description, 100)}
-                    </p>
-                  )}
+                    {result.description && (
+                      <p className="fb-sm-result-snippet">
+                        {truncateText(result.description, 100)}
+                      </p>
+                    )}
 
-                  <div className="fb-sm-result-meta">
-                    {getColumnLabel(result.columnId) && (
-                      <span className="fb-sm-meta-column">
-                        📌 {getColumnLabel(result.columnId)}
-                      </span>
-                    )}
-                    {result.plannedDate && (
-                      <span className="fb-sm-meta-date">
-                        📅 {result.plannedDate}
-                      </span>
-                    )}
-                    {result.plannedHours !== undefined && (
-                      <span className="fb-sm-meta-hours">
-                        ⏱️ {result.plannedHours}h
-                      </span>
-                    )}
-                  </div>
+                    <div className="fb-sm-result-meta">
+                      {columnLabel && (
+                        <span className="fb-sm-meta-column">
+                          <span aria-hidden="true">📌</span> {columnLabel}
+                        </span>
+                      )}
+                      {result.plannedDate && (
+                        <span className="fb-sm-meta-date">
+                          <span aria-hidden="true">📅</span> {result.plannedDate}
+                        </span>
+                      )}
+                      {result.plannedHours !== undefined && (
+                        <span className="fb-sm-meta-hours">
+                          <span aria-hidden="true">⏱️</span> {result.plannedHours}h
+                        </span>
+                      )}
+                    </div>
+                  </button>
                 </li>
-              ))}
+                )
+              })}
 
-              {results.length > 100 && (
-                <div className="fb-sm-results-overflow">
-                  <p className="fb-sm-overflow-text">
-                    … e mais {results.length - 100} resultados
-                  </p>
-                </div>
+              {overflowExtraCount > 0 && (
+                <li className="fb-sm-results-overflow" role="presentation">
+                  <p className="fb-sm-overflow-text">… e mais {overflowExtraCount} resultados</p>
+                </li>
               )}
             </ul>
           )}
         </div>
 
-        {!board && (
+        {(!boardId || (!isLoading && !error && !board)) && (
           <div className="fb-sm-empty-state">
-            <p>Selecione um quadro para buscar</p>
+            <p>
+              {!boardId
+                ? 'Selecione um quadro para buscar'
+                : 'Não foi possível carregar este quadro.'}
+            </p>
           </div>
         )}
       </div>

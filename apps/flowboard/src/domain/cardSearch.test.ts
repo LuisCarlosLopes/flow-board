@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { scoreCard, searchCards } from './cardSearch'
+import { scoreCard, searchCards, searchCardsWithTotal } from './cardSearch'
 import type { Card } from './types'
 
 describe('scoreCard', () => {
@@ -352,6 +352,17 @@ describe('searchCards', () => {
     it('should return all results if under limit', () => {
       const result = searchCards('auth', mockCards, 100)
       expect(result.length).toBeLessThanOrEqual(100)
+    })
+
+    it('should expose totalMatched beyond maxResults via searchCardsWithTotal', () => {
+      const manyCards = Array.from({ length: 150 }, (_, i) => ({
+        cardId: `c${i}`,
+        title: 'test',
+        columnId: 'col1',
+      }))
+      const { results, totalMatched } = searchCardsWithTotal('test', manyCards, 100)
+      expect(results).toHaveLength(100)
+      expect(totalMatched).toBe(150)
     })
   })
 
