@@ -16,7 +16,7 @@ describe('ReleaseNotesPage', () => {
   it('renders the page shell', () => {
     renderPage()
     expect(screen.getByTestId('release-notes-page')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 1, name: /^Release notes$/ })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: /^Notas de versão$/i })).toBeInTheDocument()
   })
 
   it('top bar links to home', () => {
@@ -38,8 +38,8 @@ describe('ReleaseNotesPage', () => {
     renderPage()
     expect(screen.getByTestId('release-card-0.1.0')).toBeInTheDocument()
     expect(screen.getByTestId('release-card-0.2.0')).toBeInTheDocument()
-    expect(screen.getByText('Initial release')).toBeInTheDocument()
-    expect(screen.getByText('Version history UI')).toBeInTheDocument()
+    expect(screen.getByText('Lançamento inicial')).toBeInTheDocument()
+    expect(screen.getByText('Interface de histórico de versões')).toBeInTheDocument()
   })
 
   it('renders filter controls', async () => {
@@ -55,22 +55,22 @@ describe('ReleaseNotesPage', () => {
     await user.click(screen.getByTestId('filter-feature'))
 
     const v020 = screen.getByTestId('release-card-0.2.0')
-    expect(within(v020).getByText('Version history UI')).toBeInTheDocument()
-    expect(within(v020).queryByText('Performance optimization')).not.toBeInTheDocument()
+    expect(within(v020).getByText('Interface de histórico de versões')).toBeInTheDocument()
+    expect(within(v020).queryByText('Otimização de performance')).not.toBeInTheDocument()
 
     const v010 = screen.getByTestId('release-card-0.1.0')
-    expect(within(v010).getByText('Initial release')).toBeInTheDocument()
-    expect(within(v010).queryByText('Drag and drop edge case')).not.toBeInTheDocument()
+    expect(within(v010).getByText('Lançamento inicial')).toBeInTheDocument()
+    expect(within(v010).queryByText('Ajuste no arrastar e soltar')).not.toBeInTheDocument()
   })
 
-  it('"All" shows every change again', async () => {
+  it('"Todas" shows every change again', async () => {
     const user = userEvent.setup()
     renderPage()
     await user.click(screen.getByTestId('filter-fix'))
     expect(screen.queryByTestId('release-card-0.2.0')).not.toBeInTheDocument()
     await user.click(screen.getByTestId('filter-all'))
     expect(screen.getByTestId('release-card-0.2.0')).toBeInTheDocument()
-    expect(screen.getByText('Performance optimization')).toBeInTheDocument()
+    expect(screen.getByText('Otimização de performance')).toBeInTheDocument()
   })
 
   it('shows archive badge for archived releases', () => {

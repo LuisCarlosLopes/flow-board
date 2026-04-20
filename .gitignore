@@ -1,1 +1,7 @@
 _codesteer/
+.agent/
+.code/
+.codex/
+.kiro/
+.cursor/
+.claude/

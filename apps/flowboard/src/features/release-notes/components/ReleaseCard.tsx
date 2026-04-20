@@ -3,7 +3,7 @@ import ChangeCard from './ChangeCard'
 
 function formatReleaseDate(iso: string): string {
   const d = new Date(iso)
-  return d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
 type Props = {
@@ -18,7 +18,7 @@ export default function ReleaseCard({ release }: Props) {
         <span className="release-card__date">{formatReleaseDate(release.releaseDate)}</span>
         {release.archived ? (
           <span className="release-card__archive-badge" data-testid="archive-badge">
-            Archived
+            Arquivada
           </span>
         ) : null}
       </header>

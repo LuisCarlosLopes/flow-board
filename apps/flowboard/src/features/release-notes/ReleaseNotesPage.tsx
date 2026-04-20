@@ -63,13 +63,13 @@ export default function ReleaseNotesPage() {
             </span>
             <span className="release-notes-topbar__brand">FlowBoard</span>
           </Link>
-          <span className="release-notes-topbar__page-label">Release notes</span>
+          <span className="release-notes-topbar__page-label">Notas de versão</span>
         </div>
       </header>
       <div className="release-notes-page">
         <header className="release-notes-page__header">
-          <h1 className="release-notes-page__title">Release notes</h1>
-          <p className="release-notes-page__subtitle">FlowBoard changelog by version.</p>
+          <h1 className="release-notes-page__title">Notas de versão</h1>
+          <p className="release-notes-page__subtitle">Histórico de mudanças do FlowBoard por versão.</p>
         </header>
         <FilterBar selectedType={selectedType} onFilterChange={setSelectedType} />
         <div className="releases-list">

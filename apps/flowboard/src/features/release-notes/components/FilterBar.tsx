@@ -8,7 +8,7 @@ type Props = {
 }
 
 const options: { value: FilterType; label: string }[] = [
-  { value: 'all', label: 'All' },
+  { value: 'all', label: 'Todas' },
   { value: 'feature', label: 'Feature' },
   { value: 'fix', label: 'Fix' },
   { value: 'improvement', label: 'Improvement' },
@@ -17,7 +17,7 @@ const options: { value: FilterType; label: string }[] = [
 
 export default function FilterBar({ selectedType, onFilterChange }: Props) {
   return (
-    <div className="filter-bar" role="group" aria-label="Filter by change type">
+    <div className="filter-bar" role="group" aria-label="Filtrar por tipo de mudança">
       {options.map(({ value, label }) => (
         <button
           key={value}

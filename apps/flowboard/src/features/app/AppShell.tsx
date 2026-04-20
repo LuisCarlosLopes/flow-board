@@ -78,7 +78,7 @@ export function AppShell({ session, onLogout }: Props) {
             type="button"
             className="fb-version-badge"
             data-testid="fb-version-badge"
-            title="View release notes"
+            title="Ver notas de versão"
             onClick={() => navigate('/releases')}
           >
             v{version}

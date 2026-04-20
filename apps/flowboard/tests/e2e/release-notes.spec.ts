@@ -5,7 +5,7 @@ test.describe('Release notes (public route)', () => {
     await page.goto('/releases')
     await page.waitForLoadState('networkidle')
     await expect(page.getByTestId('release-notes-back-home')).toBeVisible()
-    await expect(page.getByRole('heading', { name: /release notes/i })).toBeVisible()
+    await expect(page.getByRole('heading', { name: /notas de versão/i })).toBeVisible()
     await expect(page.getByTestId('release-card-0.1.0')).toBeVisible()
     await expect(page.getByTestId('release-card-0.2.0')).toBeVisible()
   })
@@ -20,8 +20,8 @@ test.describe('Release notes (public route)', () => {
     await page.goto('/releases')
     await page.getByTestId('filter-feature').click()
     const card = page.getByTestId('release-card-0.2.0')
-    await expect(card.getByText('Version history UI')).toBeVisible()
-    await expect(card.getByText('Performance optimization')).toBeHidden()
+    await expect(card.getByText('Interface de histórico de versões')).toBeVisible()
+    await expect(card.getByText('Otimização de performance')).toBeHidden()
   })
 
   test('archive badge on old release', async ({ page }) => {
@@ -45,6 +45,6 @@ test.describe('Release notes (from app shell)', () => {
     await expect(badge).toContainText('v0.2.0')
     await badge.click()
     await expect(page).toHaveURL(/\/releases$/)
-    await expect(page.getByRole('heading', { name: /release notes/i })).toBeVisible()
+    await expect(page.getByRole('heading', { name: /notas de versão/i })).toBeVisible()
   })
 })
