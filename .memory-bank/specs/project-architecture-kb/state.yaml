@@ -1,0 +1,11 @@
+slug: project-architecture-kb
+status: completed
+track: KNOWLEDGE
+git_head: f453e28
+pipeline: kb-repo-census-agent -> kb-pattern-extractor-agent -> kb-evidence-auditor-agent
+artifacts:
+  census_report: kb-repo-census-report.md
+  architecture_json: architecture-knowledge.json
+  audit_report: kb-evidence-audit-report.md
+  knowledge_update_report: knowledge-update-report.md
+updated_at: "2026-04-21"

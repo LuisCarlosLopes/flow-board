@@ -28,6 +28,10 @@ Conflitos entre conveniência local e decisão já registrada resolvem-se **a fa
 
 Alterações que mudem comportamento observável do produto devem ser **verificáveis**: testes automatizados (prioritariamente no domínio), lint limpo onde aplicável, e tratamento explícito de erros em integrações críticas (ex.: GitHub), conforme contratos descritos na especificação técnica.
 
+### VII. Economia de contexto nas saídas
+
+Comunicação no âmbito deste repositório (agentes, revisões, PRs, tarefas) deve **priorizar informação acionável e estado novo**. É proibido como padrão: recapitular o pedido original sem agregar decisão; produzir “relatórios de progresso” ou sumários do processo quando o leitor já tem o histórico; narrar passos triviais de execução; ou meta-comentários que não mudem governança, contrato ou próximo passo. **Sumários só são obrigatórios** quando consolidarem decisão, versão, critério de aceite ou checklist que impacte trabalho futuro — e ainda assim no menor volume necessário.
+
 ## Arquitetura, stack e limites
 
 - **Stack principal do app:** TypeScript, React, Vite; testes com a stack definida no pacote da aplicação (ex.: Vitest).
@@ -37,6 +41,7 @@ Alterações que mudem comportamento observável do produto devem ser **verific�
 
 ## Workflow, qualidade e revisão
 
+- **Saídas enxutas (alinhado ao princípio VII):** na conclusão de uma tarefa, priorizar o que mudou, impacto e como validar; omitir “executei X, depois Y” quando não for necessário ao revisor. Evitar listas de “o que foi feito” que duplicam o diff ou o pedido.
 - **Antes de concluir trabalho:** executar verificações locais previstas no pacote afetado (ex.: `lint`, `test`, `build` onde existirem).
 - **Revisão:** mudanças que alterem persistência, segurança de sessão, contratos de dados ou regras de domínio devem ser revisadas com **referência explícita** ao trecho de spec ou ADR correspondente.
 - **Idioma e Padrões:** O desenvolvimento segue o padrão de código em **Inglês** (nomenclatura de variáveis, funções, arquivos), com comentários internos ao código, documentação técnica (especificações, ADRs), planos de implementação e tarefas sempre em **Português**.
@@ -48,4 +53,4 @@ Alterações que mudem comportamento observável do produto devem ser **verific�
 - **Emendas** alteram este arquivo, incrementam a versão de forma coerente com o impacto e atualizam `Last Amended`.
 - O conjunto **ADR + specs ativas + esta Constitution** forma a hierarquia de governança técnica do workspace; implementação deve ser rastreável até um desses artefatos para decisões não triviais.
 
-**Version**: 1.0.1 | **Ratified**: 2026-04-19 | **Last Amended**: 2026-04-20
+**Version**: 1.0.2 | **Ratified**: 2026-04-19 | **Last Amended**: 2026-04-21

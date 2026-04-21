@@ -1,0 +1,238 @@
+{
+  "metadata": {
+    "repo_name": "flow-board",
+    "git_head": "f453e28",
+    "primary_application_path": "apps/flowboard",
+    "generated_at": "2026-04-21",
+    "schema_version": "1"
+  },
+  "naming_conventions": [
+    {
+      "summary": "Componentes React em PascalCase e um componente principal por arquivo em features.",
+      "evidence": [
+        "apps/flowboard/src/features/app/AppShell.tsx",
+        "apps/flowboard/src/features/board/BoardView.tsx"
+      ],
+      "confidence": "high"
+    },
+    {
+      "summary": "Testes unitários colocalizados com sufixo .test.ts ou .test.tsx ao lado do código.",
+      "evidence": [
+        "apps/flowboard/vite.config.ts",
+        "apps/flowboard/src/domain/boardRules.test.ts",
+        "apps/flowboard/src/infrastructure/github/client.test.ts"
+      ],
+      "confidence": "high"
+    },
+    {
+      "summary": "Domínio em módulos TypeScript sem JSX sob src/domain/.",
+      "evidence": [
+        "apps/flowboard/src/domain/boardRules.ts",
+        "apps/flowboard/src/domain/timeEngine.ts"
+      ],
+      "confidence": "high"
+    }
+  ],
+  "architectural_patterns": {
+    "backend": [],
+    "frontend": [
+      {
+        "summary": "SPA React com Vite; organização por features (app, auth, board, boards, hours, release-notes) e camada domain separada.",
+        "evidence": [
+          "apps/flowboard/src/App.tsx",
+          "apps/flowboard/src/features/app/AppShell.tsx",
+          "apps/flowboard/package.json"
+        ],
+        "confidence": "high"
+      },
+      {
+        "summary": "React Router para rota dedicada /releases e rota curinga para fluxo autenticado principal.",
+        "evidence": ["apps/flowboard/src/App.tsx"],
+        "confidence": "high"
+      },
+      {
+        "summary": "Navegação principal entre Quadro e Horas via estado local (abas) dentro do AppShell, não via rotas nomeadas.",
+        "evidence": ["apps/flowboard/src/features/app/AppShell.tsx"],
+        "confidence": "high"
+      }
+    ],
+    "infra": [
+      {
+        "summary": "Cliente HTTP mínimo para GitHub Contents API com tratamento de erro tipado (GitHubHttpError) e binding seguro de fetch.",
+        "evidence": ["apps/flowboard/src/infrastructure/github/client.ts"],
+        "confidence": "high"
+      },
+      {
+        "summary": "Persistência de quadros e catálogo via funções de repositório criadas a partir do cliente GitHub (factory createBoardRepository).",
+        "evidence": ["apps/flowboard/src/infrastructure/persistence/boardRepository.ts"],
+        "confidence": "high"
+      },
+      {
+        "summary": "Sessão do usuário (incluindo PAT) em sessionStorage com chave versionada.",
+        "evidence": ["apps/flowboard/src/infrastructure/session/sessionStore.ts"],
+        "confidence": "high"
+      }
+    ],
+    "cross_cutting": [
+      {
+        "summary": "Regras de negócio e cálculos em funções puras testáveis (domínio) desacopladas de React e da API.",
+        "evidence": [
+          "apps/flowboard/src/domain/boardRules.ts",
+          "apps/flowboard/src/domain/timeEngine.ts",
+          "apps/flowboard/src/infrastructure/persistence/boardRepository.ts"
+        ],
+        "confidence": "high"
+      }
+    ]
+  },
+  "tech_stack": {
+    "languages": [
+      {
+        "summary": "TypeScript como linguagem principal do app.",
+        "evidence": ["apps/flowboard/package.json", "apps/flowboard/tsconfig.json"],
+        "confidence": "high"
+      }
+    ],
+    "runtime": [
+      {
+        "summary": "Alvo navegador (ESM) via Vite; sem Node em runtime no cliente.",
+        "evidence": ["apps/flowboard/vite.config.ts", "apps/flowboard/index.html"],
+        "confidence": "high"
+      }
+    ],
+    "frontend_framework": [
+      {
+        "summary": "React 19 com react-dom.",
+        "evidence": ["apps/flowboard/package.json", "apps/flowboard/src/main.tsx"],
+        "confidence": "high"
+      },
+      {
+        "summary": "react-router-dom para rotas.",
+        "evidence": ["apps/flowboard/package.json", "apps/flowboard/src/App.tsx"],
+        "confidence": "high"
+      }
+    ],
+    "build": [
+      {
+        "summary": "Vite 8 com plugin React.",
+        "evidence": ["apps/flowboard/vite.config.ts", "apps/flowboard/package.json"],
+        "confidence": "high"
+      }
+    ],
+    "unit_test": [
+      {
+        "summary": "Vitest com ambiente happy-dom e setup dedicado.",
+        "evidence": ["apps/flowboard/vite.config.ts", "apps/flowboard/src/vitest.setup.ts"],
+        "confidence": "high"
+      },
+      {
+        "summary": "Testing Library para componentes React.",
+        "evidence": ["apps/flowboard/package.json"],
+        "confidence": "high"
+      }
+    ],
+    "e2e": [
+      {
+        "summary": "Playwright com webServer npm run dev e testDir tests/e2e.",
+        "evidence": ["apps/flowboard/playwright.config.ts"],
+        "confidence": "high"
+      }
+    ],
+    "lint": [
+      {
+        "summary": "ESLint 9 flat config com typescript-eslint e plugins React.",
+        "evidence": ["apps/flowboard/eslint.config.js"],
+        "confidence": "high"
+      }
+    ]
+  },
+  "implicit_rules": [
+    {
+      "summary": "PAT e metadados de sessão não são persistidos nos JSON de dados do repositório GitHub; armazenamento em sessionStorage.",
+      "evidence": [
+        "apps/flowboard/src/infrastructure/session/sessionStore.ts",
+        "apps/flowboard/src/infrastructure/persistence/boardRepository.ts"
+      ],
+      "confidence": "high"
+    },
+    {
+      "summary": "Cliente GitHub evita chamar fetch desassociado do globalThis no browser.",
+      "evidence": ["apps/flowboard/src/infrastructure/github/client.ts"],
+      "confidence": "high"
+    },
+    {
+      "summary": "Regras de layout de colunas e tempo documentadas como invariantes em funções de domínio com testes.",
+      "evidence": ["apps/flowboard/src/domain/boardRules.ts", "apps/flowboard/src/domain/boardRules.test.ts"],
+      "confidence": "high"
+    }
+  ],
+  "avoided_anti_patterns": [
+    {
+      "summary": "Evita uso de fetch sem receiver que quebraria em alguns ambientes de teste/browser.",
+      "evidence": ["apps/flowboard/src/infrastructure/github/client.ts"],
+      "confidence": "high"
+    }
+  ],
+  "repository_structure": [
+    {
+      "summary": "Monorepo leve: aplicação em apps/flowboard; governança e specs em .memory-bank/.",
+      "evidence": ["apps/flowboard/package.json", ".memory-bank/adrs/"],
+      "confidence": "high"
+    },
+    {
+      "summary": "Código fonte do app sob apps/flowboard/src com separação domain / features / infrastructure / hooks.",
+      "evidence": ["apps/flowboard/src/domain/", "apps/flowboard/src/features/", "apps/flowboard/src/infrastructure/"],
+      "confidence": "high"
+    }
+  ],
+  "ui_patterns": {
+    "components": [
+      {
+        "summary": "Shell de aplicação com topbar, busca, navegação por abas e integração com release notes.",
+        "evidence": ["apps/flowboard/src/features/app/AppShell.tsx"],
+        "confidence": "high"
+      }
+    ],
+    "crud_patterns": [],
+    "tabs_patterns": [
+      {
+        "summary": "Abas ARIA para alternar entre visão Kanban e Horas no shell principal.",
+        "evidence": ["apps/flowboard/src/features/app/AppShell.tsx"],
+        "confidence": "high"
+      }
+    ],
+    "forms_patterns": [],
+    "tables_patterns": [],
+    "routing_patterns": [
+      {
+        "summary": "Rota estática /releases para página de notas; demais rotas tratadas por catch-all que renderiza login ou AppShell.",
+        "evidence": ["apps/flowboard/src/App.tsx"],
+        "confidence": "high"
+      }
+    ],
+    "screen_composition_patterns": [
+      {
+        "summary": "Composição por features: lista de quadros, visão de quadro, horas e modais (ex.: busca) orchestrados pelo AppShell.",
+        "evidence": ["apps/flowboard/src/features/app/AppShell.tsx"],
+        "confidence": "medium"
+      }
+    ]
+  },
+  "evidence_gaps": [
+    {
+      "topic": "Backend dedicado no repositório",
+      "reason": "Não há serviço HTTP próprio; persistência via GitHub API no cliente.",
+      "paths_searched": ["apps/flowboard/src/", "apps/flowboard/package.json"]
+    },
+    {
+      "topic": "Design system de terceiros",
+      "reason": "Não há dependência tipo shadcn/MUI; estilos próprios (CSS) — verificar evolução em package.json e styles/.",
+      "paths_searched": ["apps/flowboard/package.json", "apps/flowboard/src/styles/"]
+    },
+    {
+      "topic": "Padrão CRUD genérico",
+      "reason": "Fluxo centrado em quadros Kanban e catálogo JSON; não há CRUD HTTP clássico além de operações GitHub Contents.",
+      "paths_searched": ["apps/flowboard/src/infrastructure/persistence/"]
+    }
+  ]
+}

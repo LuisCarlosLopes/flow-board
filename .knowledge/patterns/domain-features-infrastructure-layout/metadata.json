@@ -1,0 +1,18 @@
+{
+  "title": "Layout domain / features / infrastructure no FlowBoard",
+  "slug": "domain-features-infrastructure-layout",
+  "category": "patterns",
+  "source_artifacts": [
+    ".memory-bank/specs/project-architecture-kb/knowledge-update-report.md",
+    "AGENTS.md"
+  ],
+  "evidence_paths": [
+    "apps/flowboard/src/domain/boardRules.ts",
+    "apps/flowboard/src/features/app/AppShell.tsx",
+    "apps/flowboard/src/infrastructure/github/client.ts",
+    "apps/flowboard/src/infrastructure/persistence/boardRepository.ts"
+  ],
+  "applicability": "Projetos SPA TypeScript com persistência remota e regras de negócio testáveis sem React.",
+  "limits": "Não substitui ADRs de produto; não descreve layout JSON GitHub nem regras P01–Pn — ver domínio e ADRs.",
+  "promoted_at": "2026-04-21"
+}

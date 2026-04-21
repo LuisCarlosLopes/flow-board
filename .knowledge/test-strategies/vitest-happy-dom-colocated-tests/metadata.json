@@ -1,0 +1,18 @@
+{
+  "title": "Vitest + happy-dom com testes colocalizados",
+  "slug": "vitest-happy-dom-colocated-tests",
+  "category": "test-strategies",
+  "source_artifacts": [
+    ".memory-bank/specs/project-architecture-kb/knowledge-update-report.md",
+    "AGENTS.md"
+  ],
+  "evidence_paths": [
+    "apps/flowboard/vite.config.ts",
+    "apps/flowboard/src/vitest.setup.ts",
+    "apps/flowboard/src/domain/boardRules.test.ts",
+    "apps/flowboard/src/features/auth/OnboardingPage.test.tsx"
+  ],
+  "applicability": "Alterações em domínio, hooks, infraestrutura e componentes React no app `apps/flowboard`.",
+  "limits": "E2E usa Playwright em `tests/e2e/` — não misturar com config Vitest.",
+  "promoted_at": "2026-04-21"
+}
