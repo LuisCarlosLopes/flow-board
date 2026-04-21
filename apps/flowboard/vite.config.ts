@@ -22,14 +22,20 @@ function contentSecurityPolicyProduction(): Plugin {
     name: 'flowboard-csp-production',
     transformIndexHtml: {
       order: 'post',
-      handler(html, ctx) {
+      handler(_, ctx) {
         if (ctx.server) {
-          return html
+          return
         }
-        return html.replace(
-          '<head>',
-          `<head>\n    <meta http-equiv="Content-Security-Policy" content="${content}" />`,
-        )
+        return [
+          {
+            tag: 'meta',
+            attrs: {
+              'http-equiv': 'Content-Security-Policy',
+              content,
+            },
+            injectTo: 'head-prepend',
+          },
+        ]
       },
     },
   }
