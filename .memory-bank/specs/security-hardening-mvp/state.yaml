@@ -1,0 +1,150 @@
+title: "Endurecimento de segurança da SPA (revisão pós-auditoria)"
+slug: "security-hardening-mvp"
+created_at: "2026-04-21"
+context: "FlowBoard — apps/flowboard; PAT em sessionStorage; cliente GitHub no browser"
+
+objective: >
+  Fechar lacunas identificadas na revisão de segurança: validação de sessão/apiBase,
+  hostname do repositório, CSP/cabeçalhos onde aplicável, validação de JSON remoto,
+  higiene de erros e documentação/ADR alinhada à Constitution III.
+
+acceptance_criteria:
+  - "Sessão carregada de sessionStorage só é aceita se apiBase estiver na allowlist; valor inválido limpa sessão ou normaliza para API oficial conforme decisão do IPD."
+  - "parseRepoUrl rejeita hostnames fora da allowlist explícita (ex.: evilgithub.com); testes Vitest cobrem casos de regressão."
+  - "index.html (ou camada de deploy) define CSP e, se viável no Vite dev+build, não quebra HMR nem fonts; documentar limites se CSP só em produção."
+  - "parseCatalog e parseBoard validam estrutura mínima dos campos usados pela app (além de schemaVersion); testes em boardRepository.test.ts ou equivalente."
+  - "console.error em fluxos sensíveis não imprime objetos de erro brutos com stack em produção, ou mensagens são redigidas (escopo mínimo)."
+  - "ADR-004 ou novo ADR registra allowlist de apiBase, validação de sessão e relação com CSP (Constitution III)."
+  - "npm test e npm run build em apps/flowboard passam; cobertura nas áreas tocadas ≥ meta do AGENTS.md."
+
+scope:
+  in:
+    - "apps/flowboard/src/infrastructure/session/sessionStore.ts e testes"
+    - "apps/flowboard/src/infrastructure/github/url.ts, client.ts, fromSession.ts e testes"
+    - "apps/flowboard/index.html e/ou vite.config.ts (CSP/meta) conforme IPD"
+    - "apps/flowboard/src/infrastructure/persistence/boardRepository.ts e testes"
+    - "Trechos pontuais com console.error em features/hooks se necessário"
+    - ".memory-bank/adrs/004-flowboard-session-and-pat-storage.md ou novo ADR"
+  out:
+    - "OAuth GitHub ou backend proxy para token (fora do escopo desta entrega)"
+    - "GitHub Enterprise com host api custom (só se HITL aprovar extensão da allowlist)"
+    - "npm audit/Dependabot — já limpo; não é foco"
+    - "Mudanças em AGENTS.md salvo atualização mínima se o plano exigir"
+
+tech_context: "React 19, Vite 8, TypeScript, Vitest; sessão ADR-004; sem backend MVP"
+baseline_ref: "main"
+
+squad:
+  status: concluído
+  track: TASK
+  track_override: false
+  score: 4
+  confidence: 78
+  current_phase: null
+  completed_phases: [planner, task-breakdown, pre-implementer-hitl, implementer, code-reviewer, tester]
+  next_phase: null
+  iteration: 1
+  blockers: []
+  hitl_required: false
+
+repo_write_scope:
+  - "apps/flowboard/src/infrastructure/session/**"
+  - "apps/flowboard/src/infrastructure/github/**"
+  - "apps/flowboard/src/infrastructure/persistence/boardRepository.ts"
+  - "apps/flowboard/src/infrastructure/persistence/boardRepository.test.ts"
+  - "apps/flowboard/index.html"
+  - "apps/flowboard/vite.config.ts"
+  - ".memory-bank/adrs/004-flowboard-session-and-pat-storage.md"
+  - ".memory-bank/specs/security-hardening-mvp/**"
+
+artifact_reuse: []
+
+approvals:
+  - phase: pre-implementer-hitl
+    status: approved
+    date: "2026-04-21"
+    decision: "D2: hostname === github.com; D4: CSP só produção; D3: validação mínima JSON"
+  - phase: code-reviewer
+    status: approved
+    date: "2026-04-21"
+    decision: "GO; ajuste loadSession fail-closed completo aplicado no mesmo ciclo"
+  - phase: tester
+    status: approved
+    date: "2026-04-21"
+    decision: "240 testes OK; linhas 81,07%; build e lint OK"
+
+retries_by_phase: {}
+
+last_failure: null
+
+decisions:
+  - decision: D2 hostname GitHub
+    choice: "Apenas hostname === 'github.com'"
+    reason: "HITL 2026-04-21"
+  - decision: D4 CSP
+    choice: "Meta CSP injetada só em build de produção (sem HMR dev)"
+    reason: "HITL 2026-04-21"
+  - decision: D3 parsers JSON
+    choice: "Validação mínima em parseCatalog/parseBoard"
+    reason: "HITL 2026-04-21"
+
+pipeline:
+  - planner
+  - task-breakdown
+  - pre-implementer-hitl
+  - implementer
+  - code-reviewer
+  - tester
+
+subtasks: []
+
+history:
+  - phase: planner
+    agent: planner
+    subtask_id: null
+    status: ok
+    artifact: "planner-TASK.md"
+    note: "IPD com decisões D1–D6, mapa de alterações, DoD"
+  - phase: task-breakdown
+    agent: task-breakdown
+    subtask_id: null
+    status: ok
+    artifact: "task.md"
+    note: "Checklist A–F; gate HITL nas decisões D2–D4"
+  - phase: pre-implementer-hitl
+    agent: human
+    subtask_id: null
+    status: ok
+    artifact: "chat"
+    note: "D2/D3/D4 aprovados"
+  - phase: implementer
+    agent: implementer
+    subtask_id: null
+    status: ok
+    artifact: "repo diff"
+    note: "Sessão apiBase, url host, parsers, CSP prod, ADR-004, logs DEV"
+  - phase: code-reviewer
+    agent: code-reviewer
+    subtask_id: null
+    status: ok
+    artifact: "code-reviewer-TASK.md"
+    note: "GO; low findings apenas"
+  - phase: tester
+    agent: tester
+    subtask_id: null
+    status: ok
+    artifact: "tester-TASK.md"
+    note: "240 tests; coverage linhas 81,07%"
+
+summary:
+  delivered:
+    - "Allowlist apiBase + loadSession fail-closed (limpa storage em JSON inválido, PAT vazio, apiBase ruim); createSession/fromSession/client usam GITHUB_API_BASE"
+    - "parseRepoUrl: hostname === github.com; testes evilgithub.com e www"
+    - "parseCatalog/parseBoard validação mínima + testes"
+    - "Plugin Vite: CSP só em build (dist/index.html com meta)"
+    - "console.error apenas em DEV (CreateTaskModal, SearchModal, useClipboard)"
+    - "ADR-004 atualizado (2026-04-21)"
+  adr_candidates: []
+  tech_debt:
+    - "Revisar CSP se novos domínios (analytics, etc.) entrarem no index.html"
+    - "Parsers JSON: validação mínima (D3); profundidade opcional em entrega futura"

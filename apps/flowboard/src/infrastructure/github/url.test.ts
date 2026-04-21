@@ -25,4 +25,14 @@ describe('parseRepoUrl', () => {
     expect(r.owner).toBe('acme')
     expect(r.repo).toBe('repo')
   })
+
+  it('rejects typosquat host ending in github.com', () => {
+    const r = parseRepoUrl('https://evilgithub.com/acme/repo')
+    expect('error' in r).toBe(true)
+  })
+
+  it('rejects www.github.com (hostname must be exactly github.com)', () => {
+    const r = parseRepoUrl('https://www.github.com/acme/repo')
+    expect('error' in r).toBe(true)
+  })
 })

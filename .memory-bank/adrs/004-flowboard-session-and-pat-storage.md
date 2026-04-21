@@ -42,6 +42,13 @@ Decidimos, no **MVP**:
 - **G7:** Código de persistência GitHub deve ler PAT apenas de camada de sessão aprovada (adapter injetado), nunca de globais públicas.
 - **G8:** Logout deve apagar chaves de sessão conhecidas e invalidar estado em memória.
 
+## Atualização 2026-04-21 (endurecimento pós-revisão)
+
+- **`apiBase`:** apenas a origem oficial `https://api.github.com` é aceite. Ao carregar `flowboard.session.v1`, se `apiBase` for inválido ou adulterado, a entrada é **removida** e a sessão tratada como ausente (*fail-closed*). O cliente GitHub usado após login força sempre essa origem.
+- **URL do repositório (MVP):** somente host **`github.com`** exato (sem `www`, sem sufixos tipo `evilgithub.com`).
+- **CSP:** meta `Content-Security-Policy` é injetada **somente no build de produção** (`vite build`), não no `dev`, para não quebrar HMR; reforço via headers no CDN/host permanece recomendado.
+- **JSON remoto (`flowboard/`):** validação **mínima** no carregamento de `catalog.json` e documentos de board (tipos e campos obrigatórios), com falha explícita se o conteúdo estiver malformado.
+
 ## Status de vigência
 
 - **Aceito** — em vigor desde 2026-04-19; revisar antes de Fase 2 offline-first.

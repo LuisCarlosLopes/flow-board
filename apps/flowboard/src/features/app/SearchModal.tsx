@@ -125,7 +125,9 @@ export function SearchModal({
           return
         }
         const errorMsg = err instanceof Error ? err.message : 'Failed to load board'
-        console.error('SearchModal: Failed to load board:', err)
+        if (import.meta.env.DEV) {
+          console.error('SearchModal: Failed to load board:', err)
+        }
         setError(errorMsg)
         setBoard(null)
       } finally {

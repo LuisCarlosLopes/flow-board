@@ -114,19 +114,47 @@ export async function deleteBoardEntry(
 }
 
 function parseCatalog(json: unknown): CatalogJson {
-  const o = json as CatalogJson
+  if (json === null || typeof json !== 'object' || Array.isArray(json)) {
+    throw new Error('catalog.json inválido')
+  }
+  const o = json as Record<string, unknown>
   if (o.schemaVersion !== 1 || !Array.isArray(o.boards)) {
     throw new Error('catalog.json inválido')
   }
-  return o
+  for (const entry of o.boards) {
+    if (entry === null || typeof entry !== 'object' || Array.isArray(entry)) {
+      throw new Error('catalog.json inválido')
+    }
+    const b = entry as Record<string, unknown>
+    if (
+      typeof b.boardId !== 'string' ||
+      !b.boardId.trim() ||
+      typeof b.title !== 'string' ||
+      !b.title.trim() ||
+      typeof b.dataPath !== 'string' ||
+      !b.dataPath.trim()
+    ) {
+      throw new Error('catalog.json inválido')
+    }
+  }
+  return o as unknown as CatalogJson
 }
 
 function parseBoard(json: unknown): BoardDocumentJson {
-  const o = json as BoardDocumentJson
-  if (o.schemaVersion !== 1 || typeof o.boardId !== 'string') {
+  if (json === null || typeof json !== 'object' || Array.isArray(json)) {
     throw new Error('board.json inválido')
   }
-  return o
+  const o = json as Record<string, unknown>
+  if (o.schemaVersion !== 1 || typeof o.boardId !== 'string' || !o.boardId.trim()) {
+    throw new Error('board.json inválido')
+  }
+  if (!Array.isArray(o.columns) || !Array.isArray(o.cards) || !Array.isArray(o.timeSegments)) {
+    throw new Error('board.json inválido')
+  }
+  if (o.cardTimeState === null || typeof o.cardTimeState !== 'object' || Array.isArray(o.cardTimeState)) {
+    throw new Error('board.json inválido')
+  }
+  return o as unknown as BoardDocumentJson
 }
 
 /** Ensures catalog + at least one preset board exist (bootstrap empty repo). */

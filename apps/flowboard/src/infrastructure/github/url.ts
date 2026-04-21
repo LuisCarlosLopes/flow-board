@@ -6,7 +6,19 @@ export type RepoResolution = {
   webUrl: string
 }
 
+/** Official GitHub REST API origin allowed for PAT requests (session allowlist). */
+export const GITHUB_API_BASE = 'https://api.github.com' as const
+
 const GITHUB_HOST = 'github.com'
+
+/** True if `apiBase` resolves to the official GitHub API origin. */
+export function isOfficialGithubApiBase(apiBase: string): boolean {
+  try {
+    return new URL(apiBase).origin === GITHUB_API_BASE
+  } catch {
+    return false
+  }
+}
 
 /**
  * Normalize supported repo URL forms (TSD D14).
@@ -25,7 +37,7 @@ export function parseRepoUrl(input: string): RepoResolution | { error: string } 
     const owner = m[1]!
     const repo = m[2]!
     const webUrl = `https://${GITHUB_HOST}/${owner}/${repo}`
-    return { owner, repo, apiBase: 'https://api.github.com', webUrl }
+    return { owner, repo, apiBase: GITHUB_API_BASE, webUrl }
   }
 
   let urlStr = raw
@@ -46,7 +58,7 @@ export function parseRepoUrl(input: string): RepoResolution | { error: string } 
     return { error: 'URL inválida.' }
   }
 
-  if (!url.hostname.endsWith(GITHUB_HOST)) {
+  if (url.hostname !== GITHUB_HOST) {
     return { error: 'Apenas repositórios em github.com são suportados no MVP.' }
   }
 
@@ -62,7 +74,7 @@ export function parseRepoUrl(input: string): RepoResolution | { error: string } 
   }
 
   const webUrl = `https://${GITHUB_HOST}/${owner}/${repo}`
-  return { owner, repo, apiBase: 'https://api.github.com', webUrl }
+  return { owner, repo, apiBase: GITHUB_API_BASE, webUrl }
 }
 
 /** Texto curto para chip na UI: `owner/repo` (evita truncar URLs longas). */
