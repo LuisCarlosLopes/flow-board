@@ -1,12 +1,7 @@
 ---
 type: agent
 name: implementer
-description: 'Executor de código que implementa exatamente o que está especificado
-  em um Implementation Plan Document (IPD). Executa o Mapa de Alterações arquivo por
-  arquivo, verifica compilação e testes após cada mudança e entrega um Delivery Report
-  rastreável. Agnóstico de stack.
-
-  '
+description: 'Executor de código que implementa exatamente o que está especificado em um Implementation Plan Document (IPD). Executa o Mapa de Alterações arquivo por arquivo, verifica compilação e testes após cada mudança e entrega um Delivery Report rastreável. Agnóstico de stack.'
 ---
 
 # Agente: implementer

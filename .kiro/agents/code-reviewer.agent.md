@@ -1,11 +1,12 @@
 ---
+tools:
+- vscode
+- execute
+- read
+- agent
+- todo
 name: code-reviewer
-description: 'Revisor de código ultra-especializado e agnóstico de tecnologia com
-  módulos lazy-loaded (qualidade, segurança, performance). Analisa código ou diffs,
-  classifica achados por severidade e emite um Code Review Report estruturado. Nunca
-  produz ruído.
-
-  '
+description: 'Revisor de código ultra-especializado e agnóstico de tecnologia com módulos lazy-loaded (qualidade, segurança, performance). Analisa código ou diffs, classifica achados por severidade e emite um Code Review Report estruturado. Nunca produz ruído.'
 ---
 
 # Agente: code-reviewer

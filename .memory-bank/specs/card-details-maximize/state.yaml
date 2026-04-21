@@ -1,0 +1,102 @@
+title: "Maximizar tela de detalhes do card (modal de tarefa)"
+slug: card-details-maximize
+objective: >
+  Oferecer controle explícito para expandir o modal de criação/edição de tarefa
+  (detalhes do card) para ocupar quase toda a viewport, melhorando leitura e edição
+  de descrições longas, com opção de voltar ao tamanho padrão sem fechar o modal.
+
+acceptance_criteria:
+  - "Com o modal aberto, existe controle visível (ex.: ícone) para alternar entre tamanho padrão e maximizado."
+  - "No estado maximizado, o painel do formulário usa área substancialmente maior (ex.: largura/altura próximas ao viewport com padding seguro), mantendo overlay e fechamento por Cancelar/ESC."
+  - "O estado maximizado/restaurado pode ser alternado sem perder dados digitados no formulário."
+  - "Controles com `data-testid` estáveis para o toggle (e estados) para testes."
+  - "Sem regressão em validação, submit e acessibilidade básica do diálogo (`role=\"dialog\"`, título associado)."
+
+scope:
+  in:
+    - "apps/flowboard/src/features/board/CreateTaskModal.tsx"
+    - "apps/flowboard/src/features/board/CreateTaskModal.css"
+    - "apps/flowboard/src/features/board/CreateTaskModal.test.tsx (e testes adicionais se necessário)"
+  out:
+    - "Persistência da preferência maximizado em localStorage (pode virar follow-up)."
+    - "Fullscreen da API do browser (Fullscreen API) — não obrigatório; preferir layout CSS no overlay."
+    - "Mudanças em domínio, repositório GitHub ou schema de Card."
+
+tech_context: >
+  React 19 + Vite no app flowboard; modal existente `.fb-ctm` com largura máxima 560px
+  e altura limitada; padrão de testes Vitest no repositório.
+
+baseline_ref: "a85d4092fef27ed8113ace19c15e3d27faf58827"
+
+squad:
+  status: concluído
+  track: TASK
+  score: 4
+  confidence: 88
+  current_phase: null
+  completed_phases:
+    - planner
+    - task-breakdown
+    - hitl-pre-implementer
+    - implementer
+    - code-reviewer
+    - tester
+  next_phase: null
+  iteration: 1
+  blockers: []
+  hitl_required: false
+
+repo_write_scope:
+  - "apps/flowboard/src/features/board/CreateTaskModal.tsx"
+  - "apps/flowboard/src/features/board/CreateTaskModal.css"
+  - "apps/flowboard/src/features/board/CreateTaskModal.test.tsx"
+
+artifact_reuse:
+  - artifact: "create-task-modal/planner-task.md"
+    decision: reused-as-context-only
+    reason: "Mesmo componente base (CreateTaskModal); escopo atual é só layout/toggle, não duplicar IPD antigo."
+
+approvals:
+  - at: "2026-04-21"
+    phase: hitl-pre-implementer
+    by: solicitante
+    note: "Continuação explícita (/squad-codesteer continue) após plano e task.md"
+
+retries_by_phase: {}
+
+last_failure: null
+
+pipeline:
+  - phase: planner
+    status: concluído
+    artifact: planner-TASK.md
+  - phase: task-breakdown
+    status: concluído
+    artifact: task.md
+  - phase: hitl
+    status: concluído
+  - phase: implementer
+    status: concluído
+    artifact: implementer-TASK.md
+  - phase: code-reviewer
+    status: concluído
+    artifact: code-reviewer-TASK.md
+    note: "Aprovado merge; 0 critical, 2 medium (CSS redundante, focus trap backlog), 2 low"
+  - phase: tester
+    status: concluído
+    note: "Vitest 242 testes OK; build OK"
+
+subtasks: []
+
+history:
+  - at: "2026-04-21"
+    event: "Plano TASK gerado (planner + task-breakdown); aguardando HITL pré-implementação."
+  - at: "2026-04-21"
+    event: "HITL via continue; implementação + testes + build; estado concluído."
+  - at: "2026-04-21"
+    event: "Code review formal: code-reviewer-TASK.md (aprovado, score 88/100)."
+
+summary: >
+  Toggle de maximizar no cabeçalho do CreateTaskModal (.fb-ctm__max-btn, testid ctm-maximize-toggle),
+  painel .fb-ctm--maximized com maior largura/altura, reset ao fechar modal, testes RTL para toggle e dados.
+  Risco residual: layouts muito curtos podem depender de scroll no formulário.

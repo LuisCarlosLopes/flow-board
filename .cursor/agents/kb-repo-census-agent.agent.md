@@ -1,10 +1,6 @@
 ---
 name: kb-repo-census-agent
-description: 'Inventaria fatos arquiteturais do repositório: convenções de nomenclatura,
-  stack, entrypoints, camadas, estrutura de pastas, testes e evidências implementadas
-  de UI patterns, sem ainda consolidar arquitetura nomeada.
-
-  '
+description: 'Inventaria fatos arquiteturais do repositório: convenções de nomenclatura, stack, entrypoints, camadas, estrutura de pastas, testes e evidências implementadas de UI patterns, sem ainda consolidar arquitetura nomeada.'
 triggers:
 - architecture inventory
 - repo census

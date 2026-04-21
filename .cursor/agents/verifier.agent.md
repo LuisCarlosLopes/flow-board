@@ -1,11 +1,6 @@
 ---
 name: verifier
-description: 'Agente de verificação pós-entrega que cruza IPD × Delivery Report ×
-  código real, executa validações automatizadas (lint, testes, typecheck), detecta
-  divergências e emite Verification Report ou Adjustment Report com evidências. Último
-  gate antes do code-review.
-
-  '
+description: 'Agente de verificação pós-entrega que cruza IPD × Delivery Report × código real, executa validações automatizadas (lint, testes, typecheck), detecta divergências e emite Verification Report ou Adjustment Report com evidências. Último gate antes do code-review.'
 triggers:
 - verifica entrega
 - verify delivery

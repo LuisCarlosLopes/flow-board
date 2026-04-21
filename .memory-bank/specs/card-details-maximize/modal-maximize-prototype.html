@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Protótipo — Modal de tarefa (maximizar)</title>
+  <!--
+    FlowBoard — protótipo de referência para UI do CreateTaskModal com toggle maximizar/restaurar.
+    Preset: tech-dark (devtools / SaaS). Abrir no navegador para interagir.
+  -->
+  <style>
+    /* ========== Tokens — preset tech-dark (color-presets.md) ========== */
+    :root {
+      --bg-base: #0d0f14;
+      --bg-surface: #141720;
+      --bg-overlay: #1c2030;
+      --bg-subtle: #252a3a;
+      --bg-input: #1a1e2a;
+      --bg-elevated: #252a38;
+
+      --text-primary: #eef0f6;
+      --text-secondary: #8892aa;
+      --text-disabled: #4a526a;
+
+      --border-default: rgba(255, 255, 255, 0.07);
+      --border-strong: rgba(255, 255, 255, 0.14);
+      --border-control: rgba(255, 255, 255, 0.12);
+
+      --accent: oklch(62% 0.2 264);
+      --accent-hover: oklch(67% 0.22 264);
+      --accent-fg: #ffffff;
+
+      --backdrop-overlay: rgba(8, 10, 16, 0.72);
+      --shadow-md: 0 12px 40px rgba(0, 0, 0, 0.45);
+
+      --font-display: "Sora", "Plus Jakarta Sans", system-ui, sans-serif;
+      --font-body: "Plus Jakarta Sans", "DM Sans", system-ui, sans-serif;
+
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 16px;
+      --space-4: 24px;
+      --space-5: 32px;
+
+      --radius-sm: 4px;
+      --radius-xl: 16px;
+
+      --text-lg: 1.125rem;
+      --text-md: 1rem;
+      --text-sm: 0.875rem;
+
+      --z-modal: 100;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font-body);
+      background: var(--bg-base);
+      color: var(--text-primary);
+    }
+
+    .demo-bg {
+      min-height: 100vh;
+      padding: var(--space-5);
+      background: linear-gradient(165deg, var(--bg-subtle) 0%, var(--bg-base) 55%);
+    }
+
+    .demo-bg h1 {
+      font-family: var(--font-display);
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin: 0 0 var(--space-2);
+    }
+
+    .demo-bg p {
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+      max-width: 42rem;
+      margin: 0 0 var(--space-4);
+      line-height: 1.5;
+    }
+
+    .demo-open {
+      padding: var(--space-2) var(--space-4);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-strong);
+      background: var(--accent);
+      color: var(--accent-fg);
+      font-weight: 600;
+      font-size: var(--text-sm);
+      cursor: pointer;
+    }
+
+    .demo-open:hover {
+      background: var(--accent-hover);
+    }
+
+    .demo-open:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    /* ========== Overlay + dialog (espelha .fb-ctm-*) ========== */
+    .fb-ctm-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: var(--z-modal);
+      background: var(--backdrop-overlay);
+      display: grid;
+      place-items: center;
+      padding: var(--space-3);
+    }
+
+    .fb-ctm-overlay.is-maximized {
+      padding: var(--space-3);
+      align-items: stretch;
+      justify-items: stretch;
+    }
+
+    .fb-ctm {
+      width: min(560px, 100%);
+      max-height: min(90vh, 720px);
+      overflow: auto;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-xl);
+      padding: var(--space-4);
+      color: var(--text-primary);
+      box-shadow: var(--shadow-md);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      transition:
+        width 0.2s ease,
+        max-height 0.2s ease,
+        border-radius 0.2s ease;
+    }
+
+    .fb-ctm.is-maximized {
+      width: min(calc(100vw - var(--space-3) * 2), 1200px);
+      max-height: min(calc(100vh - var(--space-3) * 2), 900px);
+      height: min(calc(100vh - var(--space-3) * 2), 900px);
+      margin: auto;
+    }
+
+    .fb-ctm__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+      margin-bottom: var(--space-2);
+      flex-shrink: 0;
+    }
+
+    .fb-ctm h2 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: var(--text-lg);
+      font-weight: 600;
+    }
+
+    .fb-ctm__max-btn {
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-default);
+      background: var(--bg-overlay);
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+
+    .fb-ctm__max-btn:hover {
+      color: var(--text-primary);
+      border-color: var(--border-strong);
+      background: var(--bg-subtle);
+    }
+
+    .fb-ctm__max-btn:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .fb-ctm__max-btn svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .fb-ctm__form {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+      flex: 1;
+      min-height: 0;
+    }
+
+    .fb-ctm__field {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-1);
+    }
+
+    .fb-ctm__label {
+      font-size: var(--text-sm);
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .fb-ctm__input,
+    .fb-ctm__textarea {
+      padding: var(--space-2);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-control);
+      background: var(--bg-input);
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      font-size: var(--text-md);
+    }
+
+    .fb-ctm__input:focus,
+    .fb-ctm__textarea:focus {
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+    }
+
+    .fb-ctm__textarea {
+      resize: vertical;
+      min-height: 100px;
+      flex: 1;
+      min-height: 120px;
+    }
+
+    .fb-ctm.is-maximized .fb-ctm__textarea {
+      min-height: 200px;
+      flex: 1;
+    }
+
+    .fb-ctm__readonly {
+      padding: var(--space-2);
+      border-radius: var(--radius-sm);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-default);
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+    }
+
+    .fb-ctm__footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: var(--space-2);
+      padding-top: var(--space-2);
+      flex-shrink: 0;
+    }
+
+    .fb-ctm__ghost {
+      padding: var(--space-2) var(--space-3);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-default);
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+      cursor: pointer;
+    }
+
+    .fb-ctm__ghost:hover {
+      color: var(--text-primary);
+      border-color: var(--border-strong);
+    }
+
+    .fb-ctm__primary {
+      padding: var(--space-2) var(--space-3);
+      border-radius: var(--radius-sm);
+      border: none;
+      background: var(--accent);
+      color: var(--accent-fg);
+      font-weight: 600;
+      font-size: var(--text-sm);
+      cursor: pointer;
+    }
+
+    .fb-ctm__primary:hover {
+      background: var(--accent-hover);
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <div class="demo-bg">
+    <h1>Protótipo — detalhes do card (modal)</h1>
+    <p>
+      Simulação do <strong>CreateTaskModal</strong> com botão <strong>maximizar / restaurar</strong> no cabeçalho.
+      Estado maximizado aumenta largura e altura útil; o formulário mantém o mesmo conteúdo. Use o botão abaixo para
+      abrir o modal.
+    </p>
+    <button type="button" class="demo-open" id="openModal">Abrir modal de exemplo</button>
+  </div>
+
+  <div class="fb-ctm-overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="fb-ctm-title" hidden>
+    <div class="fb-ctm" id="panel">
+      <div class="fb-ctm__header">
+        <h2 id="fb-ctm-title">Editar tarefa</h2>
+        <button
+          type="button"
+          class="fb-ctm__max-btn"
+          id="maxToggle"
+          aria-pressed="false"
+          aria-label="Maximizar painel"
+          title="Maximizar"
+        >
+          <!-- ícone expand (quatro cantos) -->
+          <svg id="iconExpand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <svg id="iconCompress" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" hidden>
+            <path d="M4 14v6h6M20 10V4h-6M4 20l7-7M20 4l-7 7" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </button>
+      </div>
+
+      <form class="fb-ctm__form" onsubmit="event.preventDefault()">
+        <div class="fb-ctm__field">
+          <label class="fb-ctm__label" for="demo-title">Título</label>
+          <input id="demo-title" class="fb-ctm__input" type="text" value="Implementar busca no quadro" />
+        </div>
+        <div class="fb-ctm__field" style="flex: 1; min-height: 0; display: flex; flex-direction: column">
+          <label class="fb-ctm__label" for="demo-desc">Descrição</label>
+          <textarea id="demo-desc" class="fb-ctm__textarea">Texto longo para validar área útil no modo maximizado. O usuário edita descrições em Markdown; em tela estreita isso cansa — maximizar dá mais linhas visíveis sem fechar o fluxo.</textarea>
+        </div>
+        <div class="fb-ctm__field">
+          <span class="fb-ctm__label">Data de criação</span>
+          <div class="fb-ctm__readonly">21/04/2026</div>
+        </div>
+        <div class="fb-ctm__footer">
+          <button type="button" class="fb-ctm__ghost" id="closeModal">Cancelar</button>
+          <button type="submit" class="fb-ctm__primary">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const overlay = document.getElementById("overlay");
+    const panel = document.getElementById("panel");
+    const maxToggle = document.getElementById("maxToggle");
+    const openBtn = document.getElementById("openModal");
+    const closeBtn = document.getElementById("closeModal");
+    const iconExpand = document.getElementById("iconExpand");
+    const iconCompress = document.getElementById("iconCompress");
+
+    let maximized = false;
+
+    function setMaximized(next) {
+      maximized = next;
+      overlay.classList.toggle("is-maximized", maximized);
+      panel.classList.toggle("is-maximized", maximized);
+      maxToggle.setAttribute("aria-pressed", String(maximized));
+      maxToggle.setAttribute("aria-label", maximized ? "Restaurar tamanho" : "Maximizar painel");
+      maxToggle.setAttribute("title", maximized ? "Restaurar" : "Maximizar");
+      iconExpand.hidden = maximized;
+      iconCompress.hidden = !maximized;
+    }
+
+    maxToggle.addEventListener("click", () => setMaximized(!maximized));
+
+    openBtn.addEventListener("click", () => {
+      overlay.hidden = false;
+      setMaximized(false);
+      document.getElementById("demo-title").focus();
+    });
+
+    function closeModal() {
+      overlay.hidden = true;
+      setMaximized(false);
+    }
+
+    closeBtn.addEventListener("click", closeModal);
+
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) closeModal();
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !overlay.hidden) closeModal();
+    });
+  </script>
+</body>
+</html>
