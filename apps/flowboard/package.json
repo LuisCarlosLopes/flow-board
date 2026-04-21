@@ -9,7 +9,10 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "test": "vitest run",
-    "test:e2e": "playwright test",
+    "test:e2e": "node scripts/ensure-e2e-auth.mjs",
+    "test:e2e:raw": "playwright test",
+    "test:e2e:headed": "node scripts/ensure-e2e-auth.mjs --headed",
+    "test:e2e:ui": "node scripts/ensure-e2e-auth.mjs --ui",
     "test:watch": "vitest",
     "preview": "vite preview"
   },

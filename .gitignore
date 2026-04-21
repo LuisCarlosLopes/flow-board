@@ -5,3 +5,5 @@ _codesteer/
 .kiro/
 .cursor/
 .claude/
+apps/flowboard/test-results/
+apps/flowboard/playwright-report/
