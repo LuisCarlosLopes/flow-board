@@ -9,7 +9,12 @@ function openCreateTaskFromFirstColumn(page: Page) {
   return page.locator('[data-testid^="column-add-card-"]').first()
 }
 
-test.describe('CreateTaskModal E2E', () => {
+/** Evita colisões entre workers paralelos no mesmo repositório GitHub de E2E. */
+function uniqTaskTitle(prefix: string) {
+  return `${prefix} ${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+}
+
+test.describe.serial('CreateTaskModal E2E', () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to the board page
     await page.goto('/')
@@ -18,6 +23,8 @@ test.describe('CreateTaskModal E2E', () => {
   })
 
   test('Happy path: create task with all fields', async ({ page }) => {
+    test.setTimeout(120_000)
+    const taskTitle = uniqTaskTitle('Implementar autenticação')
     await openCreateTaskFromFirstColumn(page).click()
 
     // Wait for modal to appear
@@ -25,7 +32,7 @@ test.describe('CreateTaskModal E2E', () => {
 
     // Fill in title
     const titleInput = page.getByTestId('ctm-title-input')
-    await titleInput.fill('Implementar autenticação')
+    await titleInput.fill(taskTitle)
 
     // Fill in description
     const descInput = page.getByTestId('ctm-description-input')
@@ -44,8 +51,8 @@ test.describe('CreateTaskModal E2E', () => {
     await copyBtn.click()
 
     // Verify copy feedback appears
-    const feedback = page.locator('text=✓ Copiado!')
-    await expect(feedback).toBeVisible()
+    const feedback = page.locator('.fb-ctm__copy-feedback')
+    await expect(feedback).toHaveText('✓ Copiado!')
 
     // Click Create button
     const submitBtn = page.getByTestId('ctm-submit-btn')
@@ -54,14 +61,11 @@ test.describe('CreateTaskModal E2E', () => {
     // Wait for modal to close
     await page.waitForSelector('[role="dialog"]', { state: 'hidden', timeout: 5000 })
 
-    // Verify task appears in the board
-    const newCard = page.locator('text=Implementar autenticação')
-    await expect(newCard).toBeVisible()
+    // Verify task appears on the board (persistência GitHub pode levar vários segundos)
+    await expect(page.getByText(taskTitle, { exact: true }).first()).toBeVisible({ timeout: 45_000 })
 
-    // Verify 8h is displayed on card (hours registered)
-    await page.waitForTimeout(500) // Small delay for re-render
-    const cardText = page.locator('[data-testid^="card-"]:has-text("Implementar autenticação")')
-    await expect(cardText).toBeVisible()
+    const cardText = page.locator('[data-testid^="card-"]').filter({ hasText: taskTitle }).first()
+    await expect(cardText).toBeVisible({ timeout: 15_000 })
   })
 
   test('Column "+ Adicionar card" opens modal with matching column id', async ({ page }) => {
@@ -116,7 +120,7 @@ test.describe('CreateTaskModal E2E', () => {
 
     // Fill title to fix
     const titleInput = page.getByTestId('ctm-title-input')
-    await titleInput.fill('Valid Title')
+    await titleInput.fill(uniqTaskTitle('Valid Title'))
 
     // Error should disappear
     await expect(errorMsg).not.toBeVisible()
@@ -143,8 +147,9 @@ test.describe('CreateTaskModal E2E', () => {
     const dateInput = page.getByTestId('ctm-date-input')
     await dateInput.fill('2026-05-01')
 
-    // Set negative hours
+    // Set negative hours (`min="0"` no input impede -5 via fill sem remover o atributo)
     const hoursInput = page.getByTestId('ctm-hours-input')
+    await hoursInput.evaluate((el) => (el as HTMLInputElement).removeAttribute('min'))
     await hoursInput.fill('-5')
 
     // Click Create
@@ -161,6 +166,7 @@ test.describe('CreateTaskModal E2E', () => {
   })
 
   test('Cancel button closes modal without saving', async ({ page }) => {
+    const tempTitle = uniqTaskTitle('Temporary Task')
     // Get initial card count
     const initialCards = await page.locator('[data-testid^="card-"]').count()
 
@@ -170,7 +176,7 @@ test.describe('CreateTaskModal E2E', () => {
 
     // Fill form partially
     const titleInput = page.getByTestId('ctm-title-input')
-    await titleInput.fill('Temporary Task')
+    await titleInput.fill(tempTitle)
 
     // Click Cancel
     const cancelBtn = page.getByTestId('ctm-cancel-btn')
@@ -183,9 +189,7 @@ test.describe('CreateTaskModal E2E', () => {
     const finalCards = await page.locator('[data-testid^="card-"]').count()
     expect(finalCards).toBe(initialCards)
 
-    // Verify temporary task is not in board
-    const tempCard = page.locator('text=Temporary Task')
-    await expect(tempCard).not.toBeVisible()
+    await expect(page.getByText(tempTitle, { exact: true })).toHaveCount(0)
   })
 
   test('Escape key closes modal', async ({ page }) => {
@@ -219,13 +223,10 @@ test.describe('CreateTaskModal E2E', () => {
     // Click copy
     await copyBtn.click()
 
-    // Verify feedback appears
-    const feedback = page.locator('text=✓ Copiado!')
-    await expect(feedback).toBeVisible()
+    const feedback = page.locator('.fb-ctm__copy-feedback')
+    await expect(feedback).toHaveText('✓ Copiado!')
 
-    // Wait for feedback to disappear (after 1.5s)
-    await page.waitForTimeout(2000)
-    await expect(feedback).not.toBeVisible()
+    await expect(feedback).toBeHidden({ timeout: 3000 })
 
     // Button text should revert
     await expect(copyBtn).toContainText('Copiar')
@@ -278,7 +279,7 @@ test.describe('CreateTaskModal E2E', () => {
 
     // Fill form
     const titleInput = page.getByTestId('ctm-title-input')
-    await titleInput.fill('First Task')
+    await titleInput.fill(uniqTaskTitle('First Task'))
 
     const descInput = page.getByTestId('ctm-description-input')
     await descInput.fill('First Description')
@@ -311,30 +312,33 @@ test.describe('CreateTaskModal E2E', () => {
   })
 
   test('Edit task: same modal with heading and save', async ({ page }) => {
+    test.setTimeout(120_000)
+    const titleBefore = uniqTaskTitle('Task Before Edit')
+    const titleAfter = uniqTaskTitle('Task After Edit')
     await openCreateTaskFromFirstColumn(page).click()
     await page.waitForSelector('[role="dialog"]')
 
-    await page.getByTestId('ctm-title-input').fill('Task Before Edit')
+    await page.getByTestId('ctm-title-input').fill(titleBefore)
     await page.getByTestId('ctm-description-input').fill('Desc original')
     await page.getByTestId('ctm-date-input').fill('2026-06-01')
     await page.getByTestId('ctm-hours-input').fill('2')
     await page.getByTestId('ctm-submit-btn').click()
     await page.waitForSelector('[role="dialog"]', { state: 'hidden' })
 
-    await expect(page.getByText('Task Before Edit')).toBeVisible()
+    await expect(page.getByText(titleBefore, { exact: true }).first()).toBeVisible({ timeout: 45_000 })
 
-    const cardRow = page.locator('[data-testid^="card-"]').filter({ hasText: 'Task Before Edit' })
+    const cardRow = page.locator('[data-testid^="card-"]').filter({ hasText: titleBefore }).first()
     await cardRow.getByRole('button', { name: 'Editar' }).click()
 
     await page.waitForSelector('[role="dialog"]')
     await expect(page.getByRole('heading', { name: 'Editar tarefa' })).toBeVisible()
     await expect(page.getByTestId('ctm-submit-btn')).toContainText('Salvar')
 
-    await page.getByTestId('ctm-title-input').fill('Task After Edit')
+    await page.getByTestId('ctm-title-input').fill(titleAfter)
     await page.getByTestId('ctm-submit-btn').click()
     await page.waitForSelector('[role="dialog"]', { state: 'hidden' })
 
-    await expect(page.getByText('Task After Edit')).toBeVisible()
-    await expect(page.getByText('Task Before Edit')).not.toBeVisible()
+    await expect(page.getByText(titleAfter, { exact: true }).first()).toBeVisible({ timeout: 45_000 })
+    await expect(page.getByText(titleBefore, { exact: true })).toHaveCount(0)
   })
 })

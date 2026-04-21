@@ -2,6 +2,22 @@ import { GITHUB_API_BASE, isOfficialGithubApiBase, type RepoResolution } from '.
 
 const STORAGE_KEY = 'flowboard.session.v1'
 
+/** Migra sessão antiga (sessionStorage) para localStorage — compatível com Playwright storageState. */
+function migrateFromSessionStorageIfNeeded(): void {
+  if (typeof sessionStorage === 'undefined' || typeof localStorage === 'undefined') {
+    return
+  }
+  if (localStorage.getItem(STORAGE_KEY)) {
+    return
+  }
+  const legacy = sessionStorage.getItem(STORAGE_KEY)
+  if (!legacy) {
+    return
+  }
+  localStorage.setItem(STORAGE_KEY, legacy)
+  sessionStorage.removeItem(STORAGE_KEY)
+}
+
 export type FlowBoardSession = RepoResolution & {
   pat: string
   /** Original URL entered by the user */
@@ -9,36 +25,40 @@ export type FlowBoardSession = RepoResolution & {
 }
 
 export function loadSession(): FlowBoardSession | null {
-  if (typeof sessionStorage === 'undefined') {
+  if (typeof localStorage === 'undefined') {
     return null
   }
-  const raw = sessionStorage.getItem(STORAGE_KEY)
+  migrateFromSessionStorageIfNeeded()
+  const raw = localStorage.getItem(STORAGE_KEY)
   if (!raw) {
     return null
   }
   try {
     const v = JSON.parse(raw) as FlowBoardSession
     if (!v.pat || !v.owner || !v.repo) {
-      sessionStorage.removeItem(STORAGE_KEY)
+      localStorage.removeItem(STORAGE_KEY)
       return null
     }
     if (!isOfficialGithubApiBase(typeof v.apiBase === 'string' ? v.apiBase : '')) {
-      sessionStorage.removeItem(STORAGE_KEY)
+      localStorage.removeItem(STORAGE_KEY)
       return null
     }
     return v
   } catch {
-    sessionStorage.removeItem(STORAGE_KEY)
+    localStorage.removeItem(STORAGE_KEY)
     return null
   }
 }
 
 export function saveSession(session: FlowBoardSession): void {
-  sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session))
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(session))
 }
 
 export function clearSession(): void {
-  sessionStorage.removeItem(STORAGE_KEY)
+  localStorage.removeItem(STORAGE_KEY)
+  if (typeof sessionStorage !== 'undefined') {
+    sessionStorage.removeItem(STORAGE_KEY)
+  }
 }
 
 export function createSession(pat: string, repoUrl: string, resolution: RepoResolution): FlowBoardSession {
