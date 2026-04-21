@@ -16,7 +16,7 @@ cd apps/flowboard
 npm install
 ```
 
-Não há `.env.example` obrigatório para o MVP: URL do repositório e PAT entram na UI e ficam em `sessionStorage`. Se existir `.env` local, está no `.gitignore` — **nunca commite**.
+Para o app no dia a dia não é obrigatório `.env`: URL do repositório e PAT entram na UI e ficam em `sessionStorage`. **Testes E2E** exigem `apps/flowboard/.env` com credenciais de um repositório de dados de teste (ver secção E2E e tabela de variáveis). Qualquer `.env` está no `.gitignore` — **nunca commite**.
 
 ### Desenvolvimento e build
 
@@ -51,12 +51,47 @@ npx vitest run --coverage
 
 ### E2E (Playwright)
 
-Não há script `npm` para E2E; use o CLI. `playwright.config.ts` usa `testDir: ./tests/e2e`, sobe `npm run dev` e `baseURL` `http://localhost:5173`. Com `CI` definido: `retries: 2`, `workers: 1`, `forbidOnly: true`.
+**Pré-requisito:** em `apps/flowboard/.env`, defina `FLOWBOARD_E2E_REPO_URL` (HTTPS do repo de dados) e `FLOWBOARD_E2E_PAT` (token com permissão de conteúdo nesse repo). O `playwright.config.ts` carrega o `.env` via `vite` `loadEnv`. Testes que autenticam usam `tests/e2e/helpers/e2e-env.ts` — sem essas variáveis, o setup e specs que conectam ao GitHub falham com erro explícito.
+
+**Fluxo de sessão:** `scripts/ensure-e2e-auth.mjs` (usado pelos scripts `npm` abaixo) verifica `tests/e2e/.auth/user.json`. Se não existir, roda só o projeto Playwright `setup` (`auth.setup.ts`: login na UI e grava `storageState`). Esse diretório `.auth/` é **gitignored** — não commite.
+
+**Comandos (preferir o wrapper — repassa argumentos ao CLI):**
 
 ```bash
 cd apps/flowboard
-npx playwright test
+# Suíte completa (garante auth + playwright; sobe o dev server via webServer do config)
+npm run test:e2e
+
+# Mesmo fluxo com browser visível ou Playwright UI mode (workers forçados a 1 no config)
+npm run test:e2e:headed
+npm run test:e2e:ui
+
+# Playwright direto, sem rodar o ensure (útil se .auth/user.json já existe e você sabe o que faz)
+npm run test:e2e:raw
 ```
+
+**Escopo (economiza tempo):** repasse caminho ou grep ao wrapper, por exemplo:
+
+```bash
+cd apps/flowboard
+npm run test:e2e -- tests/e2e/release-notes.spec.ts
+npm run test:e2e -- --grep @login
+```
+
+**Só regenerar a sessão salva:**
+
+```bash
+cd apps/flowboard
+npx playwright test --project=setup
+```
+
+**Base URL:** opcional `FLOWBOARD_E2E_BASE_URL` (default `http://localhost:5173`). O config sobe `npm run dev` em `webServer` e reutiliza servidor local fora de CI (`reuseExistingServer`).
+
+**Projetos e paralelismo (comportamento intencional):** há `setup`, depois `chromium` / `firefox` / `webkit` com `storageState` compartilhado. `create-task.spec.ts` roda **apenas em Chromium**; em Firefox/WebKit o ficheiro está em `testIgnore` para não escrever no mesmo repo GitHub em paralelo. `login.spec.ts` fica no projeto `chromium-login`, sem `storageState` persistido. Com `--headed`, `--debug` ou `--ui`, `workers` vira `1` (clipboard e foco). Com `CI` definido: `retries: 2`, `workers: 1`, `forbidOnly: true`.
+
+**Relatório:** reporter HTML padrão; `trace: on-first-retry`, `screenshot: only-on-failure`.
+
+**Instalação de browsers (máquina nova):** `npx playwright install` (ou o subconjunto que o time usar).
 
 ### Qualidade
 
@@ -130,7 +165,10 @@ Não introduzir API dinâmica nem outro ficheiro como fonte da versão sem spec/
 
 | Variável | Obrigatória | Nota |
 |----------|-------------|------|
-| — | — | MVP não exige `.env` para rodar. `CI` afeta Playwright (retries/workers/forbidOnly). |
+| `FLOWBOARD_E2E_REPO_URL` | Sim para E2E com GitHub | URL HTTPS do repositório de dados usado nos testes. |
+| `FLOWBOARD_E2E_PAT` | Sim para E2E com GitHub | PAT com escopo suficiente para ler/escrever conteúdo nesse repo. **Nunca** documentar o valor real no repositório. |
+| `FLOWBOARD_E2E_BASE_URL` | Não | Base da app nos testes (default `http://localhost:5173`). |
+| `CI` | Não | Quando definido, Playwright usa `retries: 2`, `workers: 1`, `forbidOnly: true`. |
 
 ---
 
@@ -140,17 +178,18 @@ Não introduzir API dinâmica nem outro ficheiro como fonte da versão sem spec/
 
 - Ler qualquer arquivo do repositório.
 - Rodar `npm run lint`, `npm test`, `npx vitest run <arquivo>`, `npm run build` em `apps/flowboard`.
+- Rodar E2E escopado: `npm run test:e2e -- <caminho-do-spec>` ou `npx playwright test <arquivo>` quando `.auth` já existir e não precisar do wrapper.
 - Editar `apps/flowboard/src/`, testes em `src/**/*.test.*` e `tests/e2e/`.
 
 ### Perguntar antes
 
 - Instalar dependências npm novas ou subir versão major de React/Vite/TS.
-- Rodar suíte E2E completa (`npx playwright test`) se custo/tempo for relevante.
+- Rodar suíte E2E **completa** (todos os projetos/browsers: `npm run test:e2e` sem filtro) se tempo/custo de execução ou uso do repo de dados de teste for sensível.
 - `git push`, abrir PR ou alterar política de branch.
 
 ### Nunca
 
-- Commitar tokens, PATs, `.env` ou conteúdo de `.playwright-cli/` com dados sensíveis.
+- Commitar tokens, PATs, `.env`, `tests/e2e/.auth/` ou conteúdo de `.playwright-cli/` com dados sensíveis.
 - Apagar `.memory-bank/` ou specs sem confirmação explícita.
 - Escrever segredos em issues, commits ou documentação no repositório.
 
