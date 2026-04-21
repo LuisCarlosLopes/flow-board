@@ -1,4 +1,4 @@
-import type { RepoResolution } from '../github/url'
+import { GITHUB_API_BASE, isOfficialGithubApiBase, type RepoResolution } from '../github/url'
 
 const STORAGE_KEY = 'flowboard.session.v1'
 
@@ -19,10 +19,16 @@ export function loadSession(): FlowBoardSession | null {
   try {
     const v = JSON.parse(raw) as FlowBoardSession
     if (!v.pat || !v.owner || !v.repo) {
+      sessionStorage.removeItem(STORAGE_KEY)
+      return null
+    }
+    if (!isOfficialGithubApiBase(typeof v.apiBase === 'string' ? v.apiBase : '')) {
+      sessionStorage.removeItem(STORAGE_KEY)
       return null
     }
     return v
   } catch {
+    sessionStorage.removeItem(STORAGE_KEY)
     return null
   }
 }
@@ -41,7 +47,7 @@ export function createSession(pat: string, repoUrl: string, resolution: RepoReso
     repoUrl,
     owner: resolution.owner,
     repo: resolution.repo,
-    apiBase: resolution.apiBase,
+    apiBase: GITHUB_API_BASE,
     webUrl: resolution.webUrl,
   }
 }

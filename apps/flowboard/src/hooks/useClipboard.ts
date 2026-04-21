@@ -24,13 +24,17 @@ export function useClipboard() {
           setIsCopied(true)
           setTimeout(() => setIsCopied(false), 1500)
         } catch {
-          console.error('Failed to copy with fallback method')
+          if (import.meta.env.DEV) {
+            console.error('Failed to copy with fallback method')
+          }
         } finally {
           document.body.removeChild(textarea)
         }
       }
     } catch (e) {
-      console.error('Clipboard error:', e)
+      if (import.meta.env.DEV) {
+        console.error('Clipboard error:', e)
+      }
     }
   }, [])
 

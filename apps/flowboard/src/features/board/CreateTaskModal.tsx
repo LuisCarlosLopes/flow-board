@@ -145,7 +145,9 @@ export function CreateTaskModal({
       await onSubmit(payload)
       onClose()
     } catch (e) {
-      console.error('Error creating task:', e)
+      if (import.meta.env.DEV) {
+        console.error('Error creating task:', e)
+      }
       setErrors({ submit: e instanceof Error ? e.message : 'Erro ao criar tarefa' })
     } finally {
       setIsSubmitting(false)

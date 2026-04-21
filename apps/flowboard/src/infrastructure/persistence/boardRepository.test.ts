@@ -45,6 +45,53 @@ describe('createBoardRepository', () => {
     expect(catalog.boards).toHaveLength(1)
     expect(String(fetchMock.mock.calls[0]![0])).toContain('contents')
   })
+
+  it('throws when catalog boards entry is invalid', async () => {
+    const cat = { schemaVersion: 1, boards: [{ boardId: '', title: 'T', dataPath: 'flowboard/boards/x.json' }] }
+    const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(cat))))
+    const fetchMock = vi.fn().mockResolvedValue({
+      status: 200,
+      ok: true,
+      headers: { get: () => null },
+      json: async () => ({ sha: 'aaa', content: b64, encoding: 'base64' }),
+    })
+    const client = new GitHubContentsClient({
+      token: 't',
+      owner: 'o',
+      repo: 'r',
+      fetchImpl: fetchMock,
+    })
+    const repo = createBoardRepository(client)
+    await expect(repo.loadCatalog()).rejects.toThrow('catalog.json inválido')
+  })
+
+  it('throws when board document is missing required arrays', async () => {
+    const doc = {
+      schemaVersion: 1,
+      boardId: 'b1',
+      title: 'T',
+      columns: [],
+      cards: [],
+      timeSegments: [],
+      cardTimeState: {},
+    }
+    delete (doc as { columns?: unknown }).columns
+    const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(doc))))
+    const fetchMock = vi.fn().mockResolvedValue({
+      status: 200,
+      ok: true,
+      headers: { get: () => null },
+      json: async () => ({ sha: 'bbb', content: b64, encoding: 'base64' }),
+    })
+    const client = new GitHubContentsClient({
+      token: 't',
+      owner: 'o',
+      repo: 'r',
+      fetchImpl: fetchMock,
+    })
+    const repo = createBoardRepository(client)
+    await expect(repo.loadBoard('b1')).rejects.toThrow('board.json inválido')
+  })
 })
 
 describe('createBoardEntry', () => {

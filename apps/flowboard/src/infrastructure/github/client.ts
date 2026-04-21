@@ -1,3 +1,5 @@
+import { GITHUB_API_BASE } from './url'
+
 export type ContentsGetResponse = {
   sha: string
   content: string
@@ -38,7 +40,7 @@ export class GitHubContentsClient {
     this.token = opts.token
     this.owner = opts.owner
     this.repo = opts.repo
-    this.apiBase = opts.apiBase ?? 'https://api.github.com'
+    this.apiBase = opts.apiBase ?? GITHUB_API_BASE
     // Evita "Illegal invocation" no browser quando `fetch` é chamado sem receiver (`this`).
     this.fetchImpl = opts.fetchImpl ?? ((input, init) => globalThis.fetch(input, init))
   }
