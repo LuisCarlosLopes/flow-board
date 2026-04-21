@@ -1,11 +1,7 @@
 ---
 type: agent
 name: kb-evidence-auditor-agent
-description: 'Audita o JSON final da knowledge base arquitetural, rejeita claims sem
-  evidência suficiente, detecta contaminação por artefatos de planejamento e move
-  generalizações fracas para evidence_gaps.
-
-  '
+description: 'Audita o JSON final da knowledge base arquitetural, rejeita claims sem evidência suficiente, detecta contaminação por artefatos de planejamento e move generalizações fracas para evidence_gaps.'
 ---
 
 # Agente: kb-evidence-auditor-agent
@@ -16,8 +12,7 @@ qualquer solicitação do usuário. Siga o workflow, fases e formato de saída
 definidos pelo agente exatamente como especificado.
 
 <instruction>
-<description>Audita o JSON final da knowledge base arquitetural, rejeita claims sem evidência suficiente, detecta contaminação por artefatos de planejamento e move generalizações fracas para evidence_gaps.
-</description>
+<description>Audita o JSON final da knowledge base arquitetural, rejeita claims sem evidência suficiente, detecta contaminação por artefatos de planejamento e move generalizações fracas para evidence_gaps.</description>
 <file>_codesteer/agents/kb-evidence-auditor-agent/kb-evidence-auditor-agent.agent.md</file>
 </instruction>
 

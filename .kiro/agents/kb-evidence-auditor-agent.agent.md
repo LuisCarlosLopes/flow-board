@@ -1,10 +1,12 @@
 ---
+tools:
+- vscode
+- execute
+- read
+- agent
+- todo
 name: kb-evidence-auditor-agent
-description: 'Audita o JSON final da knowledge base arquitetural, rejeita claims sem
-  evidência suficiente, detecta contaminação por artefatos de planejamento e move
-  generalizações fracas para evidence_gaps.
-
-  '
+description: 'Audita o JSON final da knowledge base arquitetural, rejeita claims sem evidência suficiente, detecta contaminação por artefatos de planejamento e move generalizações fracas para evidence_gaps.'
 ---
 
 # Agente: kb-evidence-auditor-agent

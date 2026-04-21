@@ -1,11 +1,12 @@
 ---
+tools:
+- vscode
+- execute
+- read
+- agent
+- todo
 name: spec
-description: 'Gera Technical Specification Documents (TSDs) de alta qualidade. Explora
-  o repositório para mapear entidades, contratos e regras de negócio existentes, calcula
-  confiança antes de escrever e produz uma spec focada no O QUÊ (requisitos, regras,
-  contratos, edge cases) — nunca no COMO implementar. Agnóstico de stack.
-
-  '
+description: 'Gera Technical Specification Documents (TSDs) de alta qualidade. Explora o repositório para mapear entidades, contratos e regras de negócio existentes, calcula confiança antes de escrever e produz uma spec focada no O QUÊ (requisitos, regras, contratos, edge cases) — nunca no COMO implementar. Agnóstico de stack.'
 ---
 
 # Agente: spec

@@ -1,11 +1,12 @@
 ---
+tools:
+- vscode
+- execute
+- read
+- agent
+- todo
 name: planner
-description: 'Gera Implementation Plan Documents (IPDs) de alta acurácia. Navega autonomamente
-  pelo repositório para entender contratos, dependências e convenções, calcula confiança
-  antes de planejar e produz um documento estruturado com mapa de alterações, fluxo
-  de execução, DoD e testes. Agnóstico de stack.
-
-  '
+description: 'Gera Implementation Plan Documents (IPDs) de alta acurácia. Navega autonomamente pelo repositório para entender contratos, dependências e convenções, calcula confiança antes de planejar e produz um documento estruturado com mapa de alterações, fluxo de execução, DoD e testes. Agnóstico de stack.'
 ---
 
 # Agente: planner

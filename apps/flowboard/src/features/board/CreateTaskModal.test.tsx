@@ -1,4 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { CreateTaskModal } from './CreateTaskModal'
 
 /**
  * Unit tests for CreateTaskModal component
@@ -311,6 +314,53 @@ describe('CreateTaskModal', () => {
         expect(id).toBeTruthy()
         expect(label).toBeTruthy()
       })
+    })
+  })
+
+  describe('Maximize layout', () => {
+    it('toggles maximized panel class and preserves title', async () => {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn().mockResolvedValue(undefined)
+      render(
+        <CreateTaskModal isOpen onClose={() => {}} onSubmit={onSubmit} defaultColumnId="backlog" />,
+      )
+
+      const panel = document.querySelector('.fb-ctm')
+      expect(panel).toBeTruthy()
+      expect(panel).not.toHaveClass('fb-ctm--maximized')
+
+      const toggle = screen.getByTestId('ctm-maximize-toggle')
+      expect(toggle).toHaveAttribute('aria-pressed', 'false')
+
+      await user.type(screen.getByTestId('ctm-title-input'), 'Task maximizada')
+      await user.click(toggle)
+
+      expect(panel).toHaveClass('fb-ctm--maximized')
+      expect(toggle).toHaveAttribute('aria-pressed', 'true')
+
+      await user.click(toggle)
+      expect(panel).not.toHaveClass('fb-ctm--maximized')
+      expect(screen.getByTestId('ctm-title-input')).toHaveValue('Task maximizada')
+    })
+
+    it('clears maximized state when modal closes', async () => {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn().mockResolvedValue(undefined)
+      const { rerender } = render(
+        <CreateTaskModal isOpen onClose={() => {}} onSubmit={onSubmit} defaultColumnId="backlog" />,
+      )
+
+      await user.click(screen.getByTestId('ctm-maximize-toggle'))
+      expect(document.querySelector('.fb-ctm')).toHaveClass('fb-ctm--maximized')
+
+      rerender(
+        <CreateTaskModal isOpen={false} onClose={() => {}} onSubmit={onSubmit} defaultColumnId="backlog" />,
+      )
+      rerender(
+        <CreateTaskModal isOpen onClose={() => {}} onSubmit={onSubmit} defaultColumnId="backlog" />,
+      )
+
+      expect(document.querySelector('.fb-ctm')).not.toHaveClass('fb-ctm--maximized')
     })
   })
 })

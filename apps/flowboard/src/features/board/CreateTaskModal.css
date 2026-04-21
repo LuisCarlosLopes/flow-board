@@ -8,7 +8,15 @@
   padding: var(--space-3);
 }
 
+.fb-ctm-overlay--maximized {
+  place-items: center;
+  align-content: center;
+}
+
 .fb-ctm {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   width: min(560px, 100%);
   max-height: min(90vh, 720px);
   overflow: auto;
@@ -20,16 +28,91 @@
   box-shadow: var(--shadow-md);
 }
 
-.fb-ctm h2 {
-  margin: 0 0 var(--space-2);
+/* @MindDecision: Maximizar só com CSS no painel (sem Fullscreen API) para manter overlay, ESC e rodapé no mesmo fluxo de diálogo. */
+.fb-ctm--maximized {
+  width: min(calc(100vw - var(--space-3) * 2), 1200px);
+  height: min(calc(100vh - var(--space-3) * 2), 900px);
+  max-height: min(calc(100vh - var(--space-3) * 2), 900px);
+}
+
+.fb-ctm--maximized .fb-ctm__form {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.fb-ctm__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+  flex-shrink: 0;
+}
+
+.fb-ctm__header h2 {
+  margin: 0;
   font-family: var(--font-display);
   font-size: var(--text-lg);
+}
+
+.fb-ctm__max-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-control);
+  background: var(--bg-overlay);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    background-color 0.2s,
+    color 0.2s,
+    border-color 0.2s;
+}
+
+.fb-ctm__max-btn:hover:not(:disabled) {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+  background: var(--hover-surface);
+}
+
+.fb-ctm__max-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.fb-ctm__max-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.fb-ctm__max-icon {
+  width: 18px;
+  height: 18px;
 }
 
 .fb-ctm__form {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+}
+
+.fb-ctm__field--stretch {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.fb-ctm__field--stretch .fb-ctm__textarea {
+  flex: 1;
+  min-height: 200px;
+  resize: vertical;
 }
 
 .fb-ctm__field {

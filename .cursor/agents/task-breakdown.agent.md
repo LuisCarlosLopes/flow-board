@@ -1,10 +1,6 @@
 ---
 name: task-breakdown
-description: 'Converte um Implementation Plan Document (IPD) em um task.md executável.
-  Decompõe o plano em tarefas ordenadas e rastreáveis sem código, respeitando dependências
-  técnicas reais. Produz um artefato de execução — não de design.
-
-  '
+description: 'Converte um Implementation Plan Document (IPD) em um task.md executável. Decompõe o plano em tarefas ordenadas e rastreáveis sem código, respeitando dependências técnicas reais. Produz um artefato de execução — não de design.'
 triggers:
 - task breakdown
 - quebra a task

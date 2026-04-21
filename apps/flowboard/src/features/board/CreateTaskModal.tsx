@@ -3,6 +3,9 @@ import type { Card } from '../../domain/types'
 import { useClipboard } from '../../hooks/useClipboard'
 import './CreateTaskModal.css'
 
+// @MindContext: Modal de criação e edição de tarefas do quadro; o pai persiste o Card após onSubmit (GitHub).
+// @MindTest: CreateTaskModal.test.tsx (validação, toggle de layout maximizado)
+
 /* eslint-disable react-hooks/set-state-in-effect */
 
 type Props = {
@@ -49,6 +52,7 @@ export function CreateTaskModal({
   const [plannedHours, setPlannedHours] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isMaximized, setIsMaximized] = useState(false)
   const { copy, isCopied } = useClipboard()
 
   const createdAtDisplay = isEditMode
@@ -78,6 +82,13 @@ export function CreateTaskModal({
     setErrors({})
     setIsSubmitting(false)
   }, [isOpen, editingCard])
+
+  // @MindWhy: Ao fechar o modal, isMaximized volta a false para a próxima abertura não iniciar expandido; preferência não vai a localStorage neste MVP.
+  useEffect(() => {
+    if (!isOpen) {
+      setIsMaximized(false)
+    }
+  }, [isOpen])
 
   // Handle ESC key to close modal
   useEffect(() => {
@@ -178,15 +189,51 @@ export function CreateTaskModal({
 
   return (
     <div
-      className="fb-ctm-overlay"
+      className={['fb-ctm-overlay', isMaximized && 'fb-ctm-overlay--maximized'].filter(Boolean).join(' ')}
       role="dialog"
       aria-modal="true"
       aria-labelledby="fb-ctm-title"
       data-testid="ctm-dialog"
       data-default-column-id={effectiveColumnId}
     >
-      <div className="fb-ctm">
-        <h2 id="fb-ctm-title">{isEditMode ? 'Editar tarefa' : 'Nova Tarefa'}</h2>
+      <div className={['fb-ctm', isMaximized && 'fb-ctm--maximized'].filter(Boolean).join(' ')}>
+        <div className="fb-ctm__header">
+          <h2 id="fb-ctm-title">{isEditMode ? 'Editar tarefa' : 'Nova Tarefa'}</h2>
+          <button
+            type="button"
+            className="fb-ctm__max-btn"
+            aria-pressed={isMaximized}
+            aria-label={isMaximized ? 'Restaurar tamanho do painel' : 'Maximizar painel'}
+            title={isMaximized ? 'Restaurar' : 'Maximizar'}
+            data-testid="ctm-maximize-toggle"
+            disabled={isSubmitting}
+            onClick={() => setIsMaximized((v) => !v)}
+          >
+            <svg
+              className="fb-ctm__max-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              aria-hidden
+              focusable="false"
+            >
+              {isMaximized ? (
+                <path
+                  d="M4 14v6h6M20 10V4h-6M4 20l7-7M20 4l-7 7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              ) : (
+                <path
+                  d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              )}
+            </svg>
+          </button>
+        </div>
 
         <form className="fb-ctm__form" onSubmit={(e) => { e.preventDefault(); void handleSubmit() }}>
           {/* Title field */}
@@ -212,7 +259,7 @@ export function CreateTaskModal({
           </div>
 
           {/* Description field */}
-          <div className="fb-ctm__field">
+          <div className={['fb-ctm__field', isMaximized && 'fb-ctm__field--stretch'].filter(Boolean).join(' ')}>
             <label htmlFor="ctm-description" className="fb-ctm__label">
               Descrição *
             </label>

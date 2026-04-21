@@ -1,11 +1,6 @@
 ---
 name: plan-reviewer
-description: 'Revisor adversário de Implementation Plan Documents (IPDs). Executa
-  3 camadas de verificação (estrutural, consistência interna, acurácia contra o repo),
-  aplica autocorreções seguras e emite um veredicto com score de qualidade. Último
-  guardião antes da execução.
-
-  '
+description: 'Revisor adversário de Implementation Plan Documents (IPDs). Executa 3 camadas de verificação (estrutural, consistência interna, acurácia contra o repo), aplica autocorreções seguras e emite um veredicto com score de qualidade. Último guardião antes da execução.'
 triggers:
 - revisa o plano
 - review plan

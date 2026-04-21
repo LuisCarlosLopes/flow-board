@@ -1,10 +1,12 @@
 ---
+tools:
+- vscode
+- execute
+- read
+- agent
+- todo
 name: kb-pattern-extractor-agent
-description: 'Consolida inventário factual do repositório em um JSON canônico de knowledge
-  base arquitetural, preservando shape estável, evidência por item e lacunas explícitas
-  quando algo não existir no código.
-
-  '
+description: 'Consolida inventário factual do repositório em um JSON canônico de knowledge base arquitetural, preservando shape estável, evidência por item e lacunas explícitas quando algo não existir no código.'
 ---
 
 # Agente: kb-pattern-extractor-agent
