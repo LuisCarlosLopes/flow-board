@@ -442,40 +442,63 @@ export function CreateTaskModal({
       <div className={['fb-ctm', isMaximized && 'fb-ctm--maximized'].filter(Boolean).join(' ')}>
         <div className="fb-ctm__header">
           <h2 id="fb-ctm-title">{isEditMode ? 'Editar tarefa' : 'Nova Tarefa'}</h2>
-          <button
-            type="button"
-            className="fb-ctm__max-btn"
-            aria-pressed={isMaximized}
-            aria-label={isMaximized ? 'Restaurar tamanho do painel' : 'Maximizar painel'}
-            title={isMaximized ? 'Restaurar' : 'Maximizar'}
-            data-testid="ctm-maximize-toggle"
-            disabled={isSubmitting}
-            onClick={() => setIsMaximized((v) => !v)}
-          >
-            <svg
-              className="fb-ctm__max-icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              aria-hidden
-              focusable="false"
+          <div className="fb-ctm__header-actions">
+            <button
+              type="button"
+              className="fb-ctm__max-btn"
+              aria-pressed={isMaximized}
+              aria-label={isMaximized ? 'Restaurar tamanho do painel' : 'Maximizar painel'}
+              title={isMaximized ? 'Restaurar' : 'Maximizar'}
+              data-testid="ctm-maximize-toggle"
+              disabled={isSubmitting}
+              onClick={() => setIsMaximized((v) => !v)}
             >
-              {isMaximized ? (
-                <path
-                  d="M4 14v6h6M20 10V4h-6M4 20l7-7M20 4l-7 7"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              ) : (
-                <path
-                  d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              )}
-            </svg>
-          </button>
+              <svg
+                className="fb-ctm__max-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                aria-hidden
+                focusable="false"
+              >
+                {isMaximized ? (
+                  <path
+                    d="M4 14v6h6M20 10V4h-6M4 20l7-7M20 4l-7 7"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                ) : (
+                  <path
+                    d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                )}
+              </svg>
+            </button>
+            <button
+              type="button"
+              className="fb-ctm__close-btn"
+              aria-label="Fechar"
+              title="Fechar"
+              data-testid="ctm-close-btn"
+              disabled={isSubmitting}
+              onClick={onClose}
+            >
+              <svg
+                className="fb-ctm__close-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                aria-hidden
+                focusable="false"
+              >
+                <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         <form className="fb-ctm__form" onSubmit={(e) => { e.preventDefault(); void handleSubmit() }}>
@@ -509,12 +532,12 @@ export function CreateTaskModal({
               <label htmlFor="ctm-description" className="fb-ctm__label">
                 Descrição *
               </label>
-              <div className="fb-ctm__copy-wrapper">
+              <div className="fb-ctm__copy-wrapper" aria-live="polite" aria-atomic="true">
                 <button
                   type="button"
                   className="fb-ctm__copy-btn"
                   onClick={handleCopy}
-                  disabled={!description.trim() || isSubmitting || isCopied}
+                  disabled={!description.trim() || isSubmitting}
                   data-testid="ctm-copy-btn"
                 >
                   {isCopied ? 'Copiado!' : 'Copiar'}

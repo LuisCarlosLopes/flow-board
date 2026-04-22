@@ -317,6 +317,26 @@ describe('CreateTaskModal', () => {
     })
   })
 
+  describe('Header actions', () => {
+    it('calls onClose when close button is clicked', async () => {
+      const user = userEvent.setup()
+      const onClose = vi.fn()
+      const onSubmit = vi.fn().mockResolvedValue(undefined)
+      render(
+        <CreateTaskModal
+          boardId="test-board"
+          isOpen
+          onClose={onClose}
+          onSubmit={onSubmit}
+          defaultColumnId="backlog"
+        />,
+      )
+
+      await user.click(screen.getByTestId('ctm-close-btn'))
+      expect(onClose).toHaveBeenCalledTimes(1)
+    })
+  })
+
   describe('Maximize layout', () => {
     it('toggles maximized panel class and preserves title', async () => {
       const user = userEvent.setup()
