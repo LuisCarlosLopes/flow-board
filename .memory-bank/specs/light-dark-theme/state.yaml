@@ -1,0 +1,90 @@
+title: "Tema claro/escuro com persistência no navegador"
+slug: light-dark-theme
+created_at: "2026-04-22"
+context: "FlowBoard — app React/Vite em apps/flowboard; tokens em tokens.css; shell em AppShell."
+objective: "Disponibilizar preset visual light espelhando a hierarquia de tokens dark atual, controle explícito light/dark na UI e persistência da escolha em localStorage, com aplicação antes do primeiro paint quando possível."
+acceptance_criteria:
+  - "Usuário alterna entre tema claro e escuro por controle acessível na área logada (topbar)."
+  - "Todas as telas do app autenticado refletem o tema ativo (tokens CSS), sem depender apenas de prefers-color-scheme do SO."
+  - "Preferência é persistida em localStorage e reaplicada ao recarregar a página e em nova aba do mesmo origin."
+  - "Primeira pintura não exibe flash incorreto prolongado: script inline mínimo em index.html aplica data-theme (ou equivalente) antes do bundle React."
+  - "Valor inválido ou ausente em localStorage cai em fallback determinístico (ex.: dark como padrão do produto)."
+  - "Testes automatizados cobrem leitura/gravação do store de tema e, quando viável, presença do atributo no documento após toggle."
+scope:
+  in:
+    - "apps/flowboard/src/styles/tokens.css (ou arquivo de tema adjacente)"
+    - "apps/flowboard/index.html (script inline de bootstrap de tema)"
+    - "Novo módulo infrastructure ou hooks para themeStore alinhado a sessionStore/boardSelectionStore"
+    - "AppShell (ou provider raiz): toggle + sincronização com documentElement"
+    - "Remoção/substituição de @media (prefers-color-scheme: light) que hoje assume 'não implementado'"
+    - "Onboarding e rotas públicas se compartilharem o mesmo HTML raiz (mesmo bootstrap)"
+  out:
+    - "Tema 'system' (seguir SO) como terceira opção — não no escopo inicial salvo HITL."
+    - "Sincronização entre abas via storage event (opcional/futuro)."
+    - "Mudança de identidade visual além dos tokens (ilustrações, logos)."
+tech_context: "TypeScript, React 18, Vite; Vitest; CSS variables; localStorage com guards para ambiente sem storage."
+baseline_ref: "84c4b40db0f2bd15a53e1d48e188a8ddaad4a158"
+
+squad:
+  status: concluído
+  track: FEATURE
+  track_override: false
+  score: 5
+  confidence: 90
+  current_phase: null
+  completed_phases:
+    - spec
+    - spec-reviewer
+    - planner
+    - plan-reviewer
+    - task-breakdown
+    - HITL
+    - implementer
+    - verifier
+    - code-reviewer
+    - tester
+  next_phase: null
+  iteration: 1
+  blockers: []
+  hitl_required: false
+
+repo_write_scope:
+  - apps/flowboard/index.html
+  - apps/flowboard/src/styles/tokens.css
+  - apps/flowboard/src/infrastructure/theme/
+  - apps/flowboard/src/features/app/AppShell.tsx
+  - apps/flowboard/src/features/app/AppShell.css
+  - apps/flowboard/src/features/app/SearchModal.css
+  - apps/flowboard/src/main.tsx
+  - apps/flowboard/src/App.tsx
+  - apps/flowboard/src/features/auth/
+artifact_reuse: []
+approvals:
+  - phase: pre_implementer
+    actor: human
+    at: "2026-04-22"
+    note: "Aprovação explícita do usuário ('aprovado') para executar IPD/task-breakdown."
+retries_by_phase: {}
+last_failure: null
+decisions:
+  - id: D1
+    summary: "Padrão de atributo data-theme no elemento html com valores 'dark' | 'light'; dark espelha :root atual."
+    date: "2026-04-22"
+pipeline:
+  - spec
+  - spec-reviewer
+  - planner
+  - plan-reviewer
+  - task-breakdown
+  - HITL
+  - implementer
+  - verifier
+  - code-reviewer
+  - tester
+subtasks: []
+history:
+  - at: "2026-04-22"
+    event: "Bootstrap da spec FEATURE; track calculado score 5."
+  - at: "2026-04-22"
+    event: "HITL aprovado; implementação e verifier concluídos."
+summary: "Tema light via html[data-theme=light], persistência flowboard-theme, bootstrap inline em index.html, toggle na topbar (AppShell), testes Vitest no themeStore. code-reviewer/tester formais não spawnados; evidência em implementer-feature.md e verifier-feature.md."

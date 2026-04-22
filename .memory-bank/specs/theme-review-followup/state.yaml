@@ -1,0 +1,55 @@
+title: "Follow-up code review — contrato bootstrap tema + token anexo pendente"
+slug: theme-review-followup
+created_at: "2026-04-22"
+context: "FlowBoard apps/flowboard; findings médios do code-reviewer sobre light-dark-theme."
+objective: "Garantir paridade THEME_STORAGE_KEY ↔ index.html via teste; remover rgba fixo em .fb-ctm__attachment-row--pending."
+acceptance_criteria:
+  - "Teste Vitest falha se index.html deixar de usar a mesma chave que themeConstants."
+  - "Linha de anexo pendente usa apenas tokens de tema."
+scope:
+  in:
+    - apps/flowboard/src/infrastructure/theme/
+    - apps/flowboard/index.html
+    - apps/flowboard/src/features/board/CreateTaskModal.css
+  out:
+    - Refatoração de build para gerar HTML a partir de TS
+tech_context: "Vitest, Node fs/path."
+baseline_ref: "HEAD"
+
+squad:
+  status: concluído
+  track: HOTFIX
+  track_override: false
+  score: 2
+  confidence: 92
+  current_phase: null
+  completed_phases:
+    - HITL
+    - implementer
+  next_phase: null
+  iteration: 1
+  blockers: []
+  hitl_required: false
+
+repo_write_scope:
+  - apps/flowboard/src/infrastructure/theme/
+  - apps/flowboard/src/features/board/CreateTaskModal.css
+
+artifact_reuse:
+  - artifact: ".memory-bank/specs/light-dark-theme/"
+    decision: reused-as-context-only
+    reason: "Mesma área funcional; follow-up pós code-reviewer."
+
+approvals:
+  - phase: pre_implementer
+    actor: human
+    at: "2026-04-22"
+    note: "Confirmação implícita em /squad-codesteer sim após oferta dos dois médiums."
+
+history:
+  - at: "2026-04-22"
+    event: "Implementação direta HOTFIX pós aprovação humana."
+  - at: "2026-04-22"
+    event: "Pedido 'baixa': correções low do code-reviewer (storage, tokens CSS, a11y copiar)."
+
+summary: "Fase 1: themeBootstrap.contract.test.ts + pending row var(--accent-dim). Fase 2 (findings low): storage sync no AppShell; SearchModal foco com var(--accent-dim); chip accent border token; copy wrapper aria-live e botão sem disabled em isCopied."

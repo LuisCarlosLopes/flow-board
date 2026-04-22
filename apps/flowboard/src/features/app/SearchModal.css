@@ -137,7 +137,7 @@
 .fb-sm-input:focus {
   border-color: var(--accent);
   background: var(--bg-overlay);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1), inset 0 0 0 1px var(--accent-border);
+  box-shadow: 0 0 0 3px var(--accent-dim), inset 0 0 0 1px var(--accent-border);
 }
 
 .fb-sm-input:disabled {
@@ -415,11 +415,6 @@
   .fb-sm-result-item:hover {
     text-decoration: underline;
   }
-}
-
-/* Dark mode is already default; light mode would be additional */
-@media (prefers-color-scheme: light) {
-  /* Light mode not implemented for MVP (dark theme only) */
 }
 
 /* ========================================

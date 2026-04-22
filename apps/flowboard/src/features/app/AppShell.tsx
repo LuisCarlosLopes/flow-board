@@ -8,6 +8,8 @@ import { useSearchHotkey } from '../../hooks/useSearchHotkey'
 import { formatRepoChipLabel } from '../../infrastructure/github/url'
 import { clearActiveBoardId, loadActiveBoardId, saveActiveBoardId } from '../../infrastructure/session/boardSelectionStore'
 import { clearSession, type FlowBoardSession } from '../../infrastructure/session/sessionStore'
+import { THEME_STORAGE_KEY, type ThemeMode } from '../../infrastructure/theme/themeConstants'
+import { applyThemeToDocument, readTheme, writeTheme } from '../../infrastructure/theme/themeStore'
 import { useCurrentVersion } from '../release-notes/hooks/useCurrentVersion'
 import './AppShell.css'
 
@@ -24,6 +26,20 @@ export function AppShell({ session, onLogout }: Props) {
   const [columnEditorMenuTick, setColumnEditorMenuTick] = useState(0)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [cardToEditId, setCardToEditId] = useState<string | null>(null)
+  const [theme, setTheme] = useState<ThemeMode>(() => readTheme())
+
+  useEffect(() => {
+    function onStorage(e: StorageEvent) {
+      if (e.key !== THEME_STORAGE_KEY || e.storageArea !== localStorage) {
+        return
+      }
+      const next = readTheme()
+      applyThemeToDocument(next)
+      setTheme(next)
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
 
   // Persist selection per repository (does not contain secrets).
   useEffect(() => {
@@ -44,6 +60,13 @@ export function AppShell({ session, onLogout }: Props) {
   }
 
   const repoChip = formatRepoChipLabel(session.webUrl)
+
+  function toggleTheme() {
+    const next: ThemeMode = theme === 'dark' ? 'light' : 'dark'
+    writeTheme(next)
+    applyThemeToDocument(next)
+    setTheme(next)
+  }
 
   return (
     <div className="fb-app fb-app-shell">
@@ -74,6 +97,16 @@ export function AppShell({ session, onLogout }: Props) {
           <kbd className="fb-topbar__kbd">/</kbd>
         </div>
         <div className="fb-topbar__actions">
+          <button
+            type="button"
+            className="fb-theme-toggle"
+            data-testid="fb-theme-toggle"
+            onClick={toggleTheme}
+            aria-label={theme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'}
+            title={theme === 'dark' ? 'Tema claro' : 'Tema escuro'}
+          >
+            {theme === 'dark' ? <IconSun /> : <IconMoon />}
+          </button>
           <button
             type="button"
             className="fb-version-badge"
@@ -158,5 +191,33 @@ export function AppShell({ session, onLogout }: Props) {
         }}
       />
     </div>
+  )
+}
+
+function IconSun() {
+  return (
+    <svg className="fb-theme-toggle__icon" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle cx="12" cy="12" r="3.5" stroke="currentColor" strokeWidth="2" />
+      <path
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        d="M12 2v2M12 20v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2 12h2M20 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"
+      />
+    </svg>
+  )
+}
+
+function IconMoon() {
+  return (
+    <svg className="fb-theme-toggle__icon" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+      />
+    </svg>
   )
 }

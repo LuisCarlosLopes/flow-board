@@ -98,3 +98,71 @@
   --duration-fast: 0.16s;
   --transition: 160ms ease;
 }
+
+/**
+ * Light preset — same token names as dark; toggled via data-theme on <html>.
+ */
+html[data-theme='light'] {
+  --bg-base: #eef0f5;
+  --bg-surface: #ffffff;
+  --bg-overlay: #f8f9fc;
+  --bg-subtle: #e4e8f1;
+  --bg-elevated: rgba(15, 23, 42, 0.04);
+  --bg-card: var(--bg-surface);
+  /* Campos de texto / inputs com fundo branco sólido no tema claro */
+  --bg-input: #ffffff;
+  --bg-topbar: rgba(255, 255, 255, 0.92);
+  --bg-board-bar: rgba(238, 240, 245, 0.92);
+
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-tertiary: #64748b;
+  --text-disabled: #94a3b8;
+  --text-on-accent: #f8fafc;
+  --text-code: #5b21b6;
+  --text-accent-soft: #4338ca;
+
+  --border-default: rgba(15, 23, 42, 0.09);
+  --border-muted: rgba(15, 23, 42, 0.08);
+  --border-strong: rgba(15, 23, 42, 0.14);
+  --border-input: rgba(15, 23, 42, 0.14);
+  --border-control: rgba(15, 23, 42, 0.12);
+
+  --accent: oklch(52% 0.2 264);
+  --accent-hover: oklch(48% 0.2 264);
+  --accent-dim: rgba(79, 70, 229, 0.12);
+  --accent-dim-mid: rgba(79, 70, 229, 0.14);
+  --accent-dim-strong: rgba(79, 70, 229, 0.18);
+  --accent-border: rgba(79, 70, 229, 0.45);
+  --accent-border-strong: rgba(67, 56, 202, 0.55);
+  --accent-fg: #ffffff;
+  --accent-gradient-start: #4f46e5;
+  --accent-gradient-end: oklch(48% 0.18 290);
+
+  --success: oklch(48% 0.16 145);
+  --warning: oklch(55% 0.16 75);
+  --danger: oklch(50% 0.2 25);
+  --danger-bg: rgba(220, 38, 38, 0.1);
+  --danger-border: rgba(220, 38, 38, 0.35);
+  --danger-text: #991b1b;
+  --danger-text-strong: #7f1d1d;
+  --danger-hover-bg: rgba(220, 38, 38, 0.14);
+  --warning-bg: rgba(217, 119, 6, 0.12);
+  --warning-border: rgba(217, 119, 6, 0.35);
+  --warning-text: #92400e;
+  --error-field-bg: rgba(220, 90, 70, 0.08);
+  --error-field-border: rgba(185, 28, 28, 0.45);
+  --error-field-text: #9a3412;
+
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08);
+  --shadow-md: 0 4px 20px rgba(15, 23, 42, 0.1);
+  --shadow-lg: 0 12px 40px rgba(15, 23, 42, 0.12);
+  --shadow-card: var(--shadow-sm);
+  --shadow-glow: 0 0 0 1px rgba(79, 70, 229, 0.2), 0 8px 32px rgba(15, 23, 42, 0.08);
+  --shadow-overlay: 0 0 0 2px rgba(79, 70, 229, 0.3);
+
+  --hover-surface: rgba(15, 23, 42, 0.05);
+  --hover-surface-strong: rgba(15, 23, 42, 0.08);
+  --backdrop-overlay: rgba(15, 23, 42, 0.45);
+  --backdrop-blur: blur(12px);
+}
