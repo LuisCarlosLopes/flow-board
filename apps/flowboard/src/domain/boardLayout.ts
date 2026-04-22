@@ -1,3 +1,4 @@
+import { activeCardsForLayout } from './cardArchive'
 import type { Card, Column } from './types'
 
 /** Quando colunas são removidas, realoca cards para a primeira coluna Backlog em `newColumns`. */
@@ -31,6 +32,11 @@ export function buildItemsRecord(columns: Column[], cards: Card[]): Record<strin
     out[col.columnId] = cards.filter((c) => c.columnId === col.columnId).map((c) => c.cardId)
   }
   return out
+}
+
+/** Kanban layout: excludes archived cards from column lists (RF02). */
+export function buildKanbanItemsRecord(columns: Column[], cards: Card[]): Record<string, string[]> {
+  return buildItemsRecord(columns, activeCardsForLayout(cards))
 }
 
 export function itemsRecordToCards(

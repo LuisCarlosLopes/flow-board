@@ -31,6 +31,10 @@ export type Card = {
   /** ISO timestamp when card was created; auto-set to new Date().toISOString() */
   createdAt?: string
   attachments?: CardAttachment[]
+  /** When true, card is hidden from Kanban but kept in board JSON and search. */
+  archived?: boolean
+  /** ISO 8601 when the card was archived (set with archived). */
+  archivedAt?: string
 }
 
 /** Payload from task modal to board persistence (uploads + deletes). */

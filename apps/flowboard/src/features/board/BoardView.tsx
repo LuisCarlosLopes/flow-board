@@ -22,12 +22,18 @@ import {
 import { validateColumnLayout } from '../../domain/boardRules'
 import {
   applyDragEnd,
-  buildItemsRecord,
+  buildKanbanItemsRecord,
   findCardContainer,
   itemsRecordToCards,
   migrateCardsAfterColumnEdit,
 } from '../../domain/boardLayout'
-import { applyCardMove, reconcileBoardTimeState, totalCompletedMs } from '../../domain/timeEngine'
+import { isCardArchived, mergeLayoutCardsWithArchived, sortArchivedByDefault } from '../../domain/cardArchive'
+import {
+  applyArchiveToTimeState,
+  applyCardMove,
+  reconcileBoardTimeState,
+  totalCompletedMs,
+} from '../../domain/timeEngine'
 import type { BoardWorkingHours, Card, CardTaskPayload, Column, ColumnRole, TimeBoardState } from '../../domain/types'
 import { GitHubHttpError } from '../../infrastructure/github/client'
 import { base64ToBlob } from '../../infrastructure/github/fileBlob'
@@ -37,6 +43,7 @@ import { createBoardRepository } from '../../infrastructure/persistence/boardRep
 import type { FlowBoardSession } from '../../infrastructure/session/sessionStore'
 import { appendNewSegments, docToTimeBoardState, writeTimeBoardStateToDoc } from './timeBridge'
 import { deleteRepoPathIfExists, uploadAttachmentBlobs } from './attachmentSync'
+import { clearSearchModalBoardCache } from '../app/SearchModal'
 import { ColumnEditorModal } from './ColumnEditorModal'
 import { CreateTaskModal } from './CreateTaskModal'
 import './BoardView.css'
@@ -50,9 +57,18 @@ type Props = {
   cardToEditId?: string | null
   /** Callback when card editing is complete */
   onCardEditComplete?: () => void
+  /** Notifies shell after board JSON was saved and reloaded (invalidates search modal cache generation). */
+  onBoardPersisted?: () => void
 }
 
-export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEditId, onCardEditComplete }: Props) {
+export function BoardView({
+  session,
+  boardId,
+  columnEditorMenuTick = 0,
+  cardToEditId,
+  onCardEditComplete,
+  onBoardPersisted,
+}: Props) {
   const client = useMemo(() => createClientFromSession(session), [session])
   const repo = useMemo(() => createBoardRepository(client), [client])
 
@@ -66,6 +82,7 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
   type TaskModalState = 'closed' | { mode: 'create'; columnId: string } | { mode: 'edit'; card: Card }
   const [taskModal, setTaskModal] = useState<TaskModalState>('closed')
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [archivedExpanded, setArchivedExpanded] = useState(false)
   /** Initialize to current tick so remount (ex. trocar aba) não reabre o modal só porque o tick global já era > 0. */
   const lastColumnEditorMenuTick = useRef(columnEditorMenuTick)
   const prevBoardIdForColumnMenu = useRef(boardId)
@@ -162,8 +179,13 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
     if (!doc) {
       return {}
     }
-    return buildItemsRecord(doc.columns, doc.cards)
+    return buildKanbanItemsRecord(doc.columns, doc.cards)
   }, [doc])
+
+  const archivedList = useMemo(
+    () => (doc ? sortArchivedByDefault(doc.cards.filter(isCardArchived)) : []),
+    [doc],
+  )
 
   const getAttachmentBlob = useCallback(
     async (storagePath: string, mimeType?: string) => {
@@ -184,6 +206,8 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
           setDoc(got.doc)
           setSha(got.sha)
           setTimeState(docToTimeBoardState(got.doc))
+          clearSearchModalBoardCache()
+          onBoardPersisted?.()
         }
       } catch (e) {
         if (e instanceof GitHubHttpError && e.status === 409) {
@@ -197,6 +221,8 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
             setDoc(got.doc)
             setSha(got.sha)
             setTimeState(docToTimeBoardState(got.doc))
+            clearSearchModalBoardCache()
+            onBoardPersisted?.()
           }
         } catch {
           /* ignore */
@@ -205,7 +231,7 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
         setSaving(false)
       }
     },
-    [boardId, repo, sha],
+    [boardId, onBoardPersisted, repo, sha],
   )
 
   const docRef = useRef(doc)
@@ -257,7 +283,7 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
     const toCol = findCardContainer(nextItems, movedCardId)
     const nextDoc = structuredClone(doc)
     const newCards = itemsRecordToCards(nextDoc.columns, nextItems, cardById)
-    nextDoc.cards = newCards
+    nextDoc.cards = mergeLayoutCardsWithArchived(doc.cards, newCards)
 
     let nextTime = timeState
     if (fromCol && toCol && fromCol !== toCol) {
@@ -417,6 +443,81 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
     })()
   }
 
+  function handleArchiveCard(card: Card) {
+    if (!window.confirm(`Arquivar a tarefa "${card.title}"? Ela sai do quadro e vai para Arquivados.`)) {
+      return
+    }
+    const cardIdSnapshot = card.cardId
+    const docSnap = docRef.current
+    const timeSnap = timeStateRef.current
+    if (!docSnap) {
+      return
+    }
+    const found = docSnap.cards.find((c) => c.cardId === cardIdSnapshot)
+    if (!found || isCardArchived(found)) {
+      return
+    }
+    void (async () => {
+      const nextDoc = structuredClone(docSnap)
+      const idx = nextDoc.cards.findIndex((c) => c.cardId === cardIdSnapshot)
+      if (idx < 0) {
+        return
+      }
+      const snapshot = nextDoc.cards[idx]!
+      const nextTime = applyArchiveToTimeState(
+        timeSnap,
+        snapshot.cardId,
+        nextDoc.columns,
+        snapshot.columnId,
+        Date.now(),
+        nextDoc.workingHours,
+      )
+      appendNewSegments(nextDoc, timeSnap, nextTime)
+      writeTimeBoardStateToDoc(nextDoc, nextTime)
+      nextDoc.cards[idx] = {
+        ...snapshot,
+        archived: true,
+        archivedAt: new Date().toISOString(),
+      }
+      setTimeState(nextTime)
+      setDoc(nextDoc)
+      setTaskModal('closed')
+      onCardEditComplete?.()
+      await saveDocument(nextDoc)
+    })()
+  }
+
+  function handleUnarchiveCard(card: Card) {
+    const docSnap = docRef.current
+    const timeSnap = timeStateRef.current
+    if (!docSnap || !isCardArchived(card)) {
+      return
+    }
+    const nextDoc = structuredClone(docSnap)
+    const idx = nextDoc.cards.findIndex((c) => c.cardId === card.cardId)
+    if (idx < 0) {
+      return
+    }
+    const snapshot = nextDoc.cards[idx]!
+    nextDoc.cards[idx] = {
+      ...snapshot,
+      archived: undefined,
+      archivedAt: undefined,
+    }
+    const prevTime = timeSnap
+    void (async () => {
+      const nowMs = Date.now()
+      const nextTime = reconcileBoardTimeState(prevTime, nextDoc.cards, nextDoc.columns, nowMs, nextDoc.workingHours)
+      appendNewSegments(nextDoc, prevTime, nextTime)
+      writeTimeBoardStateToDoc(nextDoc, nextTime)
+      setTimeState(nextTime)
+      setDoc(nextDoc)
+      setTaskModal('closed')
+      onCardEditComplete?.()
+      await saveDocument(nextDoc)
+    })()
+  }
+
   function handleColumnApply(cols: Column[], workingHours?: BoardWorkingHours | null) {
     if (!doc) {
       return
@@ -485,6 +586,7 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
                   saving={saving}
                   onEdit={handleEditCard}
                   onDelete={handleDeleteCard}
+                  onArchive={handleArchiveCard}
                   onAddCard={handleAddCardToColumn}
                 />
               ))}
@@ -499,6 +601,49 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
           ) : null}
         </DragOverlay>
       </DndContext>
+
+      {archivedList.length > 0 ? (
+        <section className="fb-archived" aria-label="Tarefas arquivadas">
+          <button
+            type="button"
+            className="fb-archived__toggle"
+            data-testid="archived-section-toggle"
+            aria-expanded={archivedExpanded}
+            onClick={() => setArchivedExpanded((v) => !v)}
+          >
+            Arquivados ({archivedList.length})
+          </button>
+          {archivedExpanded ? (
+            <ul className="fb-archived__list">
+              {archivedList.map((c) => (
+                <li key={c.cardId} className="fb-archived__row" data-testid={`archived-row-${c.cardId}`}>
+                  <span className="fb-archived__title">{c.title}</span>
+                  <div className="fb-archived__actions">
+                    <button
+                      type="button"
+                      className="fb-archived__btn"
+                      data-testid={`archived-restore-${c.cardId}`}
+                      disabled={saving}
+                      onClick={() => handleUnarchiveCard(c)}
+                    >
+                      Restaurar
+                    </button>
+                    <button
+                      type="button"
+                      className="fb-archived__btn fb-archived__btn--danger"
+                      data-testid={`archived-delete-${c.cardId}`}
+                      disabled={saving}
+                      onClick={() => handleDeleteCard(c)}
+                    >
+                      Excluir
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </section>
+      ) : null}
 
       {colModal ? (
         <ColumnEditorModal
@@ -528,6 +673,8 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
           onSubmit={taskModal.mode === 'create' ? handleCreateTask : handleUpdateTask}
           editingCard={taskModal.mode === 'create' ? null : taskModal.card}
           defaultColumnId={taskModal.mode === 'create' ? taskModal.columnId : undefined}
+          onArchiveCard={handleArchiveCard}
+          onUnarchiveCard={handleUnarchiveCard}
         />
       ) : null}
     </div>
@@ -542,6 +689,7 @@ function BoardColumn({
   saving,
   onEdit,
   onDelete,
+  onArchive,
   onAddCard,
 }: {
   column: Column
@@ -551,6 +699,7 @@ function BoardColumn({
   saving: boolean
   onEdit: (c: Card) => void
   onDelete: (c: Card) => void
+  onArchive: (c: Card) => void
   onAddCard: (columnId: string) => void
 }) {
   const { setNodeRef } = useDroppable({ id: column.columnId })
@@ -587,6 +736,7 @@ function BoardColumn({
             timeState={timeState}
             onEdit={onEdit}
             onDelete={onDelete}
+            onArchive={onArchive}
           />
         ) : (
           <div className="fb-board__col-body">
@@ -600,6 +750,7 @@ function BoardColumn({
                   timeState={timeState}
                   onEdit={() => onEdit(card)}
                   onDelete={() => onDelete(card)}
+                  onArchive={() => onArchive(card)}
                 />
               ) : null
             })}
@@ -664,12 +815,14 @@ function SortableCard({
   timeState,
   onEdit,
   onDelete,
+  onArchive,
 }: {
   card: Card
   columnRole: ColumnRole
   timeState: TimeBoardState
   onEdit: () => void
   onDelete: () => void
+  onArchive: () => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: card.cardId,
@@ -795,6 +948,33 @@ function SortableCard({
         </button>
         <button
           type="button"
+          className="fb-card__btn"
+          data-testid={`card-archive-${card.cardId}`}
+          aria-label="Arquivar card"
+          title="Arquivar"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation()
+            onArchive()
+          }}
+        >
+          <svg
+            className="fb-card__btn-svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <path d="M21 8v13H3V8" />
+            <path d="M1 3h22v5H1z" />
+            <path d="M10 12h4" />
+          </svg>
+        </button>
+        <button
+          type="button"
           className="fb-card__btn fb-card__btn--danger"
           data-testid={`card-delete-${card.cardId}`}
           aria-label="Excluir card"
@@ -834,6 +1014,7 @@ function VirtualizedDoneColumnBody({
   timeState,
   onEdit,
   onDelete,
+  onArchive,
 }: {
   cardIds: string[]
   cardById: Map<string, Card>
@@ -841,6 +1022,7 @@ function VirtualizedDoneColumnBody({
   timeState: TimeBoardState
   onEdit: (c: Card) => void
   onDelete: (c: Card) => void
+  onArchive: (c: Card) => void
 }) {
   const parentRef = useRef<HTMLDivElement>(null)
 
@@ -898,6 +1080,7 @@ function VirtualizedDoneColumnBody({
                 timeState={timeState}
                 onEdit={() => onEdit(card)}
                 onDelete={() => onDelete(card)}
+                onArchive={() => onArchive(card)}
               />
             </div>
           )

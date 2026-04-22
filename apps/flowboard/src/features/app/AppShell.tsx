@@ -26,6 +26,7 @@ export function AppShell({ session, onLogout }: Props) {
   const [columnEditorMenuTick, setColumnEditorMenuTick] = useState(0)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [cardToEditId, setCardToEditId] = useState<string | null>(null)
+  const [boardPersistGeneration, setBoardPersistGeneration] = useState(0)
   const [theme, setTheme] = useState<ThemeMode>(() => readTheme())
 
   useEffect(() => {
@@ -48,6 +49,10 @@ export function AppShell({ session, onLogout }: Props) {
 
   const requestOpenColumnEditor = useCallback(() => {
     setColumnEditorMenuTick((n) => n + 1)
+  }, [])
+
+  const onBoardPersisted = useCallback(() => {
+    setBoardPersistGeneration((g) => g + 1)
   }, [])
 
   // Register search hotkey listener
@@ -173,6 +178,7 @@ export function AppShell({ session, onLogout }: Props) {
             columnEditorMenuTick={columnEditorMenuTick}
             cardToEditId={cardToEditId}
             onCardEditComplete={() => setCardToEditId(null)}
+            onBoardPersisted={onBoardPersisted}
           />
         ) : null}
         {mainView === 'hours' ? (
@@ -185,6 +191,7 @@ export function AppShell({ session, onLogout }: Props) {
         onClose={() => setIsSearchOpen(false)}
         boardId={selectedBoardId || ''}
         session={session}
+        boardPersistGeneration={boardPersistGeneration}
         onSelectResult={(cardId) => {
           setIsSearchOpen(false)
           setCardToEditId(cardId)

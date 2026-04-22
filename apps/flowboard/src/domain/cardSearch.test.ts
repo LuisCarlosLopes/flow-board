@@ -333,6 +333,25 @@ describe('searchCards', () => {
     })
   })
 
+  describe('archived metadata', () => {
+    it('includes archived: true and same score as active twin for same title match', () => {
+      const active: Card = { cardId: 'a', title: 'hello world', columnId: 'col1' }
+      const archived: Card = {
+        cardId: 'b',
+        title: 'hello moon',
+        columnId: 'col1',
+        archived: true,
+        archivedAt: '2026-04-22T10:00:00.000Z',
+      }
+      const { results } = searchCardsWithTotal('hello', [active, archived], 10)
+      const ra = results.find((r) => r.cardId === 'a')
+      const rb = results.find((r) => r.cardId === 'b')
+      expect(ra?.archived).toBeUndefined()
+      expect(rb?.archived).toBe(true)
+      expect(rb?.score).toBe(ra?.score)
+    })
+  })
+
   describe('limits', () => {
     it('should respect maxResults parameter (default 100)', () => {
       const manyCards = Array.from({ length: 150 }, (_, i) => ({

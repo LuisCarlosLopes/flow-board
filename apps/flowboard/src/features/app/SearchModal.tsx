@@ -19,14 +19,16 @@ interface SearchModalProps {
   onClose: () => void
   boardId: string
   session: FlowBoardSession
+  /** Incremented after each successful board persist so search cache cannot serve pre-save snapshots. */
+  boardPersistGeneration?: number
   onSelectResult?: (cardId: string) => void
 }
 
-// In-memory board cache to avoid reloading on modal close/reopen (scoped per GitHub repo + board)
+// In-memory board cache to avoid reloading on modal close/reopen (scoped per GitHub repo + board + persist gen)
 const boardCache = new Map<string, { doc: BoardDocumentJson; timestamp: number }>()
 
-function boardCacheKey(session: FlowBoardSession, boardId: string): string {
-  return `${session.owner}/${session.repo}/${boardId}`
+function boardCacheKey(session: FlowBoardSession, boardId: string, boardPersistGeneration: number): string {
+  return `${session.owner}/${session.repo}/${boardId}/g${boardPersistGeneration}`
 }
 
 /** Clears the modal board cache (for tests and rare session resets). */
@@ -63,6 +65,7 @@ export function SearchModal({
   onClose,
   boardId,
   session,
+  boardPersistGeneration = 0,
   onSelectResult,
 }: SearchModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
@@ -90,7 +93,7 @@ export function SearchModal({
         setError(null)
 
         // Check cache first (1-hour TTL)
-        const cacheKey = boardCacheKey(session, boardId)
+        const cacheKey = boardCacheKey(session, boardId, boardPersistGeneration)
         const cached = boardCache.get(cacheKey)
         const now = Date.now()
         const CACHE_TTL = 60 * 60 * 1000 // 1 hour
@@ -143,7 +146,7 @@ export function SearchModal({
         abortControllerRef.current.abort()
       }
     }
-  }, [isOpen, boardId, session])
+  }, [isOpen, boardId, session, boardPersistGeneration])
 
   // Auto-focus input when modal opens
   useEffect(() => {
@@ -326,8 +329,18 @@ export function SearchModal({
                   >
                     <div className="fb-sm-result-header">
                       <h3 className="fb-sm-result-title">{result.title}</h3>
-                      <div className="fb-sm-result-score">
-                        <span className="fb-sm-score-badge">{result.score}</span>
+                      <div className="fb-sm-result-header-badges">
+                        {result.archived ? (
+                          <span
+                            className="fb-sm-archived-badge"
+                            data-testid={`search-result-archived-${result.cardId}`}
+                          >
+                            Arquivado
+                          </span>
+                        ) : null}
+                        <div className="fb-sm-result-score">
+                          <span className="fb-sm-score-badge">{result.score}</span>
+                        </div>
                       </div>
                     </div>
 

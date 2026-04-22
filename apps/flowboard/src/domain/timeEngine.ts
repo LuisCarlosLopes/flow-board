@@ -1,3 +1,4 @@
+import { isCardArchived } from './cardArchive'
 import type { BoardWorkingHours, Card, CardTimeState, Column, ColumnRole, TimeBoardState } from './types'
 import { materializeCountableIntervals, partitionActiveWork, snapStartForEnteringInProgress } from './workingHours'
 
@@ -67,7 +68,43 @@ export function applyCardMove(
   }
 }
 
-/** D2: card fora de in_progress não mantém activeStartMs. */
+/**
+ * When archiving: same countable closure as in_progress → done when a segment is open;
+ * otherwise clear activeStartMs without adding segments (R03-style discard).
+ */
+export function applyArchiveToTimeState(
+  state: TimeBoardState,
+  cardId: string,
+  columns: Column[],
+  cardColumnId: string,
+  nowMs: number,
+  wh?: BoardWorkingHours | null,
+): TimeBoardState {
+  const role = roleOf(columns, cardColumnId)
+  if (!role) {
+    return { ...state }
+  }
+
+  const card = ensureCard(state, cardId)
+
+  if (role === 'in_progress') {
+    const start = card.activeStartMs
+    if (start !== undefined) {
+      const segs = materializeCountableIntervals(start, nowMs, wh)
+      card.completed = [...card.completed, ...segs]
+    }
+    card.activeStartMs = undefined
+  } else {
+    card.activeStartMs = undefined
+  }
+
+  return {
+    ...state,
+    [cardId]: card,
+  }
+}
+
+/** D2: card fora de in_progress não mantém activeStartMs. Archived cards never keep an open segment. */
 export function reconcileTimeStateWithCardPositions(
   cards: Card[],
   columns: Column[],
@@ -75,6 +112,14 @@ export function reconcileTimeStateWithCardPositions(
 ): TimeBoardState {
   const next = { ...state }
   for (const card of cards) {
+    if (isCardArchived(card)) {
+      const c = ensureCard(next, card.cardId)
+      if (c.activeStartMs !== undefined) {
+        c.activeStartMs = undefined
+        next[card.cardId] = c
+      }
+      continue
+    }
     const role = roleOf(columns, card.columnId)
     if (role !== 'in_progress') {
       const c = ensureCard(next, card.cardId)
@@ -97,6 +142,7 @@ export function reconcileActiveTimers(
 ): TimeBoardState {
   const next = { ...state }
   for (const card of cards) {
+    if (isCardArchived(card)) continue
     const role = roleOf(columns, card.columnId)
     if (role !== 'in_progress') continue
     const c = ensureCard(next, card.cardId)

@@ -1,3 +1,4 @@
+import { isCardArchived } from './cardArchive'
 import type { Card } from './types'
 
 /**
@@ -12,6 +13,8 @@ export type CardSearchResult = {
   plannedDate?: string
   plannedHours?: number
   createdAt?: string
+  /** True when source card has archived === true (R-SEARCH01). */
+  archived?: boolean
 }
 
 /**
@@ -115,6 +118,7 @@ export function searchCardsWithTotal(
         plannedDate: card.plannedDate,
         plannedHours: card.plannedHours,
         createdAt: card.createdAt,
+        ...(isCardArchived(card) ? { archived: true } : {}),
       })
     }
   }
