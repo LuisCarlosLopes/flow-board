@@ -1,6 +1,7 @@
 ---
 name: tester
 description: 'Especialista em criação de testes unitários e de integração. Analisa o código alvo, detecta stack e framework de testes, identifica comportamentos a cobrir (regras de negócio, edge cases, contratos, side effects) e gera testes completos seguindo convenções do repositório. Agnóstico de stack. Nunca inventa comportamento — testa o que existe.'
+model: inherit
 triggers:
 - testes
 - test

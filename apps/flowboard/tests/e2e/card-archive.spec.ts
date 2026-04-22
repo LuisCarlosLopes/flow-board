@@ -55,8 +55,17 @@ test.describe.serial('card-archive E2E', () => {
     })
 
     // Kanban removes the card from the column before `saveDocument` finishes; `/archived` loads from GitHub.
-    await expect(page.getByText('Salvando…')).toHaveCount(0, { timeout: 60_000 })
+    await expect(page.getByTestId('board-page-saving')).toHaveCount(0, { timeout: 60_000 })
 
+    await page.getByTestId('nav-archived').click()
+    await expect(page).toHaveURL(/\/archived$/)
+    await expect(page.getByTestId('archived-back-to-board')).toBeVisible()
+    await expect(page.getByTestId(`archived-row-${cardId}`).getByText(taskTitle, { exact: true })).toBeVisible({
+      timeout: 45_000,
+    })
+
+    await page.getByTestId('archived-back-to-board').click()
+    await expect(page).toHaveURL(/\/?$/)
     await page.getByTestId('nav-archived').click()
     await expect(page).toHaveURL(/\/archived$/)
     await expect(page.getByTestId(`archived-row-${cardId}`).getByText(taskTitle, { exact: true })).toBeVisible({

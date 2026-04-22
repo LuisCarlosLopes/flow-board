@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FlowBoard — Protótipo · Arquivados</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700&family=Sora:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* --- Tokens: preset tech-dark (devtools / infra) — fonte: frontend-design color-presets --- */
+      :root {
+        --bg-base: #0d0f14;
+        --bg-surface: #141720;
+        --bg-overlay: #1c2030;
+        --bg-subtle: #252a3a;
+
+        --text-primary: #eef0f6;
+        --text-secondary: #8892aa;
+        --text-disabled: #4a526a;
+
+        --border-default: rgba(255, 255, 255, 0.07);
+        --border-strong: rgba(255, 255, 255, 0.14);
+
+        --accent: oklch(62% 0.2 264);
+        --accent-hover: oklch(67% 0.22 264);
+        --accent-dim: rgba(99, 102, 241, 0.12);
+        --accent-fg: #ffffff;
+
+        --success: oklch(60% 0.18 145);
+        --danger: oklch(58% 0.22 25);
+        --danger-bg: oklch(58% 0.22 25 / 0.12);
+        --danger-border: oklch(58% 0.22 25 / 0.35);
+
+        --font-display: "Sora", system-ui, sans-serif;
+        --font-body: "Plus Jakarta Sans", system-ui, sans-serif;
+
+        --space-1: 4px;
+        --space-2: 8px;
+        --space-3: 16px;
+        --space-4: 24px;
+        --space-5: 32px;
+        --space-6: 48px;
+
+        --radius-sm: 4px;
+        --radius-md: 8px;
+        --radius-lg: 12px;
+
+        --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 8px 24px rgba(0, 0, 0, 0.35);
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: var(--font-body);
+        font-size: 15px;
+        line-height: 1.5;
+        color: var(--text-primary);
+        background: var(--bg-base);
+        background-image: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.04) 1px, transparent 0);
+        background-size: 24px 24px;
+      }
+
+      /* --- Shell mínimo (contexto) --- */
+      .proto-shell {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: var(--space-4) var(--space-3);
+      }
+
+      .proto-shell__bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-3);
+        padding-bottom: var(--space-4);
+        border-bottom: 1px solid var(--border-default);
+        margin-bottom: var(--space-5);
+      }
+
+      .proto-brand {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+        font-family: var(--font-display);
+        font-weight: 600;
+        font-size: 1.125rem;
+        letter-spacing: -0.02em;
+      }
+
+      .proto-brand__mark {
+        width: 32px;
+        height: 32px;
+        border-radius: var(--radius-md);
+        background: var(--accent-dim);
+        border: 1px solid var(--border-strong);
+        display: grid;
+        place-items: center;
+        color: var(--accent);
+        font-size: 0.875rem;
+        font-weight: 700;
+      }
+
+      .proto-tabs {
+        display: flex;
+        gap: var(--space-1);
+        padding: var(--space-1);
+        background: var(--bg-surface);
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border-default);
+      }
+
+      .proto-tab {
+        padding: var(--space-2) var(--space-3);
+        border: none;
+        border-radius: var(--radius-sm);
+        background: transparent;
+        color: var(--text-secondary);
+        font-family: var(--font-body);
+        font-size: 0.8125rem;
+        font-weight: 500;
+        cursor: pointer;
+      }
+
+      .proto-tab:hover {
+        color: var(--text-primary);
+      }
+
+      .proto-tab--active {
+        background: var(--bg-overlay);
+        color: var(--text-primary);
+        box-shadow: 0 0 0 1px var(--border-strong);
+      }
+
+      /* --- Página Arquivados --- */
+      .archived-page {
+        width: 100%;
+      }
+
+      .archived-page__toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: var(--space-3);
+        margin-bottom: var(--space-4);
+      }
+
+      .archived-page__title-block {
+        min-width: 0;
+      }
+
+      .archived-page__eyebrow {
+        margin: 0 0 var(--space-1);
+        font-size: 0.6875rem;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-secondary);
+      }
+
+      .archived-page__title {
+        margin: 0;
+        font-family: var(--font-display);
+        font-weight: 700;
+        font-size: clamp(1.5rem, 4vw, 1.875rem);
+        letter-spacing: -0.03em;
+        line-height: 1.2;
+      }
+
+      .archived-page__count {
+        font-weight: 600;
+        color: var(--text-secondary);
+        font-size: 0.95em;
+      }
+
+      .archived-page__subtitle {
+        margin: var(--space-2) 0 0;
+        font-size: 0.9375rem;
+        color: var(--text-secondary);
+        max-width: 42ch;
+      }
+
+      .link-back {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-2);
+        padding: var(--space-2) var(--space-3);
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border-default);
+        background: var(--bg-surface);
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+        font-weight: 500;
+        text-decoration: none;
+        transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+        white-space: nowrap;
+      }
+
+      .link-back:hover {
+        color: var(--text-primary);
+        border-color: var(--border-strong);
+        background: var(--bg-overlay);
+      }
+
+      .link-back:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      .link-back svg {
+        flex-shrink: 0;
+        opacity: 0.85;
+      }
+
+      .archived-panel {
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--border-default);
+        background: var(--bg-surface);
+        box-shadow: var(--shadow-card);
+        overflow: hidden;
+      }
+
+      .archived-panel__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-3);
+        padding: var(--space-3) var(--space-4);
+        border-bottom: 1px solid var(--border-default);
+        background: linear-gradient(180deg, var(--bg-overlay) 0%, var(--bg-surface) 100%);
+      }
+
+      .archived-panel__label {
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+      }
+
+      .archived-list {
+        list-style: none;
+        margin: 0;
+        padding: var(--space-3);
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-2);
+      }
+
+      .archived-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: var(--space-3);
+        align-items: center;
+        padding: var(--space-3) var(--space-4);
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border-default);
+        background: var(--bg-subtle);
+        transition: border-color 0.15s ease;
+      }
+
+      @media (max-width: 640px) {
+        .archived-row {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .archived-row:hover {
+        border-color: var(--border-strong);
+      }
+
+      .archived-row__main {
+        min-width: 0;
+      }
+
+      .archived-row__title {
+        display: block;
+        font-weight: 600;
+        font-size: 0.9375rem;
+        color: var(--text-primary);
+        margin-bottom: var(--space-1);
+      }
+
+      .archived-row__meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-2) var(--space-4);
+        font-size: 0.8125rem;
+        color: var(--text-secondary);
+      }
+
+      .archived-row__meta span {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-1);
+      }
+
+      .archived-row__meta-dot::before {
+        content: "";
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: var(--text-disabled);
+        display: inline-block;
+        margin-right: var(--space-2);
+      }
+
+      .archived-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-2);
+        justify-content: flex-end;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 40px;
+        padding: 0 var(--space-3);
+        border-radius: var(--radius-md);
+        font-family: var(--font-body);
+        font-size: 0.8125rem;
+        font-weight: 600;
+        cursor: pointer;
+        border: 1px solid transparent;
+        transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+      }
+
+      .btn:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      .btn--primary {
+        background: var(--accent);
+        color: var(--accent-fg);
+        border-color: transparent;
+      }
+
+      .btn--primary:hover {
+        background: var(--accent-hover);
+      }
+
+      .btn--ghost-danger {
+        background: transparent;
+        color: var(--danger);
+        border-color: var(--danger-border);
+      }
+
+      .btn--ghost-danger:hover {
+        background: var(--danger-bg);
+      }
+
+      /* --- Estados: empty / loading --- */
+      .archived-empty,
+      .archived-loading {
+        padding: var(--space-6) var(--space-4);
+        text-align: center;
+        color: var(--text-secondary);
+        font-size: 0.9375rem;
+      }
+
+      .archived-empty strong {
+        display: block;
+        font-family: var(--font-display);
+        font-size: 1.125rem;
+        color: var(--text-primary);
+        margin-bottom: var(--space-2);
+      }
+
+      .archived-loading__bar {
+        width: min(200px, 60%);
+        height: 4px;
+        margin: var(--space-3) auto 0;
+        border-radius: var(--radius-full);
+        background: var(--bg-subtle);
+        overflow: hidden;
+      }
+
+      .archived-loading__bar::after {
+        content: "";
+        display: block;
+        width: 40%;
+        height: 100%;
+        background: var(--accent);
+        border-radius: inherit;
+        animation: proto-shimmer 1.2s ease-in-out infinite;
+      }
+
+      @keyframes proto-shimmer {
+        0% {
+          transform: translateX(-100%);
+        }
+        100% {
+          transform: translateX(350%);
+        }
+      }
+
+      /* --- Demo: toggles --- */
+      .proto-demo {
+        margin-top: var(--space-6);
+        padding-top: var(--space-4);
+        border-top: 1px dashed var(--border-default);
+      }
+
+      .proto-demo__label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--text-disabled);
+        margin-bottom: var(--space-2);
+      }
+
+      .proto-demo__buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-2);
+      }
+
+      .proto-chip {
+        padding: var(--space-1) var(--space-3);
+        border-radius: var(--radius-full);
+        border: 1px solid var(--border-default);
+        background: var(--bg-surface);
+        color: var(--text-secondary);
+        font-size: 0.8125rem;
+        cursor: pointer;
+        font-family: var(--font-body);
+      }
+
+      .proto-chip:hover,
+      .proto-chip--on {
+        border-color: var(--accent);
+        color: var(--text-primary);
+        background: var(--accent-dim);
+      }
+
+      [hidden] {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="proto-shell">
+      <header class="proto-shell__bar" aria-label="Contexto do app">
+        <div class="proto-brand">
+          <span class="proto-brand__mark" aria-hidden="true">F</span>
+          FlowBoard
+        </div>
+        <nav class="proto-tabs" aria-label="Vistas">
+          <button type="button" class="proto-tab">Quadro</button>
+          <button type="button" class="proto-tab">Horas no período</button>
+          <button type="button" class="proto-tab proto-tab--active">Arquivados</button>
+        </nav>
+      </header>
+
+      <main class="archived-page" id="view-default">
+        <div class="archived-page__toolbar">
+          <div class="archived-page__title-block">
+            <p class="archived-page__eyebrow">Quadro ativo · Code Steer</p>
+            <h1 class="archived-page__title">
+              Arquivados <span class="archived-page__count" id="title-count">(3)</span>
+            </h1>
+            <p class="archived-page__subtitle">
+              Cards fora do Kanban permanecem aqui. Restaure para voltar à coluna de origem ou exclua
+              definitivamente.
+            </p>
+          </div>
+          <a class="link-back" href="#" data-testid="archived-back-to-board">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+            Voltar ao quadro
+          </a>
+        </div>
+
+        <section class="archived-panel" aria-label="Lista de tarefas arquivadas">
+          <div class="archived-panel__header">
+            <span class="archived-panel__label">Histórico neste quadro</span>
+          </div>
+          <ul class="archived-list">
+            <li class="archived-row">
+              <div class="archived-row__main">
+                <span class="archived-row__title">Otimização dos Agents</span>
+                <div class="archived-row__meta">
+                  <span>Coluna: <strong style="color: var(--text-primary); font-weight: 500">Em progresso</strong></span>
+                  <span class="archived-row__meta-dot">Arquivado em 18/04/2026, 14:32</span>
+                </div>
+              </div>
+              <div class="archived-actions">
+                <button type="button" class="btn btn--primary">Restaurar</button>
+                <button type="button" class="btn btn--ghost-danger">Excluir</button>
+              </div>
+            </li>
+            <li class="archived-row">
+              <div class="archived-row__main">
+                <span class="archived-row__title">Documentar API do board</span>
+                <div class="archived-row__meta">
+                  <span>Coluna: <strong style="color: var(--text-primary); font-weight: 500">Backlog</strong></span>
+                  <span class="archived-row__meta-dot">Arquivado em 12/04/2026</span>
+                </div>
+              </div>
+              <div class="archived-actions">
+                <button type="button" class="btn btn--primary">Restaurar</button>
+                <button type="button" class="btn btn--ghost-danger">Excluir</button>
+              </div>
+            </li>
+            <li class="archived-row">
+              <div class="archived-row__main">
+                <span class="archived-row__title">Revisão de permissões GitHub</span>
+                <div class="archived-row__meta">
+                  <span>Coluna: <strong style="color: var(--text-primary); font-weight: 500">Concluído</strong></span>
+                  <span class="archived-row__meta-dot">Sem data de arquivamento</span>
+                </div>
+              </div>
+              <div class="archived-actions">
+                <button type="button" class="btn btn--primary">Restaurar</button>
+                <button type="button" class="btn btn--ghost-danger">Excluir</button>
+              </div>
+            </li>
+          </ul>
+        </section>
+      </main>
+
+      <main class="archived-page" id="view-empty" hidden>
+        <div class="archived-page__toolbar">
+          <div class="archived-page__title-block">
+            <p class="archived-page__eyebrow">Quadro ativo · Code Steer</p>
+            <h1 class="archived-page__title">Arquivados <span class="archived-page__count">(0)</span></h1>
+            <p class="archived-page__subtitle">Nada arquivado por aqui — o quadro está só com trabalho ativo.</p>
+          </div>
+          <a class="link-back" href="#">← Voltar ao quadro</a>
+        </div>
+        <section class="archived-panel">
+          <div class="archived-empty" role="status">
+            <strong>Nenhum card arquivado</strong>
+            Arquivue um card pelo menu do cartão no Kanban para vê-lo listado aqui.
+          </div>
+        </section>
+      </main>
+
+      <main class="archived-page" id="view-loading" hidden>
+        <div class="archived-page__toolbar">
+          <div class="archived-page__title-block">
+            <p class="archived-page__eyebrow">Quadro ativo</p>
+            <h1 class="archived-page__title">Arquivados</h1>
+          </div>
+        </div>
+        <section class="archived-panel">
+          <div class="archived-loading" role="status" aria-live="polite">
+            A carregar arquivados…
+            <div class="archived-loading__bar" aria-hidden="true"></div>
+          </div>
+        </section>
+      </main>
+
+      <section class="proto-demo" aria-label="Demonstração de estados (protótipo)">
+        <p class="proto-demo__label">Estados do protótipo</p>
+        <div class="proto-demo__buttons">
+          <button type="button" class="proto-chip proto-chip--on" data-show="default">Com itens</button>
+          <button type="button" class="proto-chip" data-show="empty">Vazio</button>
+          <button type="button" class="proto-chip" data-show="loading">A carregar</button>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      document.querySelectorAll("[data-show]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const id = btn.getAttribute("data-show");
+          document.querySelectorAll(".archived-page").forEach((el) => {
+            el.hidden = el.id !== "view-" + id;
+          });
+          document.querySelectorAll("[data-show]").forEach((b) => b.classList.remove("proto-chip--on"));
+          btn.classList.add("proto-chip--on");
+        });
+      });
+    </script>
+  </body>
+</html>

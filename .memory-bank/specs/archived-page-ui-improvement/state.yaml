@@ -1,0 +1,206 @@
+title: "Melhoria visual e de UX da página Arquivados"
+slug: archived-page-ui-improvement
+created_at: "2026-04-22"
+context: >
+  FlowBoard — página ArchivedCardsPage já entregue em archived-cards-page (rota dedicada).
+  Feedback visual: baixa densidade de informação, título fraco, muito espaço vazio,
+  hierarquia Restaurar vs Excluir, falta de metadados úteis na lista (sem mudar modelo de dados).
+
+objective: >
+  Elevar a tela de arquivados com layout mais confiante, hierarquia tipográfica clara,
+  metadados derivados do documento existente (coluna de origem, data de arquivamento quando houver),
+  estados vazio/carregando mais polidos e navegação contextual para o quadro — alinhado ao design
+  system atual (tokens CSS), à skill designer (preset tech-dark / dev tool) e à referência visual
+  canónica em prototype-archived-page.html (área de conteúdo da página, sem duplicar shell do AppShell).
+
+acceptance_criteria:
+  - "Lista de arquivados exibe pelo menos título + coluna de origem (label da coluna) e data de arquivamento quando archivedAt estiver definido; formatação legível em pt-BR; estrutura e densidade alinhadas ao protótipo HTML (Sec. 2.5 do planner-TASK.md)."
+  - "Cabeçalho da página ou da secção principal tem hierarquia visual clara (eyebrow opcional, título proeminente + contagem + subtítulo explicativo); painel com cabeçalho tipo histórico; layout usa melhor a área útil sem violar padrões do AppShell."
+  - "Botão Restaurar tem peso visual primário ou secundário estável; Excluir permanece destrutivo mas não domina a linha."
+  - "Existe atalho explícito de navegação para voltar ao quadro (texto/link ou botão) coerente com React Router já usado no app."
+  - "Sem novos campos no JSON do board nem mudanças de contrato de persistência; apenas leitura de columnId, columns[], archivedAt."
+  - "Testes E2E existentes de arquivados ajustados ou estendidos se seletores ou cópia mudarem; Vitest/build verdes."
+
+scope:
+  in:
+    - "ArchivedCardsPage.tsx e ArchivedCardsPage.css (e imports mínimos)."
+    - "AppShell ou rota apenas se necessário para o link Voltar ao quadro (preferir Link/useNavigate dentro da própria página)."
+    - "Opcional: filtro de busca local por título (client-side) se couber no TASK sem inflar escopo."
+  out:
+    - "Arquivamento ou exclusão em massa."
+    - "Novos campos em Card ou BoardDocumentJson."
+    - "Etiquetas/tags (não existem no modelo Card hoje)."
+
+tech_context: |
+  React, Vite, TypeScript, CSS com variáveis (--space-*, --text-*, BoardView patterns).
+  Referência de implementação: apps/flowboard/src/features/board/ArchivedCardsPage.tsx.
+  Referência de UI (protótipo estático, abrir no browser): .memory-bank/specs/archived-page-ui-improvement/prototype-archived-page.html
+  (mapear para tokens do app; não importar blocos proto-shell/proto-demo nem fontes Google sem decisão de produto).
+  Screenshot legado: .cursor/projects/.../assets/image-74a1150a-1022-4708-baa3-7b55edf10664.png (workspace).
+
+baseline_ref: "HEAD"
+
+squad:
+  status: concluído
+  track: TASK
+  track_override: true
+  score: 3
+  confidence: 92
+  current_phase: null
+  completed_phases:
+    - planner
+    - task-breakdown
+    - HITL
+    - implementer
+    - code-reviewer
+    - tester
+  next_phase: null
+  iteration: 1
+  blockers: []
+  hitl_required: false
+
+repo_write_scope:
+  - apps/flowboard/src/features/board/ArchivedCardsPage.tsx
+  - apps/flowboard/src/features/board/ArchivedCardsPage.css
+  - apps/flowboard/src/features/board/BoardView.tsx
+  - apps/flowboard/tests/e2e/card-archive.spec.ts
+  - .memory-bank/specs/archived-page-ui-improvement/task-breakdown-TASK.md
+
+artifact_reuse:
+  - artifact: ".memory-bank/specs/archived-cards-page/state.yaml"
+    decision: reused-as-context-only
+    reason: "Feature base entregue; esta task é polish UI/UX incremental."
+  - artifact: "apps/flowboard/src/features/board/ArchivedCardsPage.tsx"
+    decision: reused-as-context-only
+    reason: "Ponto de alteração principal."
+  - artifact: ".memory-bank/specs/archived-page-ui-improvement/prototype-archived-page.html"
+    decision: reused-as-context-only
+    reason: "Mock HTML no repo: referência canónica de layout e estados (IPD v1.1 Sec. 2.5); executor abre no browser e compara com a app; não é artefacto de fase de agente."
+
+approvals:
+  - phase: implementer
+    by: human
+    at: "2026-04-22"
+    note: "Utilizador pediu explicitamente prosseguir para implementação (/squad-codesteer)."
+retries_by_phase: {}
+last_failure: null
+decisions:
+  - decision: "Track"
+    choice: "TASK"
+    reason: "Pedido explícito do utilizador; escopo UI local + E2E; sem spec FEATURE."
+  - decision: "Referência de UI"
+    choice: "prototype-archived-page.html como checklist estrutural e visual (Sec. 2.5 do planner-TASK.md)"
+    reason: "HTML de protótipo no repositório; evita ambiguidade entre wireframe verbal e o resultado desejado."
+  - decision: "E2E board-page-saving"
+    choice: "data-testid no indicador Salvando… do BoardView"
+    reason: "card-archive.spec.ts aguarda persistência na rota /; o texto era frágil (code-reviewer-TASK.md); escopo mínimo fora do IPD original."
+pipeline:
+  - phase: planner
+    status: ok
+    artifact: planner-TASK.md
+  - phase: task-breakdown
+    status: ok
+    artifact: task-breakdown-TASK.md
+  - phase: implementer
+    status: ok
+    artifact: implementer-TASK.md
+  - phase: code-reviewer
+    status: ok
+    artifact: code-reviewer-TASK.md
+  - phase: tester
+    status: ok
+    artifact: tester-TASK.md
+  - phase: implementer-followup
+    status: ok
+    artifact: implementer-cr-fixes-TASK.md
+    note: "Follow-up pós code-review: a11y persistError, copy, testids saving, aria-label, overflow-wrap; BoardView board-page-saving."
+subtasks:
+  - id: T1
+    title: "Helpers locais (coluna + data arquivamento)"
+    score: null
+    track: null
+    status: concluída
+    artifacts:
+      - task-breakdown-TASK.md
+      - implementer-TASK.md
+  - id: T2
+    title: "JSX cabeçalho, Link voltar, linhas com meta, CTAs"
+    score: null
+    track: null
+    status: concluída
+    artifacts:
+      - task-breakdown-TASK.md
+      - implementer-TASK.md
+  - id: T3
+    title: "CSS hierarquia e layout"
+    score: null
+    track: null
+    status: concluída
+    artifacts:
+      - task-breakdown-TASK.md
+      - implementer-TASK.md
+  - id: T4
+    title: "E2E card-archive.spec.ts"
+    score: null
+    track: null
+    status: concluída
+    artifacts:
+      - task-breakdown-TASK.md
+      - implementer-TASK.md
+  - id: T5
+    title: "DoD lint/test/build/E2E"
+    score: null
+    track: null
+    status: concluída
+    artifacts:
+      - task-breakdown-TASK.md
+      - implementer-TASK.md
+history:
+  - phase: planner
+    agent: planner
+    status: ok
+    artifact: planner-TASK.md
+    note: "IPD v1.0, confiança 92/100."
+  - phase: task-breakdown
+    agent: task-breakdown
+    status: ok
+    artifact: task-breakdown-TASK.md
+    note: "T1–T5 ordenadas."
+  - phase: plan-update
+    agent: orchestrator
+    status: ok
+    artifact: planner-TASK.md
+    note: "IPD v1.1: Sec. 2.5 e fluxo 4.2 alinhados a prototype-archived-page.html; AC e tech_context actualizados."
+  - phase: implementer
+    agent: implementer
+    status: ok
+    artifact: implementer-TASK.md
+    note: "DoD IPD §3; card-archive E2E verde isolado; suite E2E completa com falhas alheias documentadas."
+  - phase: code-reviewer
+    agent: code-reviewer
+    status: ok
+    artifact: code-reviewer-TASK.md
+    note: "Recomendação APROVAR; 0 críticos/altos; melhorias médias/baixas documentadas."
+  - phase: tester
+    agent: tester
+    status: ok
+    artifact: tester-TASK.md
+    note: "Vitest 273 OK; Playwright card-archive 2 OK; sem novos ficheiros de teste (IPD §6)."
+  - phase: implementer-followup
+    agent: implementer
+    status: ok
+    artifact: implementer-cr-fixes-TASK.md
+    note: "Correcções code-reviewer-TASK.md (médio/baixo); relatório implementer-cr-fixes-TASK.md."
+summary: >
+  UI/UX da página Arquivados refinada (toolbar, painel, meta coluna/data pt-BR, CTAs, link voltar com testid).
+  Entrega: implementer-TASK.md; revisão APROVAR (code-reviewer-TASK.md); testes verdes (tester-TASK.md).
+  Follow-up: implementer-cr-fixes-TASK.md (erro persistência role=alert, copy Arquive, testids saving, aria-label painel, overflow-wrap; E2E usa board-page-saving em BoardView).
+  Risco residual: suite E2E completa pode falhar noutros specs.
+
+designer_brief: |
+  Nicho: dev tool / quadro técnico → alinhar a tech-dark já usada no app.
+  Prioridades: densidade informativa (metadados sem novo schema), hierarquia tipográfica,
+  grid/espaçamento consistente, acessibilidade (contraste, foco), CTA restaurar mais visível que excluir.
+  Protótipo: prototype-archived-page.html — replicar toolbar (eyebrow, título+count, subtítulo, link voltar),
+  painel com header "Histórico", linhas com meta e CTAs, estados vazio e loading com barra de shimmer;
+  tokens e fontes: usar o que o app já expõe; demo inclui Sora/Plus Jakarta só como referência visual.

@@ -1,6 +1,7 @@
 ---
 name: debugger
 description: 'Especialista em debugging usando investigação orientada por hipóteses e Análise de Causa Raiz (RCA). Gera hipóteses ranqueadas por probabilidade, coleta evidências sistematicamente e converge na causa raiz com um Relatório Diagnóstico rastreável. Agnóstico de stack. Nunca adivinha — prova.'
+model: inherit
 triggers:
 - debug
 - bug

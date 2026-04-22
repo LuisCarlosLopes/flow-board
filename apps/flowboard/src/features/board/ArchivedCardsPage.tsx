@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { isCardArchived, sortArchivedByDefault } from '../../domain/cardArchive'
 import { reconcileBoardTimeState } from '../../domain/timeEngine'
-import type { Card, TimeBoardState } from '../../domain/types'
+import type { Card, Column, TimeBoardState } from '../../domain/types'
 import { GitHubHttpError } from '../../infrastructure/github/client'
 import { createClientFromSession } from '../../infrastructure/github/fromSession'
 import type { BoardDocumentJson } from '../../infrastructure/persistence/types'
@@ -11,6 +12,36 @@ import { appendNewSegments, docToTimeBoardState, writeTimeBoardStateToDoc } from
 import { deleteRepoPathIfExists } from './attachmentSync'
 import { clearSearchModalBoardCache } from '../app/SearchModal'
 import './ArchivedCardsPage.css'
+
+const ARCHIVED_AT_DISPLAY = new Intl.DateTimeFormat('pt-BR', {
+  dateStyle: 'short',
+  timeStyle: 'short',
+})
+
+/**
+ * Resolves column label for display. Unknown column: short fallback + id (IPD A1).
+ */
+function getColumnLabel(columns: Column[] | undefined, columnId: string): string {
+  const col = columns?.find((c) => c.columnId === columnId)
+  if (col) {
+    return col.label
+  }
+  return `Coluna removida (${columnId})`
+}
+
+/**
+ * Formats ISO archivedAt for UI; null when missing or invalid (no throw).
+ */
+function formatArchivedAtForDisplay(iso?: string): string | null {
+  if (iso == null || iso.trim() === '') {
+    return null
+  }
+  const ms = Date.parse(iso)
+  if (Number.isNaN(ms)) {
+    return null
+  }
+  return ARCHIVED_AT_DISPLAY.format(new Date(ms))
+}
 
 type Props = {
   session: FlowBoardSession
@@ -294,10 +325,29 @@ export function ArchivedCardsPage({ session, boardId, onBoardPersisted }: Props)
     })()
   }
 
+  const backLink =
+    boardId != null && boardId !== '' ? (
+      <Link to="/" className="fb-archived__link-back" data-testid="archived-back-to-board">
+        <svg
+          className="fb-archived__link-back-icon"
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          aria-hidden="true"
+        >
+          <path d="M19 12H5M12 19l-7-7 7-7" />
+        </svg>
+        Voltar ao quadro
+      </Link>
+    ) : null
+
   if (!boardId) {
     return (
       <div className="fb-archived-page" data-testid="archived-page">
-        <p className="fb-archived-page__empty">Selecione um quadro para ver arquivados</p>
+        <p className="fb-archived__empty-state">Selecione um quadro para ver arquivados</p>
       </div>
     )
   }
@@ -313,7 +363,22 @@ export function ArchivedCardsPage({ session, boardId, onBoardPersisted }: Props)
   if (!doc) {
     return (
       <div className="fb-archived-page" data-testid="archived-page">
-        <p className="fb-archived-page__loading">Carregando arquivados…</p>
+        <header className="fb-archived__toolbar">
+          <div className="fb-archived__title-block">
+            <p className="fb-archived__eyebrow">Quadro ativo</p>
+            <h1 className="fb-archived__title">Arquivados</h1>
+          </div>
+          {backLink}
+        </header>
+        <section className="fb-archived__panel" aria-label="Tarefas arquivadas">
+          <div className="fb-archived__panel-header">
+            <span className="fb-archived__panel-label">Histórico neste quadro</span>
+          </div>
+          <div className="fb-archived__loading" role="status" aria-live="polite">
+            Carregando arquivados…
+            <div className="fb-archived__loading-bar" aria-hidden="true" />
+          </div>
+        </section>
       </div>
     )
   }
@@ -321,43 +386,84 @@ export function ArchivedCardsPage({ session, boardId, onBoardPersisted }: Props)
   return (
     <div className="fb-archived-page" data-testid="archived-page">
       {persistError ? (
-        <div className="fb-archived-page__warn" role="status">
+        <div className="fb-archived-page__warn" role="alert">
           {persistError}
         </div>
       ) : null}
-      {saving ? <p className="fb-archived-page__saving">Salvando…</p> : null}
+      {saving ? (
+        <p className="fb-archived-page__saving" data-testid="archived-page-saving">
+          Salvando…
+        </p>
+      ) : null}
 
-      <section className="fb-archived" aria-label="Tarefas arquivadas">
-        <h2 className="fb-archived-page__heading">Arquivados ({archivedList.length})</h2>
+      <header className="fb-archived__toolbar">
+        <div className="fb-archived__title-block">
+          <p className="fb-archived__eyebrow">Quadro ativo · {doc.title}</p>
+          <h1 className="fb-archived__title">
+            Arquivados <span className="fb-archived__count">({archivedList.length})</span>
+          </h1>
+          <p className="fb-archived__subtitle">
+            Cards fora do Kanban permanecem aqui. Restaure para voltar à coluna de origem ou exclua
+            definitivamente.
+          </p>
+        </div>
+        {backLink}
+      </header>
+
+      <section className="fb-archived__panel" aria-label="Tarefas arquivadas">
+        <div className="fb-archived__panel-header">
+          <span className="fb-archived__panel-label">Histórico neste quadro</span>
+        </div>
         {archivedList.length === 0 ? (
-          <p className="fb-archived-page__muted">Nenhum card arquivado neste quadro.</p>
+          <div className="fb-archived__empty" role="status">
+            <strong className="fb-archived__empty-title">Nenhum card arquivado</strong>
+            <p className="fb-archived__empty-text">
+              Arquive um card pelo menu do cartão no Kanban para vê-lo listado aqui.
+            </p>
+          </div>
         ) : (
           <ul className="fb-archived__list">
-            {archivedList.map((c) => (
-              <li key={c.cardId} className="fb-archived__row" data-testid={`archived-row-${c.cardId}`}>
-                <span className="fb-archived__title">{c.title}</span>
-                <div className="fb-archived__actions">
-                  <button
-                    type="button"
-                    className="fb-archived__btn"
-                    data-testid={`archived-restore-${c.cardId}`}
-                    disabled={saving}
-                    onClick={() => handleUnarchiveCard(c)}
-                  >
-                    Restaurar
-                  </button>
-                  <button
-                    type="button"
-                    className="fb-archived__btn fb-archived__btn--danger"
-                    data-testid={`archived-delete-${c.cardId}`}
-                    disabled={saving}
-                    onClick={() => handleDeleteCard(c)}
-                  >
-                    Excluir
-                  </button>
-                </div>
-              </li>
-            ))}
+            {archivedList.map((c) => {
+              const archivedAtText = formatArchivedAtForDisplay(c.archivedAt)
+              const colLabel = getColumnLabel(doc.columns, c.columnId)
+              return (
+                <li key={c.cardId} className="fb-archived__row" data-testid={`archived-row-${c.cardId}`}>
+                  <div className="fb-archived__row-main">
+                    <span className="fb-archived__row-title">{c.title}</span>
+                    <div className="fb-archived__row-meta">
+                      <span>
+                        Coluna: <strong className="fb-archived__col-name">{colLabel}</strong>
+                      </span>
+                      <span className="fb-archived__row-meta-secondary fb-archived__row-meta-dot">
+                        {archivedAtText != null
+                          ? `Arquivado em ${archivedAtText}`
+                          : 'Sem data de arquivamento'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="fb-archived__actions">
+                    <button
+                      type="button"
+                      className="fb-archived__btn fb-archived__btn--primary"
+                      data-testid={`archived-restore-${c.cardId}`}
+                      disabled={saving}
+                      onClick={() => handleUnarchiveCard(c)}
+                    >
+                      Restaurar
+                    </button>
+                    <button
+                      type="button"
+                      className="fb-archived__btn fb-archived__btn--ghost-danger"
+                      data-testid={`archived-delete-${c.cardId}`}
+                      disabled={saving}
+                      onClick={() => handleDeleteCard(c)}
+                    >
+                      Excluir
+                    </button>
+                  </div>
+                </li>
+              )
+            })}
           </ul>
         )}
       </section>

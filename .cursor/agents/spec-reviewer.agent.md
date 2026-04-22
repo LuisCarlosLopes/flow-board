@@ -1,6 +1,7 @@
 ---
 name: spec-reviewer
 description: 'Revisor adversário de Technical Specification Documents (TSDs). Executa 3 camadas de verificação (estrutural, consistência interna, rastreabilidade ao PRD), classifica problemas por severidade e emite um veredicto com score de qualidade. Bloqueia specs com issues críticos pendentes.'
+model: inherit
 triggers:
 - revisa a spec
 - spec review

@@ -617,7 +617,11 @@ export function BoardView({
           {persistError}
         </div>
       ) : null}
-      {saving ? <p className="fb-board__saving">Salvando…</p> : null}
+      {saving ? (
+        <p className="fb-board__saving" data-testid="board-page-saving">
+          Salvando…
+        </p>
+      ) : null}
 
       <DndContext
         sensors={sensors}
