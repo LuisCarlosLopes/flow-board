@@ -54,8 +54,14 @@ test.describe.serial('card-archive E2E', () => {
       timeout: 15_000,
     })
 
-    await page.getByTestId('archived-section-toggle').click()
-    await expect(page.getByTestId(`archived-row-${cardId}`).getByText(taskTitle, { exact: true })).toBeVisible()
+    // Kanban removes the card from the column before `saveDocument` finishes; `/archived` loads from GitHub.
+    await expect(page.getByText('Salvando…')).toHaveCount(0, { timeout: 60_000 })
+
+    await page.getByTestId('nav-archived').click()
+    await expect(page).toHaveURL(/\/archived$/)
+    await expect(page.getByTestId(`archived-row-${cardId}`).getByText(taskTitle, { exact: true })).toBeVisible({
+      timeout: 45_000,
+    })
 
     await page.getByRole('button', { name: 'Busca no quadro' }).click()
     await page.waitForSelector('[role="dialog"]')

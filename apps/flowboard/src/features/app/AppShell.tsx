@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { ArchivedCardsPage } from '../board/ArchivedCardsPage'
 import { BoardView } from '../board/BoardView'
 import { BoardListView } from '../boards/BoardListView'
 import { HoursView } from '../hours/HoursView'
@@ -20,6 +21,8 @@ type Props = {
 
 export function AppShell({ session, onLogout }: Props) {
   const navigate = useNavigate()
+  const location = useLocation()
+  const onArchivedRoute = location.pathname === '/archived'
   const { version } = useCurrentVersion()
   const [selectedBoardId, setSelectedBoardId] = useState<string | null>(() => loadActiveBoardId(session))
   const [mainView, setMainView] = useState<'kanban' | 'hours'>('kanban')
@@ -136,29 +139,51 @@ export function AppShell({ session, onLogout }: Props) {
           selectedBoardId={selectedBoardId}
           onSelectBoard={setSelectedBoardId}
           onOpenColumnEditor={requestOpenColumnEditor}
-          columnEditorDisabled={!selectedBoardId || mainView !== 'kanban'}
+          columnEditorDisabled={!selectedBoardId || mainView !== 'kanban' || onArchivedRoute}
           viewTabs={
             <nav className="fb-board-bar__tabs" role="tablist" aria-label="Área principal">
               <button
                 type="button"
-                className={mainView === 'kanban' ? 'fb-tab is-active' : 'fb-tab'}
+                className={!onArchivedRoute && mainView === 'kanban' ? 'fb-tab is-active' : 'fb-tab'}
                 role="tab"
-                aria-selected={mainView === 'kanban'}
-                onClick={() => setMainView('kanban')}
+                aria-selected={!onArchivedRoute && mainView === 'kanban'}
+                onClick={() => {
+                  if (onArchivedRoute) {
+                    navigate('/')
+                  }
+                  setMainView('kanban')
+                }}
                 data-testid="nav-kanban"
               >
                 Quadro
               </button>
               <button
                 type="button"
-                className={mainView === 'hours' ? 'fb-tab is-active' : 'fb-tab'}
+                className={!onArchivedRoute && mainView === 'hours' ? 'fb-tab is-active' : 'fb-tab'}
                 role="tab"
-                aria-selected={mainView === 'hours'}
-                onClick={() => setMainView('hours')}
+                aria-selected={!onArchivedRoute && mainView === 'hours'}
+                onClick={() => {
+                  if (onArchivedRoute) {
+                    navigate('/')
+                  }
+                  setMainView('hours')
+                }}
                 data-testid="nav-hours"
               >
                 Horas no período
               </button>
+              {selectedBoardId ? (
+                <button
+                  type="button"
+                  className={onArchivedRoute ? 'fb-tab is-active' : 'fb-tab'}
+                  role="tab"
+                  aria-selected={onArchivedRoute}
+                  data-testid="nav-archived"
+                  onClick={() => navigate('/archived')}
+                >
+                  Arquivados
+                </button>
+              ) : null}
             </nav>
           }
         />
@@ -167,23 +192,37 @@ export function AppShell({ session, onLogout }: Props) {
       <main
         id="main-content"
         tabIndex={-1}
-        className={['fb-main', mainView === 'hours' && 'fb-main--hours', mainView === 'kanban' && 'fb-main--kanban']
+        className={[
+          'fb-main',
+          !onArchivedRoute && mainView === 'hours' && 'fb-main--hours',
+          !onArchivedRoute && mainView === 'kanban' && 'fb-main--kanban',
+        ]
           .filter(Boolean)
           .join(' ')}
       >
-        {mainView === 'kanban' && selectedBoardId ? (
-          <BoardView
+        {onArchivedRoute ? (
+          <ArchivedCardsPage
             session={session}
             boardId={selectedBoardId}
-            columnEditorMenuTick={columnEditorMenuTick}
-            cardToEditId={cardToEditId}
-            onCardEditComplete={() => setCardToEditId(null)}
             onBoardPersisted={onBoardPersisted}
           />
-        ) : null}
-        {mainView === 'hours' ? (
-          <HoursView session={session} selectedBoardId={selectedBoardId} />
-        ) : null}
+        ) : (
+          <>
+            {mainView === 'kanban' && selectedBoardId ? (
+              <BoardView
+                session={session}
+                boardId={selectedBoardId}
+                columnEditorMenuTick={columnEditorMenuTick}
+                cardToEditId={cardToEditId}
+                onCardEditComplete={() => setCardToEditId(null)}
+                onBoardPersisted={onBoardPersisted}
+              />
+            ) : null}
+            {mainView === 'hours' ? (
+              <HoursView session={session} selectedBoardId={selectedBoardId} />
+            ) : null}
+          </>
+        )}
       </main>
 
       <SearchModal
@@ -194,6 +233,10 @@ export function AppShell({ session, onLogout }: Props) {
         boardPersistGeneration={boardPersistGeneration}
         onSelectResult={(cardId) => {
           setIsSearchOpen(false)
+          if (onArchivedRoute) {
+            navigate('/')
+            setMainView('kanban')
+          }
           setCardToEditId(cardId)
         }}
       />
