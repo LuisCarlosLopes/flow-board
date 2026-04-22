@@ -322,7 +322,13 @@ describe('CreateTaskModal', () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn().mockResolvedValue(undefined)
       render(
-        <CreateTaskModal isOpen onClose={() => {}} onSubmit={onSubmit} defaultColumnId="backlog" />,
+        <CreateTaskModal
+          boardId="test-board"
+          isOpen
+          onClose={() => {}}
+          onSubmit={onSubmit}
+          defaultColumnId="backlog"
+        />,
       )
 
       const panel = document.querySelector('.fb-ctm')
@@ -347,17 +353,35 @@ describe('CreateTaskModal', () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn().mockResolvedValue(undefined)
       const { rerender } = render(
-        <CreateTaskModal isOpen onClose={() => {}} onSubmit={onSubmit} defaultColumnId="backlog" />,
+        <CreateTaskModal
+          boardId="test-board"
+          isOpen
+          onClose={() => {}}
+          onSubmit={onSubmit}
+          defaultColumnId="backlog"
+        />,
       )
 
       await user.click(screen.getByTestId('ctm-maximize-toggle'))
       expect(document.querySelector('.fb-ctm')).toHaveClass('fb-ctm--maximized')
 
       rerender(
-        <CreateTaskModal isOpen={false} onClose={() => {}} onSubmit={onSubmit} defaultColumnId="backlog" />,
+        <CreateTaskModal
+          boardId="test-board"
+          isOpen={false}
+          onClose={() => {}}
+          onSubmit={onSubmit}
+          defaultColumnId="backlog"
+        />,
       )
       rerender(
-        <CreateTaskModal isOpen onClose={() => {}} onSubmit={onSubmit} defaultColumnId="backlog" />,
+        <CreateTaskModal
+          boardId="test-board"
+          isOpen
+          onClose={() => {}}
+          onSubmit={onSubmit}
+          defaultColumnId="backlog"
+        />,
       )
 
       expect(document.querySelector('.fb-ctm')).not.toHaveClass('fb-ctm--maximized')

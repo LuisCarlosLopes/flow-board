@@ -1,0 +1,153 @@
+title: "Anexos em Cards (upload, preview, download)"
+slug: card-attachments
+created_at: "2026-04-22"
+context: "FlowBoard — cards persistidos em JSON no repositório GitHub do usuário (MVP)."
+objective: >
+  Permitir anexar arquivos aos cards (jpg, md, pdf, docx, xlsx), até 10 MB por arquivo,
+  armazenados como blobs no mesmo repositório; preview in-app para .jpg e .md; download
+  para todos os tipos aceitos.
+acceptance_criteria:
+  - "No modal de criação/edição de card, o usuário pode selecionar um ou mais arquivos cujas extensões estejam na lista permitida."
+  - "Arquivos acima de 10 MB (por arquivo) são rejeitados antes do upload, com mensagem clara."
+  - "Após salvar, o anexo existe no repositório em caminho estável sob `flowboard/` e o documento do board referencia o anexo (metadados no JSON do board)."
+  - "Imagens .jpg/.jpeg exibem preview (thumbnail ou visualização) na UI do card/modal."
+  - "Arquivos .md exibem preview renderizado (Markdown) na UI, sem executar scripts."
+  - "O usuário pode baixar qualquer anexo aceito; o download funciona sem expor o PAT na URL."
+  - "Remover anexo remove o arquivo no GitHub (ou documenta e implementa política de órfãos se indisponível) e atualiza o JSON do board."
+  - "Testes de domínio cobrem validação de tipo/tamanho/nome; testes manuais ou E2E mínimos documentados para fluxo feliz."
+scope:
+  in:
+    - "Extensões: .jpg, .jpeg, .md, .pdf, .docx, .xlsx"
+    - "Limite 10 MB por arquivo"
+    - "Armazenamento no repo do usuário via GitHub Contents API"
+    - "Preview: jpg/jpeg, md"
+    - "Download de todos os tipos aceitos"
+    - "Integração com CreateTaskModal / fluxo de edição de card existente"
+  out:
+    - "Git LFS, versionamento de anexos, diff de binários"
+    - "Preview de PDF/DOCX/XLSX in-app (apenas ícone + download)"
+    - "Compartilhamento público de anexos fora da sessão autenticada"
+    - "Backend próprio além do GitHub (violaria Constitution II sem ADR)"
+tech_context: "TypeScript, React, Vite; GitHubContentsClient em apps/flowboard; BoardDocumentJson schemaVersion 1 hoje; Vitest."
+baseline_ref: "main (workspace atual)"
+
+squad:
+  status: concluido
+  track: FEATURE
+  track_override: false
+  score: 6
+  confidence: 90
+  current_phase: null
+  completed_phases:
+    - spec
+    - spec-reviewer
+    - planner
+    - plan-reviewer
+    - task-breakdown
+    - HITL
+    - implementer
+    - verifier
+    - code-reviewer
+  next_phase: null
+  iteration: 1
+  blockers: []
+  hitl_required: false
+  hitl_reason: null
+
+repo_write_scope:
+  - apps/flowboard/src/domain/types.ts
+  - apps/flowboard/src/domain/attachmentRules.ts
+  - apps/flowboard/src/domain/attachmentRules.test.ts
+  - apps/flowboard/src/infrastructure/github/client.ts
+  - apps/flowboard/src/infrastructure/github/client.test.ts
+  - apps/flowboard/src/infrastructure/github/fileBlob.ts
+  - apps/flowboard/src/features/board/attachmentSync.ts
+  - apps/flowboard/src/features/board/BoardView.tsx
+  - apps/flowboard/src/features/board/CreateTaskModal.tsx
+  - apps/flowboard/src/features/board/CreateTaskModal.css
+  - apps/flowboard/src/features/board/CreateTaskModal.test.tsx
+  - apps/flowboard/package.json
+  - apps/flowboard/package-lock.json
+  - .memory-bank/adrs/008-flowboard-card-attachments-github.md
+  - .memory-bank/specs/card-attachments/code-reviewer-feature.md
+artifact_reuse: []
+approvals:
+  - phase: HITL
+    at: "2026-04-22"
+    note: "Implementação autorizada pelo solicitante (mensagem: prossiga com implementacao)."
+retries_by_phase: {}
+last_failure: null
+decisions: []
+pipeline:
+  - phase: spec
+    status: concluido
+    artifact: spec-feature.md
+  - phase: spec-reviewer
+    status: concluido
+    artifact: spec-reviewer-feature.md
+  - phase: architect
+    status: pulado
+    note: "Decisões fechadas no IPD + ADR curto opcional; sem sessão architect dedicada."
+  - phase: planner
+    status: concluido
+    artifact: planner-feature.md
+  - phase: plan-reviewer
+    status: concluido
+    artifact: plan-reviewer-feature.md
+  - phase: task-breakdown
+    status: concluido
+    artifact: task-breakdown-feature.md
+  - phase: HITL
+    status: concluido
+    note: "Aprovação implícita via pedido de implementação."
+  - phase: implementer
+    status: concluido
+    note: "Código em apps/flowboard; react-markdown para preview .md."
+  - phase: verifier
+    status: concluido
+    note: "npm run test + lint + build em apps/flowboard (2026-04-22)."
+  - phase: code-reviewer
+    status: concluido
+    artifact: code-reviewer-feature.md
+    note: "Score 86/100; merge permitido com ressalvas (409, closure delete card)."
+  - phase: tester
+    status: pendente
+    note: "Opcional: E2E dedicado a anexos; fluxo feliz coberto por testes unitários."
+subtasks:
+  - id: T1
+    title: "Domínio: tipos e attachmentRules"
+    track: TASK
+    status: concluido
+  - id: T2
+    title: "Cliente GitHub binário"
+    track: TASK
+    status: concluido
+  - id: T3
+    title: "BoardView persistência e exclusão de blobs"
+    track: TASK
+    status: concluido
+  - id: T4
+    title: "CreateTaskModal UX anexos"
+    track: TASK
+    status: concluido
+  - id: T5
+    title: "ADR e evidência final"
+    track: TASK
+    status: concluido
+history:
+  - at: "2026-04-22"
+    event: "Bootstrap da FEATURE; fase spec iniciada."
+  - at: "2026-04-22"
+    event: "spec-feature.md v1.0 escrito; aguardando spec-reviewer."
+  - at: "2026-04-22"
+    event: "spec-reviewer-feature.md: GO condicional; fase planner iniciada."
+  - at: "2026-04-22"
+    event: "IPD + plan-reviewer + task-breakdown concluídos; gate HITL aberto."
+  - at: "2026-04-22"
+    event: "Implementação entregue (T1–T5); ADR 008; verifier local OK."
+  - at: "2026-04-22"
+    event: "code-reviewer-feature.md: aprovado para merge (86/100), zero críticos."
+summary: >
+  Anexos por card implementados: upload via modal, paths flowboard/attachments/, preview JPG/MD,
+  download autenticado, remoção e exclusão de card com DELETE no GitHub. Testes Vitest e build
+  verdes. Gates code-reviewer/tester formais ficam opcionais antes do merge.
