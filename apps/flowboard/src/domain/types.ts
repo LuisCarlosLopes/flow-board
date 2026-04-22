@@ -7,6 +7,17 @@ export type Column = {
   role: ColumnRole
 }
 
+/** File metadata for a card attachment (blob lives at storagePath in the GitHub repo). */
+export type CardAttachment = {
+  attachmentId: string
+  displayName: string
+  storagePath: string
+  mimeType?: string
+  sizeBytes: number
+  /** ISO 8601 */
+  addedAt: string
+}
+
 export type Card = {
   cardId: string
   title: string
@@ -19,6 +30,13 @@ export type Card = {
   plannedHours?: number
   /** ISO timestamp when card was created; auto-set to new Date().toISOString() */
   createdAt?: string
+  attachments?: CardAttachment[]
+}
+
+/** Payload from task modal to board persistence (uploads + deletes). */
+export type CardTaskPayload = Partial<Card> & {
+  attachmentBlobs?: { storagePath: string; file: File }[]
+  attachmentPathsToDelete?: string[]
 }
 
 export type CompletedSegment = {

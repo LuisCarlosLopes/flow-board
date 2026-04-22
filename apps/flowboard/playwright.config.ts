@@ -46,13 +46,13 @@ export default defineConfig({
       use: { ...devices['Desktop Firefox'], storageState: authStorage },
       dependencies: ['setup'],
       // create-task grava no mesmo repo GitHub: paralelizar entre browsers corrompe o estado
-      testIgnore: [/auth\.setup\.ts/, /login\.spec\.ts/, /create-task\.spec\.ts/],
+      testIgnore: [/auth\.setup\.ts/, /login\.spec\.ts/, /create-task\.spec\.ts/, /card-attachments\.spec\.ts/],
     },
     {
       name: 'webkit',
       use: { ...devices['Desktop Safari'], storageState: authStorage },
       dependencies: ['setup'],
-      testIgnore: [/auth\.setup\.ts/, /login\.spec\.ts/, /create-task\.spec\.ts/],
+      testIgnore: [/auth\.setup\.ts/, /login\.spec\.ts/, /create-task\.spec\.ts/, /card-attachments\.spec\.ts/],
     },
     {
       name: 'chromium-login',

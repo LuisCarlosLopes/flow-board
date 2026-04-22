@@ -1,5 +1,14 @@
-import { useState, useCallback, useEffect } from 'react'
-import type { Card } from '../../domain/types'
+import { useState, useCallback, useEffect, useRef, type ChangeEvent } from 'react'
+import ReactMarkdown from 'react-markdown'
+import type { Card, CardAttachment, CardTaskPayload } from '../../domain/types'
+import {
+  buildAttachmentStoragePath,
+  inferMimeFromAttachment,
+  MAX_ATTACHMENTS_PER_CARD,
+  normalizeExtension,
+  sanitizeDisplayName,
+  validateAttachmentFile,
+} from '../../domain/attachmentRules'
 import { useClipboard } from '../../hooks/useClipboard'
 import './CreateTaskModal.css'
 
@@ -9,16 +18,15 @@ import './CreateTaskModal.css'
 /* eslint-disable react-hooks/set-state-in-effect */
 
 type Props = {
-  /** Whether the modal is open */
   isOpen: boolean
-  /** Callback when modal closes (without saving) */
   onClose: () => void
-  /** Callback after successful task creation or update */
-  onSubmit: (task: Partial<Card>) => Promise<void>
-  /** Default column ID where task will be placed (create mode only) */
+  onSubmit: (task: CardTaskPayload) => Promise<void>
   defaultColumnId?: string
-  /** When set, the modal edits this card instead of creating a new one */
   editingCard?: Card | null
+  /** Board id for attachment storage paths */
+  boardId: string
+  /** Fetch blob for previews/downloads of already-persisted attachments */
+  getAttachmentBlob?: (storagePath: string, mimeType?: string) => Promise<Blob>
 }
 
 function formatCreatedAtForDisplay(iso?: string): string {
@@ -29,7 +37,6 @@ function formatCreatedAtForDisplay(iso?: string): string {
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString('pt-BR')
 }
 
-/** Local calendar date as YYYY-MM-DD for `<input type="date">` */
 function todayLocalIsoDate(): string {
   const d = new Date()
   const y = d.getFullYear()
@@ -38,12 +45,70 @@ function todayLocalIsoDate(): string {
   return `${y}-${m}-${day}`
 }
 
+function formatBytes(n: number): string {
+  if (n < 1024) {
+    return `${n} B`
+  }
+  if (n < 1024 * 1024) {
+    return `${(n / 1024).toFixed(1)} KB`
+  }
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`
+}
+
+/** Hardening: only http(s) and same-page fragments in Markdown links. */
+function safeMarkdownUrlTransform(uri: string): string {
+  const u = uri.trim()
+  if (!u || u.startsWith('#')) {
+    return u
+  }
+  if (/^https?:\/\//i.test(u)) {
+    return u
+  }
+  return ''
+}
+
+async function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.rel = 'noopener'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}
+
+function AttachmentDocIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden
+    >
+      <path
+        d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"
+        stroke="currentColor"
+        strokeWidth="1.35"
+        strokeLinejoin="round"
+      />
+      <path d="M14 2v6h6" stroke="currentColor" strokeWidth="1.35" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
 export function CreateTaskModal({
   isOpen,
   onClose,
   onSubmit,
   defaultColumnId = 'backlog',
   editingCard = null,
+  boardId,
+  getAttachmentBlob,
 }: Props) {
   const isEditMode = Boolean(editingCard)
   const [title, setTitle] = useState('')
@@ -55,11 +120,28 @@ export function CreateTaskModal({
   const [isMaximized, setIsMaximized] = useState(false)
   const { copy, isCopied } = useClipboard()
 
+  const [existingAttachments, setExistingAttachments] = useState<CardAttachment[]>([])
+  const [pendingFiles, setPendingFiles] = useState<{ attachmentId: string; file: File }[]>([])
+  const [removedPaths, setRemovedPaths] = useState<string[]>([])
+  const [attachmentError, setAttachmentError] = useState('')
+  const [previewId, setPreviewId] = useState<string | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null)
+  const previewUrlRef = useRef<string | null>(null)
+
   const createdAtDisplay = isEditMode
     ? formatCreatedAtForDisplay(editingCard?.createdAt)
     : new Date().toLocaleDateString('pt-BR')
 
-  // Reset or hydrate form when modal opens / mode changes
+  const revokePreviewUrl = useCallback(() => {
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current)
+      previewUrlRef.current = null
+    }
+    setPreviewBlobUrl(null)
+  }, [])
+
+  /** Hidrata campos do card; não zera anexos pendentes (evita perder ficheiros ao re-render / novo objeto `editingCard`). */
   useEffect(() => {
     if (!isOpen) {
       return
@@ -73,24 +155,44 @@ export function CreateTaskModal({
           ? String(editingCard.plannedHours)
           : '',
       )
+      setExistingAttachments(editingCard.attachments ? [...editingCard.attachments] : [])
     } else {
       setTitle('')
       setDescription('')
       setPlannedDate(todayLocalIsoDate())
       setPlannedHours('')
+      setExistingAttachments([])
     }
     setErrors({})
     setIsSubmitting(false)
   }, [isOpen, editingCard])
 
-  // @MindWhy: Ao fechar o modal, isMaximized volta a false para a próxima abertura não iniciar expandido; preferência não vai a localStorage neste MVP.
+  const attachmentSessionKey = editingCard?.cardId ?? '__create__'
+
+  /** Só ao abrir o diálogo ou ao mudar o card em edição: limpa fila local de anexos e preview. */
+  useEffect(() => {
+    if (!isOpen) {
+      return
+    }
+    setPendingFiles([])
+    setRemovedPaths([])
+    setAttachmentError('')
+    setPreviewId(null)
+    revokePreviewUrl()
+  }, [isOpen, attachmentSessionKey, revokePreviewUrl])
+
   useEffect(() => {
     if (!isOpen) {
       setIsMaximized(false)
     }
   }, [isOpen])
 
-  // Handle ESC key to close modal
+  useEffect(() => {
+    return () => {
+      revokePreviewUrl()
+    }
+  }, [revokePreviewUrl])
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
@@ -129,6 +231,121 @@ export function CreateTaskModal({
     return Object.keys(newErrors).length === 0
   }, [title, description, plannedDate, plannedHours])
 
+  const onAttachmentInput = useCallback(
+    (e: ChangeEvent<HTMLInputElement>) => {
+      const picked = e.target.files?.length ? Array.from(e.target.files) : []
+      e.target.value = ''
+      if (!picked.length) {
+        return
+      }
+      setAttachmentError('')
+      const next: { attachmentId: string; file: File }[] = []
+      for (const file of picked) {
+        const err = validateAttachmentFile(file)
+        if (err) {
+          setAttachmentError(err.message)
+          return
+        }
+        if (existingAttachments.length + pendingFiles.length + next.length >= MAX_ATTACHMENTS_PER_CARD) {
+          setAttachmentError(`Máximo de ${MAX_ATTACHMENTS_PER_CARD} anexos por tarefa.`)
+          return
+        }
+        next.push({ attachmentId: crypto.randomUUID(), file })
+      }
+      if (next.length) {
+        setPendingFiles((p) => [...p, ...next])
+      }
+    },
+    [existingAttachments.length, pendingFiles.length],
+  )
+
+  const removeExisting = useCallback(
+    (att: CardAttachment) => {
+      setPreviewId((cur) => {
+        if (cur === att.attachmentId) {
+          revokePreviewUrl()
+          return null
+        }
+        return cur
+      })
+      setExistingAttachments((xs) => xs.filter((a) => a.attachmentId !== att.attachmentId))
+      setRemovedPaths((r) => [...r, att.storagePath])
+    },
+    [revokePreviewUrl],
+  )
+
+  const removePending = useCallback(
+    (attachmentId: string) => {
+      setPreviewId((cur) => {
+        if (cur === attachmentId) {
+          revokePreviewUrl()
+          return null
+        }
+        return cur
+      })
+      setPendingFiles((p) => p.filter((x) => x.attachmentId !== attachmentId))
+    },
+    [revokePreviewUrl],
+  )
+
+  const closePreview = useCallback(() => {
+    setPreviewId(null)
+    revokePreviewUrl()
+  }, [revokePreviewUrl])
+
+  const openPreview = useCallback(
+    async (kind: 'existing' | 'pending', id: string, att?: CardAttachment, file?: File) => {
+      if (previewId === id) {
+        setPreviewId(null)
+        revokePreviewUrl()
+        return
+      }
+      revokePreviewUrl()
+      setPreviewId(id)
+      const ext = att
+        ? normalizeExtension(att.displayName)
+        : file
+          ? normalizeExtension(file.name)
+          : ''
+      const canImg = ext === 'jpg' || ext === 'jpeg'
+      const canMd = ext === 'md'
+      if (!canImg && !canMd) {
+        return
+      }
+      setPreviewLoading(true)
+      try {
+        if (kind === 'pending' && file) {
+          const url = URL.createObjectURL(file)
+          previewUrlRef.current = url
+          setPreviewBlobUrl(url)
+        } else if (kind === 'existing' && att && getAttachmentBlob) {
+          const blob = await getAttachmentBlob(att.storagePath, inferMimeFromAttachment(att))
+          const url = URL.createObjectURL(blob)
+          previewUrlRef.current = url
+          setPreviewBlobUrl(url)
+        }
+      } finally {
+        setPreviewLoading(false)
+      }
+    },
+    [getAttachmentBlob, revokePreviewUrl, previewId],
+  )
+
+  const handleDownloadExisting = useCallback(
+    async (att: CardAttachment) => {
+      if (!getAttachmentBlob) {
+        return
+      }
+      const blob = await getAttachmentBlob(att.storagePath, inferMimeFromAttachment(att))
+      await downloadBlob(blob, att.displayName)
+    },
+    [getAttachmentBlob],
+  )
+
+  const handleDownloadPending = useCallback(async (file: File) => {
+    await downloadBlob(file, sanitizeDisplayName(file.name) ?? 'download')
+  }, [])
+
   const handleSubmit = useCallback(async () => {
     if (!validateForm()) {
       return
@@ -136,19 +353,41 @@ export function CreateTaskModal({
 
     setIsSubmitting(true)
     try {
-      const payload: Partial<Card> = {
+      const cardId = editingCard?.cardId ?? crypto.randomUUID()
+      const pendingMeta = pendingFiles.map(({ attachmentId, file }) => {
+        const displayName = sanitizeDisplayName(file.name)!
+        return {
+          attachmentId,
+          file,
+          meta: {
+            attachmentId,
+            displayName,
+            storagePath: buildAttachmentStoragePath(boardId, cardId, attachmentId, displayName),
+            mimeType: file.type || undefined,
+            sizeBytes: file.size,
+            addedAt: new Date().toISOString(),
+          } satisfies CardAttachment,
+        }
+      })
+
+      const nextAttachments: CardAttachment[] = [...existingAttachments, ...pendingMeta.map((p) => p.meta)]
+
+      const payload: CardTaskPayload = {
         title: title.trim(),
         description: description.trim(),
         plannedDate,
         plannedHours: parseFloat(plannedHours),
         columnId: editingCard?.columnId ?? defaultColumnId,
+        attachments: nextAttachments,
+        attachmentBlobs: pendingMeta.map((p) => ({ storagePath: p.meta.storagePath, file: p.file })),
+        ...(removedPaths.length ? { attachmentPathsToDelete: removedPaths } : {}),
         ...(editingCard
           ? {
               cardId: editingCard.cardId,
               createdAt: editingCard.createdAt ?? new Date().toISOString(),
             }
           : {
-              cardId: crypto.randomUUID(),
+              cardId,
               createdAt: new Date().toISOString(),
             }),
       }
@@ -173,6 +412,10 @@ export function CreateTaskModal({
     editingCard,
     onSubmit,
     onClose,
+    boardId,
+    pendingFiles,
+    existingAttachments,
+    removedPaths,
   ])
 
   const handleCopy = useCallback(async () => {
@@ -236,7 +479,6 @@ export function CreateTaskModal({
         </div>
 
         <form className="fb-ctm__form" onSubmit={(e) => { e.preventDefault(); void handleSubmit() }}>
-          {/* Title field */}
           <div className="fb-ctm__field">
             <label htmlFor="ctm-title" className="fb-ctm__label">
               Título *
@@ -258,11 +500,28 @@ export function CreateTaskModal({
             {errors.title && <div className="fb-ctm__error">{errors.title}</div>}
           </div>
 
-          {/* Description field */}
-          <div className={['fb-ctm__field', isMaximized && 'fb-ctm__field--stretch'].filter(Boolean).join(' ')}>
-            <label htmlFor="ctm-description" className="fb-ctm__label">
-              Descrição *
-            </label>
+          <div
+            className={['fb-ctm__field', 'fb-ctm__field--with-descr', isMaximized && 'fb-ctm__field--stretch']
+              .filter(Boolean)
+              .join(' ')}
+          >
+            <div className="fb-ctm__descr-toolbar">
+              <label htmlFor="ctm-description" className="fb-ctm__label">
+                Descrição *
+              </label>
+              <div className="fb-ctm__copy-wrapper">
+                <button
+                  type="button"
+                  className="fb-ctm__copy-btn"
+                  onClick={handleCopy}
+                  disabled={!description.trim() || isSubmitting || isCopied}
+                  data-testid="ctm-copy-btn"
+                >
+                  {isCopied ? 'Copiado!' : 'Copiar'}
+                </button>
+                {isCopied ? <div className="fb-ctm__copy-feedback">✓ Copiado!</div> : null}
+              </div>
+            </div>
             <textarea
               id="ctm-description"
               className="fb-ctm__textarea"
@@ -276,23 +535,180 @@ export function CreateTaskModal({
               disabled={isSubmitting}
             />
             {errors.description && <div className="fb-ctm__error">{errors.description}</div>}
-
-            {/* Copy button */}
-            <div className="fb-ctm__copy-wrapper">
-              <button
-                type="button"
-                className="fb-ctm__copy-btn"
-                onClick={handleCopy}
-                disabled={!description.trim() || isSubmitting || isCopied}
-                data-testid="ctm-copy-btn"
-              >
-                {isCopied ? 'Copiado!' : 'Copiar'}
-              </button>
-              {isCopied && <div className="fb-ctm__copy-feedback">✓ Copiado!</div>}
-            </div>
           </div>
 
-          {/* Planned Date field */}
+          <div className="fb-ctm__field fb-ctm__field--attachments">
+            <div className="fb-ctm__attach-head">
+              <span className="fb-ctm__label" id="ctm-attachments-label">
+                Anexos
+              </span>
+              {existingAttachments.length + pendingFiles.length > 0 ? (
+                <span className="fb-ctm__attach-badge" aria-live="polite">
+                  {existingAttachments.length + pendingFiles.length}
+                </span>
+              ) : null}
+            </div>
+
+            <div className="fb-ctm__attach-zone">
+              <div className="fb-ctm__attach-zone__intro">
+                <div className="fb-ctm__attach-zone__icon" aria-hidden>
+                  <AttachmentDocIcon />
+                </div>
+                <div className="fb-ctm__attach-zone__text">
+                  <p className="fb-ctm__attach-zone__title">Adicionar ficheiros</p>
+                  <p className="fb-ctm__attach-zone__hint" id="ctm-attachments-hint">
+                    JPG, JPEG, MD, PDF, DOCX ou XLSX — até 10 MB cada (máx. {MAX_ATTACHMENTS_PER_CARD}{' '}
+                    por tarefa). Pode escolher vários de uma vez.
+                  </p>
+                </div>
+              </div>
+              <div className="fb-ctm__attach-zone__control">
+                <input
+                  type="file"
+                  className="fb-ctm__file-input"
+                  multiple
+                  accept=".jpg,.jpeg,.md,.pdf,.docx,.xlsx"
+                  aria-labelledby="ctm-attachments-label"
+                  aria-describedby="ctm-attachments-hint"
+                  disabled={isSubmitting}
+                  data-testid="ctm-attachment-input"
+                  onChange={onAttachmentInput}
+                />
+              </div>
+            </div>
+
+            {attachmentError ? <div className="fb-ctm__error">{attachmentError}</div> : null}
+
+            <ul className="fb-ctm__attachments" data-testid="ctm-attachment-list">
+              {existingAttachments.map((att) => (
+                <li key={att.attachmentId} className="fb-ctm__attachment-row">
+                  <div className="fb-ctm__attachment-icon-wrap" aria-hidden>
+                    <AttachmentDocIcon className="fb-ctm__attachment-icon-svg" />
+                  </div>
+                  <div className="fb-ctm__attachment-info">
+                    <span className="fb-ctm__attachment-name">{att.displayName}</span>
+                    <span className="fb-ctm__attachment-meta">{formatBytes(att.sizeBytes)}</span>
+                  </div>
+                  <div className="fb-ctm__attachment-actions">
+                    {(() => {
+                      const ext = normalizeExtension(att.displayName)
+                      const canPreview = ext === 'jpg' || ext === 'jpeg' || ext === 'md'
+                      return canPreview ? (
+                        <button
+                          type="button"
+                          className="fb-ctm__ghost fb-ctm__ghost--sm"
+                          aria-label={`Pré-visualizar ${att.displayName}`}
+                          disabled={isSubmitting || !getAttachmentBlob}
+                          onClick={() => void openPreview('existing', att.attachmentId, att)}
+                        >
+                          {previewId === att.attachmentId ? 'Fechar' : 'Preview'}
+                        </button>
+                      ) : null
+                    })()}
+                    <button
+                      type="button"
+                      className="fb-ctm__ghost fb-ctm__ghost--sm"
+                      aria-label={`Baixar ${att.displayName}`}
+                      disabled={isSubmitting || !getAttachmentBlob}
+                      onClick={() => void handleDownloadExisting(att)}
+                    >
+                      Baixar
+                    </button>
+                    <button
+                      type="button"
+                      className="fb-ctm__ghost fb-ctm__ghost--sm"
+                      aria-label={`Remover ${att.displayName}`}
+                      disabled={isSubmitting}
+                      onClick={() => removeExisting(att)}
+                    >
+                      Remover
+                    </button>
+                  </div>
+                </li>
+              ))}
+              {pendingFiles.map(({ attachmentId, file }) => (
+                <li key={attachmentId} className="fb-ctm__attachment-row fb-ctm__attachment-row--pending">
+                  <div className="fb-ctm__attachment-icon-wrap" aria-hidden>
+                    <AttachmentDocIcon className="fb-ctm__attachment-icon-svg" />
+                  </div>
+                  <div className="fb-ctm__attachment-info">
+                    <span className="fb-ctm__attachment-name">{sanitizeDisplayName(file.name) ?? file.name}</span>
+                    <span className="fb-ctm__attachment-meta">
+                      {formatBytes(file.size)}
+                      <span className="fb-ctm__attachment-pill">pendente</span>
+                    </span>
+                  </div>
+                  <div className="fb-ctm__attachment-actions">
+                    {(() => {
+                      const ext = normalizeExtension(file.name)
+                      const canPreview = ext === 'jpg' || ext === 'jpeg' || ext === 'md'
+                      return canPreview ? (
+                        <button
+                          type="button"
+                          className="fb-ctm__ghost fb-ctm__ghost--sm"
+                          aria-label={`Pré-visualizar ${file.name}`}
+                          disabled={isSubmitting}
+                          onClick={() => void openPreview('pending', attachmentId, undefined, file)}
+                        >
+                          {previewId === attachmentId ? 'Fechar' : 'Preview'}
+                        </button>
+                      ) : null
+                    })()}
+                    <button
+                      type="button"
+                      className="fb-ctm__ghost fb-ctm__ghost--sm"
+                      aria-label={`Baixar ${file.name}`}
+                      disabled={isSubmitting}
+                      onClick={() => void handleDownloadPending(file)}
+                    >
+                      Baixar
+                    </button>
+                    <button
+                      type="button"
+                      className="fb-ctm__ghost fb-ctm__ghost--sm"
+                      aria-label={`Remover ${file.name}`}
+                      disabled={isSubmitting}
+                      onClick={() => removePending(attachmentId)}
+                    >
+                      Remover
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+
+            {previewId && previewLoading ? <p className="fb-ctm__hint">Carregando preview…</p> : null}
+            {previewId && previewBlobUrl ? (
+              <div className="fb-ctm__preview" data-testid="ctm-attachment-preview">
+                <button type="button" className="fb-ctm__ghost fb-ctm__ghost--sm" onClick={closePreview}>
+                  Fechar preview
+                </button>
+                {(() => {
+                  const pending = pendingFiles.find((p) => p.attachmentId === previewId)
+                  const existing = existingAttachments.find((a) => a.attachmentId === previewId)
+                  const ext = pending
+                    ? normalizeExtension(pending.file.name)
+                    : existing
+                      ? normalizeExtension(existing.displayName)
+                      : ''
+                  if (ext === 'jpg' || ext === 'jpeg') {
+                    return (
+                      <img
+                        src={previewBlobUrl}
+                        alt={pending?.file.name ?? existing?.displayName ?? 'Preview'}
+                        className="fb-ctm__preview-img"
+                      />
+                    )
+                  }
+                  if (ext === 'md') {
+                    return <MdPreviewFromUrl url={previewBlobUrl} />
+                  }
+                  return null
+                })()}
+              </div>
+            ) : null}
+          </div>
+
           <div className="fb-ctm__field">
             <label htmlFor="ctm-date" className="fb-ctm__label">
               Data Planejada *
@@ -312,7 +728,6 @@ export function CreateTaskModal({
             {errors.plannedDate && <div className="fb-ctm__error">{errors.plannedDate}</div>}
           </div>
 
-          {/* Planned Hours field */}
           <div className="fb-ctm__field">
             <label htmlFor="ctm-hours" className="fb-ctm__label">
               Horas Previstas *
@@ -335,7 +750,6 @@ export function CreateTaskModal({
             {errors.plannedHours && <div className="fb-ctm__error">{errors.plannedHours}</div>}
           </div>
 
-          {/* Created At (read-only) */}
           <div className="fb-ctm__field">
             <label htmlFor="ctm-created" className="fb-ctm__label">
               Data de Criação
@@ -345,14 +759,12 @@ export function CreateTaskModal({
             </div>
           </div>
 
-          {/* Error message for submission */}
           {errors.submit && (
             <div className="fb-ctm__error" role="alert">
               {errors.submit}
             </div>
           )}
 
-          {/* Footer buttons */}
           <div className="fb-ctm__footer">
             <button
               type="button"
@@ -374,6 +786,48 @@ export function CreateTaskModal({
           </div>
         </form>
       </div>
+    </div>
+  )
+}
+
+function MdPreviewFromUrl({ url }: { url: string }) {
+  const [text, setText] = useState('')
+  const [loadError, setLoadError] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    setLoadError('')
+    void fetch(url)
+      .then((r) => {
+        if (!r.ok) {
+          throw new Error('Falha ao ler Markdown')
+        }
+        return r.text()
+      })
+      .then((t) => {
+        if (!cancelled) {
+          setText(t)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLoadError('Não foi possível carregar o preview.')
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [url])
+
+  if (loadError) {
+    return <p className="fb-ctm__error">{loadError}</p>
+  }
+  if (!text) {
+    return <p className="fb-ctm__hint">Carregando…</p>
+  }
+  return (
+    <div className="fb-ctm__md-preview">
+      <ReactMarkdown urlTransform={safeMarkdownUrlTransform}>{text}</ReactMarkdown>
     </div>
   )
 }

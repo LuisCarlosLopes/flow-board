@@ -28,13 +28,15 @@ import {
   migrateCardsAfterColumnEdit,
 } from '../../domain/boardLayout'
 import { applyCardMove, reconcileBoardTimeState, totalCompletedMs } from '../../domain/timeEngine'
-import type { BoardWorkingHours, Card, Column, ColumnRole, TimeBoardState } from '../../domain/types'
+import type { BoardWorkingHours, Card, CardTaskPayload, Column, ColumnRole, TimeBoardState } from '../../domain/types'
 import { GitHubHttpError } from '../../infrastructure/github/client'
+import { base64ToBlob } from '../../infrastructure/github/fileBlob'
 import { createClientFromSession } from '../../infrastructure/github/fromSession'
 import type { BoardDocumentJson } from '../../infrastructure/persistence/types'
 import { createBoardRepository } from '../../infrastructure/persistence/boardRepository'
 import type { FlowBoardSession } from '../../infrastructure/session/sessionStore'
 import { appendNewSegments, docToTimeBoardState, writeTimeBoardStateToDoc } from './timeBridge'
+import { deleteRepoPathIfExists, uploadAttachmentBlobs } from './attachmentSync'
 import { ColumnEditorModal } from './ColumnEditorModal'
 import { CreateTaskModal } from './CreateTaskModal'
 import './BoardView.css'
@@ -163,6 +165,14 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
     return buildItemsRecord(doc.columns, doc.cards)
   }, [doc])
 
+  const getAttachmentBlob = useCallback(
+    async (storagePath: string, mimeType?: string) => {
+      const raw = await client.getFileRaw(storagePath)
+      return base64ToBlob(raw.contentBase64, mimeType ?? 'application/octet-stream')
+    },
+    [client],
+  )
+
   const saveDocument = useCallback(
     async (nextDoc: BoardDocumentJson) => {
       setSaving(true)
@@ -202,6 +212,11 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
   useEffect(() => {
     docRef.current = doc
   }, [doc])
+
+  const timeStateRef = useRef(timeState)
+  useEffect(() => {
+    timeStateRef.current = timeState
+  }, [timeState])
 
   useEffect(() => {
     const tick = () => {
@@ -290,7 +305,7 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
     setTaskModal({ mode: 'edit', card })
   }
 
-  async function handleCreateTask(task: Partial<Card>) {
+  async function handleCreateTask(task: CardTaskPayload) {
     if (!doc) {
       return
     }
@@ -299,14 +314,31 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
       return
     }
 
+    const { attachmentBlobs, attachmentPathsToDelete, attachments, ...rest } = task
+    try {
+      for (const p of attachmentPathsToDelete ?? []) {
+        await deleteRepoPathIfExists(client, p)
+      }
+    } catch (e) {
+      setPersistError(e instanceof Error ? e.message : 'Erro ao remover anexos antigos no GitHub.')
+      return
+    }
+    try {
+      await uploadAttachmentBlobs(client, attachmentBlobs ?? [])
+    } catch (e) {
+      setPersistError(e instanceof Error ? e.message : 'Erro ao enviar anexos.')
+      return
+    }
+
     const newCard: Card = {
-      cardId: task.cardId || crypto.randomUUID(),
-      title: task.title || 'Nova tarefa',
-      columnId: task.columnId || firstBacklog,
-      description: task.description,
-      plannedDate: task.plannedDate,
-      plannedHours: task.plannedHours,
-      createdAt: task.createdAt,
+      cardId: rest.cardId || crypto.randomUUID(),
+      title: rest.title || 'Nova tarefa',
+      columnId: rest.columnId || firstBacklog,
+      description: rest.description,
+      plannedDate: rest.plannedDate,
+      plannedHours: rest.plannedHours,
+      createdAt: rest.createdAt,
+      attachments: attachments ?? [],
     }
 
     const nextDoc = structuredClone(doc)
@@ -314,20 +346,37 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
     await saveDocument(nextDoc)
   }
 
-  async function handleUpdateTask(task: Partial<Card>) {
+  async function handleUpdateTask(task: CardTaskPayload) {
     if (!doc || !task.cardId) {
       return
     }
+    const { attachmentBlobs, attachmentPathsToDelete, attachments, cardId, ...rest } = task
+    try {
+      for (const p of attachmentPathsToDelete ?? []) {
+        await deleteRepoPathIfExists(client, p)
+      }
+    } catch (e) {
+      setPersistError(e instanceof Error ? e.message : 'Erro ao remover anexos antigos no GitHub.')
+      return
+    }
+    try {
+      await uploadAttachmentBlobs(client, attachmentBlobs ?? [])
+    } catch (e) {
+      setPersistError(e instanceof Error ? e.message : 'Erro ao enviar anexos.')
+      return
+    }
+
     const nextDoc = structuredClone(doc)
     nextDoc.cards = nextDoc.cards.map((c) =>
-      c.cardId === task.cardId
+      c.cardId === cardId
         ? {
             ...c,
-            title: task.title?.trim() ? task.title.trim() : c.title,
-            description: task.description,
-            plannedDate: task.plannedDate,
-            plannedHours: task.plannedHours,
-            createdAt: task.createdAt ?? c.createdAt,
+            title: rest.title?.trim() ? rest.title.trim() : c.title,
+            description: rest.description,
+            plannedDate: rest.plannedDate,
+            plannedHours: rest.plannedHours,
+            createdAt: rest.createdAt ?? c.createdAt,
+            attachments: attachments !== undefined ? attachments : c.attachments,
           }
         : c,
     )
@@ -339,18 +388,33 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
     if (!window.confirm(`Excluir a tarefa "${card.title}"?`)) {
       return
     }
-    if (!doc) {
-      return
-    }
-    const nextDoc = structuredClone(doc)
-    nextDoc.cards = nextDoc.cards.filter((c) => c.cardId !== card.cardId)
-    const nextTime = { ...timeState }
-    delete nextTime[card.cardId]
-    delete nextDoc.cardTimeState[card.cardId]
-    writeTimeBoardStateToDoc(nextDoc, nextTime)
-    setTimeState(nextTime)
-    setDoc(nextDoc)
-    void saveDocument(nextDoc)
+    const cardIdSnapshot = card.cardId
+    const attachmentsSnapshot = card.attachments ?? []
+    void (async () => {
+      try {
+        for (const a of attachmentsSnapshot) {
+          await deleteRepoPathIfExists(client, a.storagePath)
+        }
+      } catch (e) {
+        setPersistError(e instanceof Error ? e.message : 'Erro ao remover anexos.')
+        return
+      }
+      const docSnap = docRef.current
+      const timeSnap = timeStateRef.current
+      if (!docSnap || !docSnap.cards.some((c) => c.cardId === cardIdSnapshot)) {
+        setPersistError('O quadro mudou antes de concluir a exclusão. Recarregue se necessário.')
+        return
+      }
+      const nextDoc = structuredClone(docSnap)
+      nextDoc.cards = nextDoc.cards.filter((c) => c.cardId !== cardIdSnapshot)
+      const nextTime = { ...timeSnap }
+      delete nextTime[cardIdSnapshot]
+      delete nextDoc.cardTimeState[cardIdSnapshot]
+      writeTimeBoardStateToDoc(nextDoc, nextTime)
+      setTimeState(nextTime)
+      setDoc(nextDoc)
+      await saveDocument(nextDoc)
+    })()
   }
 
   function handleColumnApply(cols: Column[], workingHours?: BoardWorkingHours | null) {
@@ -454,6 +518,8 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
               ? `${boardId}-create-${taskModal.columnId}`
               : `${boardId}-edit-${taskModal.card.cardId}`
           }
+          boardId={boardId}
+          getAttachmentBlob={getAttachmentBlob}
           isOpen
           onClose={() => {
             setTaskModal('closed')

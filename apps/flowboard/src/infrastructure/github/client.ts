@@ -153,6 +153,81 @@ export class GitHubContentsClient {
     }
   }
 
+  /**
+   * GET raw file (base64 as returned by API). Use for binary blobs and non-JSON text.
+   */
+  async getFileRaw(path: string, signal?: AbortSignal): Promise<{ sha: string; contentBase64: string }> {
+    const res = await this.fetchImpl(this.url(path), {
+      headers: this.headers(),
+      signal,
+    })
+    if (res.status === 401 || res.status === 403 || res.status === 404) {
+      throw new GitHubHttpError(`GitHub ${res.status}`, res.status)
+    }
+    if (!res.ok) {
+      throw new GitHubHttpError(`GitHub ${res.status}`, res.status)
+    }
+    const body = (await res.json()) as ContentsGetResponse
+    if (body.encoding !== 'base64') {
+      throw new Error('Unsupported encoding')
+    }
+    return { sha: body.sha, contentBase64: body.content.replace(/\n/g, '') }
+  }
+
+  /** `tryGetFileRaw`: null if 404. */
+  async tryGetFileRaw(path: string, signal?: AbortSignal): Promise<{ sha: string; contentBase64: string } | null> {
+    const res = await this.fetchImpl(this.url(path), {
+      headers: this.headers(),
+      signal,
+    })
+    if (res.status === 404) {
+      return null
+    }
+    if (res.status === 401 || res.status === 403) {
+      throw new GitHubHttpError(`GitHub ${res.status}`, res.status)
+    }
+    if (!res.ok) {
+      throw new GitHubHttpError(`GitHub ${res.status}`, res.status)
+    }
+    const body = (await res.json()) as ContentsGetResponse
+    if (body.encoding !== 'base64') {
+      throw new Error('Unsupported encoding')
+    }
+    return { sha: body.sha, contentBase64: body.content.replace(/\n/g, '') }
+  }
+
+  /**
+   * PUT arbitrary base64 content (binary or text). Same conflict/rate-limit behavior as JSON PUT.
+   */
+  async putFileBase64(path: string, contentBase64: string, sha: string | null, message?: string): Promise<void> {
+    const body: Record<string, unknown> = {
+      message: message ?? `flowboard: update ${path}`,
+      content: contentBase64,
+    }
+    if (sha) {
+      body.sha = sha
+    }
+    const res = await this.fetchImpl(this.url(path), {
+      method: 'PUT',
+      headers: {
+        ...this.headers(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    })
+    if (res.status === 409) {
+      throw new GitHubHttpError('Conflict (409)', 409)
+    }
+    if (res.status === 429) {
+      const ra = res.headers.get('Retry-After')
+      const retryAfterMs = ra ? Number(ra) * 1000 : undefined
+      throw new GitHubHttpError('Rate limited (429)', 429, retryAfterMs)
+    }
+    if (!res.ok) {
+      throw new GitHubHttpError(`GitHub ${res.status}`, res.status)
+    }
+  }
+
   /** DELETE file at path (requires current blob SHA). */
   async deleteFile(path: string, sha: string): Promise<void> {
     const res = await this.fetchImpl(this.url(path), {
@@ -209,6 +284,29 @@ export async function putJsonWithRetry(
     try {
       const current = await readCurrent()
       await client.putFileJson(path, json, current.sha)
+      return
+    } catch (e) {
+      if (e instanceof GitHubHttpError && e.status === 409 && attempt < 1) {
+        continue
+      }
+      throw e
+    }
+  }
+}
+
+/**
+ * Same as {@link putJsonWithRetry} for binary/text blobs: re-read SHA after 409 (concorrência GitHub).
+ */
+export async function putFileBase64WithRetry(
+  client: GitHubContentsClient,
+  path: string,
+  contentBase64: string,
+  readCurrentSha: () => Promise<string | null>,
+): Promise<void> {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const sha = await readCurrentSha()
+      await client.putFileBase64(path, contentBase64, sha, undefined)
       return
     } catch (e) {
       if (e instanceof GitHubHttpError && e.status === 409 && attempt < 1) {
