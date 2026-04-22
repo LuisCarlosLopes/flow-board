@@ -51,5 +51,7 @@ history:
     event: "Implementação direta HOTFIX pós aprovação humana."
   - at: "2026-04-22"
     event: "Pedido 'baixa': correções low do code-reviewer (storage, tokens CSS, a11y copiar)."
+  - at: "2026-04-22"
+    event: "Build: `themeBootstrap.contract.test.ts` — `/// <reference types=\"node\" />` para `tsc -b` com `types: [vite/client]` (erro TS2591 em node:fs/path/url)."
 
 summary: "Fase 1: themeBootstrap.contract.test.ts + pending row var(--accent-dim). Fase 2 (findings low): storage sync no AppShell; SearchModal foco com var(--accent-dim); chip accent border token; copy wrapper aria-live e botão sem disabled em isCopied."
