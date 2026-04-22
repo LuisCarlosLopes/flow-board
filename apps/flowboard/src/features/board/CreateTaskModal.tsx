@@ -9,6 +9,7 @@ import {
   sanitizeDisplayName,
   validateAttachmentFile,
 } from '../../domain/attachmentRules'
+import { isCardArchived } from '../../domain/cardArchive'
 import { useClipboard } from '../../hooks/useClipboard'
 import './CreateTaskModal.css'
 
@@ -27,6 +28,10 @@ type Props = {
   boardId: string
   /** Fetch blob for previews/downloads of already-persisted attachments */
   getAttachmentBlob?: (storagePath: string, mimeType?: string) => Promise<Blob>
+  /** Archive current card (edit mode); parent confirms and persists. */
+  onArchiveCard?: (card: Card) => void
+  /** Restore archived card (edit mode). */
+  onUnarchiveCard?: (card: Card) => void
 }
 
 function formatCreatedAtForDisplay(iso?: string): string {
@@ -109,6 +114,8 @@ export function CreateTaskModal({
   editingCard = null,
   boardId,
   getAttachmentBlob,
+  onArchiveCard,
+  onUnarchiveCard,
 }: Props) {
   const isEditMode = Boolean(editingCard)
   const [title, setTitle] = useState('')
@@ -502,6 +509,11 @@ export function CreateTaskModal({
         </div>
 
         <form className="fb-ctm__form" onSubmit={(e) => { e.preventDefault(); void handleSubmit() }}>
+          {isEditMode && editingCard && isCardArchived(editingCard) ? (
+            <p className="fb-ctm__archived-banner" role="status" data-testid="ctm-archived-banner">
+              Esta tarefa está arquivada e não aparece nas colunas do quadro.
+            </p>
+          ) : null}
           <div className="fb-ctm__field">
             <label htmlFor="ctm-title" className="fb-ctm__label">
               Título *
@@ -789,23 +801,49 @@ export function CreateTaskModal({
           )}
 
           <div className="fb-ctm__footer">
-            <button
-              type="button"
-              className="fb-ctm__ghost"
-              onClick={onClose}
-              disabled={isSubmitting}
-              data-testid="ctm-cancel-btn"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className="fb-ctm__primary"
-              disabled={isSubmitting}
-              data-testid="ctm-submit-btn"
-            >
-              {isSubmitting ? (isEditMode ? 'Salvando...' : 'Criando...') : isEditMode ? 'Salvar' : 'Criar'}
-            </button>
+            <div className="fb-ctm__footer-start">
+              {isEditMode && editingCard && !isCardArchived(editingCard) && onArchiveCard ? (
+                <button
+                  type="button"
+                  className="fb-ctm__ghost"
+                  data-testid="ctm-archive-btn"
+                  disabled={isSubmitting}
+                  onClick={() => onArchiveCard(editingCard)}
+                >
+                  Arquivar
+                </button>
+              ) : null}
+              {isEditMode && editingCard && isCardArchived(editingCard) && onUnarchiveCard ? (
+                <button
+                  type="button"
+                  className="fb-ctm__ghost"
+                  data-testid="ctm-unarchive-btn"
+                  disabled={isSubmitting}
+                  onClick={() => onUnarchiveCard(editingCard)}
+                >
+                  Restaurar
+                </button>
+              ) : null}
+            </div>
+            <div className="fb-ctm__footer-end">
+              <button
+                type="button"
+                className="fb-ctm__ghost"
+                onClick={onClose}
+                disabled={isSubmitting}
+                data-testid="ctm-cancel-btn"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="fb-ctm__primary"
+                disabled={isSubmitting}
+                data-testid="ctm-submit-btn"
+              >
+                {isSubmitting ? (isEditMode ? 'Salvando...' : 'Criando...') : isEditMode ? 'Salvar' : 'Criar'}
+              </button>
+            </div>
           </div>
         </form>
       </div>

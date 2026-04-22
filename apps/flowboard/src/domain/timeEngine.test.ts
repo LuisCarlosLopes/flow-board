@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  applyArchiveToTimeState,
   applyCardMove,
   reconcileBoardTimeState,
   reconcileTimeStateWithCardPositions,
@@ -80,9 +81,47 @@ describe('applyCardMove', () => {
   })
 })
 
+describe('applyArchiveToTimeState', () => {
+  it('in_progress com activeStartMs materializa completed e zera activeStartMs (CA04)', () => {
+    const s: TimeBoardState = {
+      c1: { cardId: 'c1', completed: [], activeStartMs: 1000 },
+    }
+    const next = applyArchiveToTimeState(s, 'c1', cols, 'w', 5000, undefined)
+    expect(next.c1?.completed).toEqual([{ startMs: 1000, endMs: 5000 }])
+    expect(next.c1?.activeStartMs).toBeUndefined()
+  })
+
+  it('não in_progress: não adiciona completed; limpa activeStartMs', () => {
+    const s: TimeBoardState = {
+      c1: { cardId: 'c1', completed: [], activeStartMs: 999 },
+    }
+    const next = applyArchiveToTimeState(s, 'c1', cols, 'b', 5000, undefined)
+    expect(next.c1?.completed.length).toBe(0)
+    expect(next.c1?.activeStartMs).toBeUndefined()
+  })
+
+  it('re-aplicar com activeStartMs já limpo não duplica completed (idempotência)', () => {
+    let s: TimeBoardState = {
+      c1: { cardId: 'c1', completed: [], activeStartMs: 1000 },
+    }
+    s = applyArchiveToTimeState(s, 'c1', cols, 'w', 5000, undefined)
+    s = applyArchiveToTimeState(s, 'c1', cols, 'w', 8000, undefined)
+    expect(s.c1?.completed.length).toBe(1)
+  })
+})
+
 describe('reconcileTimeStateWithCardPositions', () => {
   it('remove activeStartMs quando card não está em in_progress', () => {
     const cards: Card[] = [{ cardId: 'c1', title: 't', columnId: 'b' }]
+    const s: TimeBoardState = { c1: { cardId: 'c1', completed: [], activeStartMs: 99 } }
+    const next = reconcileTimeStateWithCardPositions(cards, cols, s)
+    expect(next.c1?.activeStartMs).toBeUndefined()
+  })
+
+  it('archived card clears activeStartMs mesmo em coluna in_progress', () => {
+    const cards: Card[] = [
+      { cardId: 'c1', title: 't', columnId: 'w', archived: true, archivedAt: '2026-04-22T12:00:00.000Z' },
+    ]
     const s: TimeBoardState = { c1: { cardId: 'c1', completed: [], activeStartMs: 99 } }
     const next = reconcileTimeStateWithCardPositions(cards, cols, s)
     expect(next.c1?.activeStartMs).toBeUndefined()

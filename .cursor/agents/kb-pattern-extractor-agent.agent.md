@@ -1,6 +1,7 @@
 ---
 name: kb-pattern-extractor-agent
 description: 'Consolida inventário factual do repositório em um JSON canônico de knowledge base arquitetural, preservando shape estável, evidência por item e lacunas explícitas quando algo não existir no código.'
+model: inherit
 triggers:
 - architecture json
 - knowledge base arquitetural

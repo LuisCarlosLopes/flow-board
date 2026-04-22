@@ -43,6 +43,20 @@ const boardWithSearchableCard = (boardId: string): BoardDocumentJson => ({
   ],
 })
 
+const boardWithArchivedSearchableCard = (boardId: string): BoardDocumentJson => ({
+  ...emptyBoardDoc(boardId),
+  columns: [{ columnId: 'col1', label: 'Todo', role: 'backlog' }],
+  cards: [
+    {
+      cardId: 'c-arch',
+      title: 'Unique Alpha Archived',
+      columnId: 'col1',
+      archived: true,
+      archivedAt: '2026-04-22T12:00:00.000Z',
+    },
+  ],
+})
+
 describe('SearchModal', () => {
   let mockSession: FlowBoardSession
 
@@ -237,6 +251,20 @@ describe('SearchModal', () => {
     await waitFor(() => {
       expect(screen.getByTestId('search-result-c1')).toBeInTheDocument()
     })
+  })
+
+  it('shows Arquivado badge for archived search hits', async () => {
+    loadBoardMock.mockResolvedValue({ doc: boardWithArchivedSearchableCard('board-1'), sha: 'x' })
+    const user = userEvent.setup()
+    render(
+      <SearchModal isOpen={true} onClose={() => {}} boardId="board-1" session={mockSession} />,
+    )
+    await screen.findByRole('dialog')
+    await user.type(screen.getByRole('textbox', { name: /Buscar no quadro/i }), 'Alpha')
+    await waitFor(() => {
+      expect(screen.getByTestId('search-result-c-arch')).toBeInTheDocument()
+    })
+    expect(screen.getByTestId('search-result-archived-c-arch')).toBeInTheDocument()
   })
 
   it('calls onSelectResult with card id when a result is activated', async () => {

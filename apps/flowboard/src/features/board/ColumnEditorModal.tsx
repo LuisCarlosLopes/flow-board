@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { isCardArchived } from '../../domain/cardArchive'
 import type { BoardWorkingHours, Card, Column, ColumnRole } from '../../domain/types'
 import { validateColumnLayout } from '../../domain/boardRules'
 import './ColumnEditorModal.css'
@@ -66,7 +67,7 @@ export function ColumnEditorModal({ columns, cards, workingHours, onClose, onApp
     if (!col) {
       return
     }
-    const count = cards.filter((c) => c.columnId === col.columnId).length
+    const count = cards.filter((c) => c.columnId === col.columnId && !isCardArchived(c)).length
     if (count > 0) {
       const ok = window.confirm(
         `Esta coluna tem ${count} card(s). Os cards serão movidos para a primeira coluna Backlog restante. Continuar?`,

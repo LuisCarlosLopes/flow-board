@@ -1,0 +1,212 @@
+title: "Página dedicada para cards arquivados (fora do board)"
+slug: archived-cards-page
+created_at: "2026-04-22"
+context: >
+  FlowBoard MVP — feature card-archive já entregue: cards arquivados somem do Kanban,
+  mas hoje aparecem numa secção colapsável no próprio BoardView (fb-archived).
+  Objetivo: mover essa visão para uma rota/página separada e remover a secção do quadro.
+
+objective: >
+  Oferecer uma página (rota) dedicada para listar e gerir cards arquivados do board ativo,
+  com as mesmas capacidades essenciais já existentes (restaurar, eliminar conforme regras atuais),
+  e remover do BoardView a UI inline de "Arquivados" para o board ficar só com colunas Kanban.
+
+acceptance_criteria:
+  - "BoardView não exibe mais a secção colapsável de arquivados; o quadro mostra apenas colunas e cards ativos."
+  - "Existe navegação explícita do app para a página de arquivados (ex.: link/botão na barra ou contexto do board) quando aplicável ao board selecionado."
+  - "A página de arquivados lista apenas cards com archived === true do documento do board ativo, ordenação alinhada ao domínio existente (ex. sortArchivedByDefault)."
+  - "Restaurar e eliminar arquivados na nova página persistem o documento como hoje (mesmas invariantes de tempo/domínio)."
+  - "Busca global (SearchModal) e badge de arquivado mantêm comportamento definido em card-archive; spec deve declarar se há deep-link da busca para a página."
+  - "Comportamento coberto por testes (domínio já coberto; UI/E2E conforme risco na fase tester)."
+
+scope:
+  in:
+    - "Nova rota/página e componente(s) de UI para lista de arquivados."
+    - "AppShell (ou router): entrada de navegação; possível estado quando nenhum board está selecionado."
+    - "Remoção da secção fb-archived e estado archivedExpanded de BoardView (ou equivalente)."
+    - "Reutilização de handlers de persistência já existentes ou extração mínima para compartilhar entre board e página."
+  out:
+    - "Mudança no modelo JSON ou novos campos de card."
+    - "Arquivamento em massa, filtros avançados ou multi-board na mesma página."
+    - "Backend além do fluxo GitHub atual."
+
+tech_context: |
+  Stack: React, Vite, TypeScript, React Router, Vitest, Playwright.
+  Arquivos relevantes: AppShell.tsx, BoardView.tsx (secção fb-archived ~605+), domain/cardArchive.ts,
+  CreateTaskModal (edição de card arquivado), SearchModal.
+  Pré-requisito: entrega card-archive em .memory-bank/specs/card-archive/ (spec-feature.md, código em apps/flowboard).
+
+baseline_ref: "214a6bb9a740b58c1968bf10785196f434c236a7"
+
+squad:
+  status: concluído
+  track: FEATURE
+  track_override: false
+  score: 5
+  confidence: 86
+  current_phase: null
+  completed_phases:
+    - spec
+    - spec-reviewer
+    - planner
+    - plan-reviewer
+    - task-breakdown
+    - HITL
+    - implementer
+    - verifier
+    - code-reviewer
+    - tester
+  next_phase: null
+  iteration: 1
+  blockers: []
+  hitl_required: false
+
+repo_write_scope: []
+
+artifact_reuse:
+  - artifact: ".memory-bank/specs/card-archive/spec-feature.md"
+    decision: reused-as-context-only
+    reason: "Regras de arquivamento, busca e tempo já fechadas; esta feature altera só superfície de navegação/UI."
+  - artifact: "apps/flowboard/src/features/board/BoardView.tsx"
+    decision: reused-as-context-only
+    reason: "Comportamento atual da secção Arquivados e handlers a espelhar ou extrair."
+
+approvals:
+  - phase: HITL
+    actor: human
+    at: "2026-04-22"
+    note: "Utilizador aprovou implementação conforme planner + task-breakdown."
+retries_by_phase: {}
+last_failure: null
+decisions:
+  - decision: "Fase architect"
+    choice: "omitida"
+    reason: "spec-reviewer v1.1: sem decisão arquitetural pendente; delta UI/rota."
+
+pipeline:
+  - phase: spec
+    status: ok
+    artifact: spec-feature.md
+  - phase: spec-reviewer
+    status: ok
+    artifact: spec-reviewer-feature.md
+  - phase: planner
+    status: ok
+    artifact: planner-feature.md
+  - phase: plan-reviewer
+    status: ok
+    artifact: plan-reviewer-feature.md
+  - phase: task-breakdown
+    status: ok
+    artifact: task-breakdown-feature.md
+  - phase: HITL
+    status: ok
+    artifact: null
+  - phase: implementer
+    status: ok
+    artifact: implementer-feature.md
+  - phase: verifier
+    status: ok
+    artifact: verifier-feature.md
+  - phase: code-reviewer
+    status: ok
+    artifact: code-reviewer-feature.md
+  - phase: tester
+    status: ok
+    artifact: tester-feature.md
+
+subtasks:
+  - id: T1
+    title: "Criar ArchivedCardsPage (+ hook/CSS opcional)"
+    score: null
+    track: null
+    status: concluido
+    artifacts:
+      - task-breakdown-feature.md
+  - id: T2
+    title: "Integrar rota / shell (AppShell, useLocation)"
+    score: null
+    track: null
+    status: concluido
+    artifacts:
+      - task-breakdown-feature.md
+  - id: T3
+    title: "Remover secção arquivados do BoardView + microcopy"
+    score: null
+    track: null
+    status: concluido
+    artifacts:
+      - task-breakdown-feature.md
+  - id: T4
+    title: "CSS fb-archived / nova página"
+    score: null
+    track: null
+    status: concluido
+    artifacts:
+      - task-breakdown-feature.md
+  - id: T5
+    title: "E2E card-archive.spec.ts"
+    score: null
+    track: null
+    status: concluido
+    artifacts:
+      - task-breakdown-feature.md
+  - id: T6
+    title: "Fecho DoD / regressão"
+    score: null
+    track: null
+    status: concluido
+    artifacts:
+      - task-breakdown-feature.md
+
+history:
+  - phase: spec
+    agent: spec
+    status: ok
+    artifact: spec-feature.md
+    note: "TSD v1.0 → v1.1 após remediação C1.9/C1.14."
+  - phase: spec-reviewer
+    agent: spec-reviewer
+    status: ok
+    artifact: spec-reviewer-feature.md
+    note: "Aprovado com ressalvas 86/100; 0 críticos pós v1.1."
+  - phase: planner
+    agent: planner
+    status: ok
+    artifact: planner-feature.md
+    note: "IPD v1.0, confiança 86/100."
+  - phase: plan-reviewer
+    agent: plan-reviewer
+    status: ok
+    artifact: plan-reviewer-feature.md
+    note: "Aprovado 90/100; 0 críticos."
+  - phase: task-breakdown
+    agent: task-breakdown
+    status: ok
+    artifact: task-breakdown-feature.md
+    note: "6 tasks T1–T6."
+  - phase: implementer
+    agent: implementer
+    status: ok
+    artifact: implementer-feature.md
+    note: "Código + Vitest 273; build OK."
+  - phase: verifier
+    agent: verifier
+    status: ok
+    artifact: verifier-feature.md
+    note: "APROVADO; Vitest 273 + build."
+  - phase: code-reviewer
+    agent: code-reviewer
+    status: ok
+    artifact: code-reviewer-feature.md
+    note: "78/100; 0 críticos; ressalvas duplicação/tick."
+  - phase: tester
+    agent: tester
+    status: ok
+    artifact: tester-feature.md
+    note: "E2E Chromium PASS após espera Salvando…; lacunas RTL documentadas."
+
+summary: >
+  Pipeline FEATURE fechado: página /archived, shell nav-archived, remoção da lista inline no BoardView, busca inalterada
+  com redirecção ao escolher resultado em /archived. Verificação e review concluídos; E2E card-archive estável com sincronização
+  pós-arquivar antes de abrir arquivados. Dívida: duplicação ArchivedCardsPage vs BoardView (code-reviewer); testes RTL da nova rota (tester).

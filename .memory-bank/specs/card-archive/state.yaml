@@ -1,0 +1,180 @@
+title: "Arquivar card — área de arquivados e busca"
+slug: card-archive
+created_at: "2026-04-22"
+context: "FlowBoard MVP — quadro Kanban com persistência GitHub; busca de cards já implementada (board-search)."
+
+objective: >
+  Permitir arquivar um card: removê-lo da visualização do board (colunas Kanban) e agrupá-lo
+  em uma área de arquivados, mantendo o card indexável na busca global/modal de busca.
+
+acceptance_criteria:
+  - "Usuário pode arquivar um card a partir da UI do quadro (ação explícita, acessível)."
+  - "Cards arquivados não aparecem nas colunas do Kanban nem contam para ordenação/drag da coluna."
+  - "Existe uma área ou visão de 'Arquivados' onde o usuário vê cards arquivados do board ativo e pode restaurar ou excluir conforme regras definidas na spec."
+  - "A busca existente (modal /) continua encontrando cards arquivados por título, descrição e demais campos já cobertos pela busca."
+  - "Persistência no documento JSON do board compatível com ADR de schema; migração ou default seguro para boards legados."
+  - "Comportamento verificável por testes de domínio (e E2E quando aplicável ao risco)."
+
+scope:
+  in:
+    - "Modelo de domínio / JSON do board para estado archived do card."
+    - "UI: arquivar, área de arquivados, integração com fluxo atual do BoardView."
+    - "Integração com cardSearch e SearchModal para incluir arquivados nos resultados."
+    - "Invariantes de tempo/rastreio se aplicáveis a cards arquivados."
+  out:
+    - "Arquivamento em massa ou filtros avançados na área de arquivados (salvo mínimo definido na spec)."
+    - "Sincronização multi-dispositivo além do commit Git existente."
+    - "Notificações ou automações externas."
+
+tech_context: |
+  Stack: React, Vite, TypeScript, Vitest, Playwright.
+  Card em apps/flowboard/src/domain/types.ts; BoardDocumentJson em infrastructure/persistence/types.ts.
+  Busca: apps/flowboard/src/domain/cardSearch.ts, SearchModal.tsx.
+  Constitution: regras de negócio testáveis no domínio; persistência via GitHub API.
+
+baseline_ref: "0df099012dd8dd283d9f77b058092624a79d6b59"
+
+squad:
+  status: concluído
+  track: FEATURE
+  track_override: false
+  score: 6
+  confidence: 88
+  current_phase: null
+  completed_phases:
+    - spec
+    - spec-reviewer
+    - planner
+    - plan-reviewer
+    - task-breakdown
+    - HITL
+    - implementer
+    - verifier
+    - code-reviewer
+    - tester
+  next_phase: null
+  iteration: 1
+  blockers: []
+  hitl_required: false
+
+repo_write_scope: []
+
+artifact_reuse:
+  - artifact: ".memory-bank/specs/board-search/board-search-v1.0.tsd.md"
+    decision: reused-as-context-only
+    reason: "Contrato de busca e CardSearch; comportamento de incluir arquivados deve alinhar."
+  - artifact: "apps/flowboard/src/domain/types.ts"
+    decision: reused-as-context-only
+    reason: "Tipo Card atual sem campo archived — spec deve definir extensão."
+
+approvals:
+  - phase: HITL
+    actor: human
+    at: "2026-04-22"
+    note: "Utilizador aprovou implementação conforme planner + task-breakdown."
+
+retries_by_phase: {}
+last_failure: null
+
+decisions:
+  - decision: "Fase architect"
+    choice: "omitida"
+    reason: "spec-reviewer não recomendou; delta de modelo e regras já fechados no TSD."
+
+pipeline:
+  - phase: spec
+    status: ok
+    artifact: spec-feature.md
+  - phase: spec-reviewer
+    status: ok
+    artifact: spec-reviewer-feature.md
+  - phase: planner
+    status: ok
+    artifact: planner-feature.md
+  - phase: plan-reviewer
+    status: ok
+    artifact: plan-reviewer-feature.md
+  - phase: task-breakdown
+    status: ok
+    artifact: task-breakdown-feature.md
+  - phase: HITL
+    status: ok
+    artifact: null
+  - phase: implementer
+    status: ok
+    artifact: implementer-feature.md
+  - phase: verifier
+    status: ok
+    artifact: verifier-feature.md
+  - phase: code-reviewer
+    status: ok
+    artifact: code-reviewer-feature.md
+  - phase: tester
+    status: ok
+    artifact: tester-feature.md
+
+subtasks:
+  - id: T1-T8
+    title: "Ver task-breakdown-feature.md"
+    score: null
+    track: null
+    status: concluído
+    artifacts:
+      - task-breakdown-feature.md
+      - implementer-feature.md
+      - verifier-feature.md
+      - code-reviewer-feature.md
+      - tester-feature.md
+
+history:
+  - phase: spec
+    agent: spec
+    status: ok
+    artifact: spec-feature.md
+    note: "TSD v1.0, confiança 88/100."
+  - phase: spec-reviewer
+    agent: spec-reviewer
+    status: ok
+    artifact: spec-reviewer-feature.md
+    note: "C1.14 remediado; follow-up aprovado para planner."
+  - phase: planner
+    agent: planner
+    status: ok
+    artifact: planner-feature.md
+    note: "IPD confiança 88; risco merge pós-DnD documentado."
+  - phase: plan-reviewer
+    agent: plan-reviewer
+    status: ok
+    artifact: plan-reviewer-feature.md
+    note: "Aprovado 80/100; avisos não bloqueantes (CA11, falhas 4.1)."
+  - phase: task-breakdown
+    agent: task-breakdown
+    status: ok
+    artifact: task-breakdown-feature.md
+    note: "8 subtarefas T1–T8."
+  - phase: implementer
+    agent: implementer
+    status: ok
+    artifact: implementer-feature.md
+    note: "Código + Vitest; build OK."
+  - phase: verifier
+    agent: verifier
+    status: ok
+    artifact: verifier-feature.md
+    note: "APROVADO COM RESSALVAS; 273 testes; boardRepository intocado."
+  - phase: code-reviewer
+    agent: code-reviewer
+    status: ok
+    artifact: code-reviewer-feature.md
+    note: "Aprovado 84/100; 0 críticos; 1 major documentado."
+  - phase: tester
+    agent: tester
+    status: ok
+    artifact: tester-feature.md
+    note: "PASS Vitest; GAPs CA11/E2E e CAs sem teste dedicado documentados."
+
+summary: >
+  Entrega fechada no pipeline FEATURE: arquivamento com merge pós-drag, tempo alinhado a in_progress→done,
+  busca com badge, secção Arquivados, modal e R-UX01. Verificação automatizada verde (273 testes, build, lint sem erros em src).
+  Riscos residuais: E2E card-archive opcional; lacunas de teste mapeadas em tester-feature (CA11, alguns CAs); 1 achado major no code-reviewer
+  (cenário columnId inválido × tempo) — aceite como dívida menor ou follow-up. ADR não exigido para bump opcional de Card (ADR-008).

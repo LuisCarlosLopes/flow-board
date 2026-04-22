@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   applyDragEnd,
   buildItemsRecord,
+  buildKanbanItemsRecord,
   findCardContainer,
   itemsRecordToCards,
   migrateCardsAfterColumnEdit,
@@ -24,6 +25,17 @@ describe('boardLayout', () => {
     const r = buildItemsRecord(cols, cards)
     expect(r.a).toEqual(['1', '3'])
     expect(r.w).toEqual(['2'])
+    expect(r.d).toEqual([])
+  })
+
+  it('buildKanbanItemsRecord omits archived cards from columns', () => {
+    const cards: Card[] = [
+      { cardId: '1', title: 'x', columnId: 'a' },
+      { cardId: '2', title: 'y', columnId: 'a', archived: true, archivedAt: '2026-04-22T10:00:00.000Z' },
+    ]
+    const r = buildKanbanItemsRecord(cols, cards)
+    expect(r.a).toEqual(['1'])
+    expect(r.w).toEqual([])
     expect(r.d).toEqual([])
   })
 

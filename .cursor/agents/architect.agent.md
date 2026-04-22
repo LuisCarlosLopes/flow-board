@@ -1,6 +1,7 @@
 ---
 name: architect
 description: 'Gera Architecture Review Documents (ARDs) com ADRs e diagramas Mermaid. Analisa TSDs aprovados, explora o repositório em busca de padrões arquiteturais existentes e produz o contrato arquitetural que guia o planejador. Agnóstico de stack.'
+model: inherit
 triggers:
 - architecture
 - ARD

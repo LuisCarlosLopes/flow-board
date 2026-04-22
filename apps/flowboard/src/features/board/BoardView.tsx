@@ -22,12 +22,18 @@ import {
 import { validateColumnLayout } from '../../domain/boardRules'
 import {
   applyDragEnd,
-  buildItemsRecord,
+  buildKanbanItemsRecord,
   findCardContainer,
   itemsRecordToCards,
   migrateCardsAfterColumnEdit,
 } from '../../domain/boardLayout'
-import { applyCardMove, reconcileBoardTimeState, totalCompletedMs } from '../../domain/timeEngine'
+import { isCardArchived, mergeLayoutCardsWithArchived } from '../../domain/cardArchive'
+import {
+  applyArchiveToTimeState,
+  applyCardMove,
+  reconcileBoardTimeState,
+  totalCompletedMs,
+} from '../../domain/timeEngine'
 import type { BoardWorkingHours, Card, CardTaskPayload, Column, ColumnRole, TimeBoardState } from '../../domain/types'
 import { GitHubHttpError } from '../../infrastructure/github/client'
 import { base64ToBlob } from '../../infrastructure/github/fileBlob'
@@ -37,6 +43,7 @@ import { createBoardRepository } from '../../infrastructure/persistence/boardRep
 import type { FlowBoardSession } from '../../infrastructure/session/sessionStore'
 import { appendNewSegments, docToTimeBoardState, writeTimeBoardStateToDoc } from './timeBridge'
 import { deleteRepoPathIfExists, uploadAttachmentBlobs } from './attachmentSync'
+import { clearSearchModalBoardCache } from '../app/SearchModal'
 import { ColumnEditorModal } from './ColumnEditorModal'
 import { CreateTaskModal } from './CreateTaskModal'
 import './BoardView.css'
@@ -50,15 +57,29 @@ type Props = {
   cardToEditId?: string | null
   /** Callback when card editing is complete */
   onCardEditComplete?: () => void
+  /** Notifies shell after board JSON was saved and reloaded (invalidates search modal cache generation). */
+  onBoardPersisted?: () => void
 }
 
-export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEditId, onCardEditComplete }: Props) {
+export function BoardView({
+  session,
+  boardId,
+  columnEditorMenuTick = 0,
+  cardToEditId,
+  onCardEditComplete,
+  onBoardPersisted,
+}: Props) {
   const client = useMemo(() => createClientFromSession(session), [session])
   const repo = useMemo(() => createBoardRepository(client), [client])
 
   const [doc, setDoc] = useState<BoardDocumentJson | null>(null)
   const [sha, setSha] = useState<string | null>(null)
+  /** GitHub ETag base para PUT; actualizado síncrono após cada load/save (evita 409 em saves em cadeia). */
+  const shaRef = useRef<string | null>(null)
+  const saveChainRef = useRef(Promise.resolve())
   const [timeState, setTimeState] = useState<TimeBoardState>({})
+  const docRef = useRef(doc)
+  const timeStateRef = useRef(timeState)
   const [loadError, setLoadError] = useState('')
   const [persistError, setPersistError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -79,16 +100,21 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
       setLoadError('Quadro não encontrado no repositório.')
       setDoc(null)
       setSha(null)
+      shaRef.current = null
       return
     }
     setDoc(got.doc)
     setSha(got.sha)
+    shaRef.current = got.sha
+    docRef.current = got.doc
     const loaded = docToTimeBoardState(got.doc)
     const reconciled = reconcileBoardTimeState(loaded, got.doc.cards, got.doc.columns, Date.now(), got.doc.workingHours)
     if (JSON.stringify(loaded) !== JSON.stringify(reconciled)) {
       const nextDoc = structuredClone(got.doc)
       writeTimeBoardStateToDoc(nextDoc, reconciled)
       appendNewSegments(nextDoc, loaded, reconciled)
+      docRef.current = nextDoc
+      timeStateRef.current = reconciled
       setDoc(nextDoc)
       setTimeState(reconciled)
       setSaving(true)
@@ -99,7 +125,11 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
         if (got2) {
           setDoc(got2.doc)
           setSha(got2.sha)
-          setTimeState(docToTimeBoardState(got2.doc))
+          shaRef.current = got2.sha
+          docRef.current = got2.doc
+          const ts = docToTimeBoardState(got2.doc)
+          timeStateRef.current = ts
+          setTimeState(ts)
         }
       } catch (e) {
         if (e instanceof GitHubHttpError && e.status === 409) {
@@ -112,7 +142,11 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
           if (got3) {
             setDoc(got3.doc)
             setSha(got3.sha)
-            setTimeState(docToTimeBoardState(got3.doc))
+            shaRef.current = got3.sha
+            docRef.current = got3.doc
+            const ts3 = docToTimeBoardState(got3.doc)
+            timeStateRef.current = ts3
+            setTimeState(ts3)
           }
         } catch {
           /* ignore */
@@ -121,9 +155,14 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
         setSaving(false)
       }
     } else {
+      timeStateRef.current = loaded
       setTimeState(loaded)
     }
   }, [boardId, repo])
+
+  useEffect(() => {
+    saveChainRef.current = Promise.resolve()
+  }, [boardId])
 
   useEffect(() => {
     const t = window.setTimeout(() => {
@@ -162,7 +201,7 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
     if (!doc) {
       return {}
     }
-    return buildItemsRecord(doc.columns, doc.cards)
+    return buildKanbanItemsRecord(doc.columns, doc.cards)
   }, [doc])
 
   const getAttachmentBlob = useCallback(
@@ -175,48 +214,69 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
 
   const saveDocument = useCallback(
     async (nextDoc: BoardDocumentJson) => {
-      setSaving(true)
-      setPersistError('')
-      try {
-        await repo.saveBoard(nextDoc.boardId, nextDoc, sha)
-        const got = await repo.loadBoard(boardId)
-        if (got) {
-          setDoc(got.doc)
-          setSha(got.sha)
-          setTimeState(docToTimeBoardState(got.doc))
-        }
-      } catch (e) {
-        if (e instanceof GitHubHttpError && e.status === 409) {
-          setPersistError('Conflito ao salvar. Recarregando dados.')
-        } else {
-          setPersistError(e instanceof Error ? e.message : 'Erro ao salvar.')
-        }
+      const run = async () => {
+        setSaving(true)
+        setPersistError('')
         try {
+          await repo.saveBoard(nextDoc.boardId, nextDoc, shaRef.current)
           const got = await repo.loadBoard(boardId)
           if (got) {
+            docRef.current = got.doc
+            shaRef.current = got.sha
+            const ts = docToTimeBoardState(got.doc)
+            timeStateRef.current = ts
             setDoc(got.doc)
             setSha(got.sha)
-            setTimeState(docToTimeBoardState(got.doc))
+            setTimeState(ts)
+            clearSearchModalBoardCache()
+            onBoardPersisted?.()
           }
-        } catch {
-          /* ignore */
+        } catch (e) {
+          if (e instanceof GitHubHttpError && e.status === 409) {
+            setPersistError('Conflito ao salvar. Recarregando dados.')
+          } else {
+            setPersistError(e instanceof Error ? e.message : 'Erro ao salvar.')
+          }
+          try {
+            const got = await repo.loadBoard(boardId)
+            if (got) {
+              docRef.current = got.doc
+              shaRef.current = got.sha
+              const ts = docToTimeBoardState(got.doc)
+              timeStateRef.current = ts
+              setDoc(got.doc)
+              setSha(got.sha)
+              setTimeState(ts)
+              clearSearchModalBoardCache()
+              onBoardPersisted?.()
+            }
+          } catch {
+            /* ignore */
+          }
+        } finally {
+          setSaving(false)
         }
-      } finally {
-        setSaving(false)
       }
+      const queued = saveChainRef.current.then(run)
+      saveChainRef.current = queued.catch(() => {
+        /* fila continua mesmo após falha */
+      })
+      return queued
     },
-    [boardId, repo, sha],
+    [boardId, onBoardPersisted, repo],
   )
 
-  const docRef = useRef(doc)
   useEffect(() => {
     docRef.current = doc
   }, [doc])
 
-  const timeStateRef = useRef(timeState)
   useEffect(() => {
     timeStateRef.current = timeState
   }, [timeState])
+
+  useEffect(() => {
+    shaRef.current = sha
+  }, [sha])
 
   useEffect(() => {
     const tick = () => {
@@ -232,6 +292,8 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
       const nextDoc = structuredClone(cur)
       writeTimeBoardStateToDoc(nextDoc, next)
       appendNewSegments(nextDoc, prev, next)
+      timeStateRef.current = next
+      docRef.current = nextDoc
       setTimeState(next)
       setDoc(nextDoc)
       void saveDocument(nextDoc)
@@ -257,7 +319,7 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
     const toCol = findCardContainer(nextItems, movedCardId)
     const nextDoc = structuredClone(doc)
     const newCards = itemsRecordToCards(nextDoc.columns, nextItems, cardById)
-    nextDoc.cards = newCards
+    nextDoc.cards = mergeLayoutCardsWithArchived(doc.cards, newCards)
 
     let nextTime = timeState
     if (fromCol && toCol && fromCol !== toCol) {
@@ -273,6 +335,8 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
     }
     appendNewSegments(nextDoc, timeState, nextTime)
     writeTimeBoardStateToDoc(nextDoc, nextTime)
+    timeStateRef.current = nextTime
+    docRef.current = nextDoc
     setTimeState(nextTime)
     setDoc(nextDoc)
     void saveDocument(nextDoc)
@@ -343,6 +407,7 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
 
     const nextDoc = structuredClone(doc)
     nextDoc.cards = [...nextDoc.cards, newCard]
+    docRef.current = nextDoc
     await saveDocument(nextDoc)
   }
 
@@ -380,6 +445,7 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
           }
         : c,
     )
+    docRef.current = nextDoc
     setDoc(nextDoc)
     await saveDocument(nextDoc)
   }
@@ -411,8 +477,93 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
       delete nextTime[cardIdSnapshot]
       delete nextDoc.cardTimeState[cardIdSnapshot]
       writeTimeBoardStateToDoc(nextDoc, nextTime)
+      timeStateRef.current = nextTime
+      docRef.current = nextDoc
       setTimeState(nextTime)
       setDoc(nextDoc)
+      await saveDocument(nextDoc)
+    })()
+  }
+
+  function handleArchiveCard(card: Card) {
+    if (
+      !window.confirm(
+        `Arquivar a tarefa "${card.title}"? Ela sai das colunas do quadro e passa a aparecer na página Arquivados.`,
+      )
+    ) {
+      return
+    }
+    const cardIdSnapshot = card.cardId
+    const docSnap = docRef.current
+    const timeSnap = timeStateRef.current
+    if (!docSnap) {
+      return
+    }
+    const found = docSnap.cards.find((c) => c.cardId === cardIdSnapshot)
+    if (!found || isCardArchived(found)) {
+      return
+    }
+    void (async () => {
+      const nextDoc = structuredClone(docSnap)
+      const idx = nextDoc.cards.findIndex((c) => c.cardId === cardIdSnapshot)
+      if (idx < 0) {
+        return
+      }
+      const snapshot = nextDoc.cards[idx]!
+      const nextTime = applyArchiveToTimeState(
+        timeSnap,
+        snapshot.cardId,
+        nextDoc.columns,
+        snapshot.columnId,
+        Date.now(),
+        nextDoc.workingHours,
+      )
+      appendNewSegments(nextDoc, timeSnap, nextTime)
+      writeTimeBoardStateToDoc(nextDoc, nextTime)
+      nextDoc.cards[idx] = {
+        ...snapshot,
+        archived: true,
+        archivedAt: new Date().toISOString(),
+      }
+      timeStateRef.current = nextTime
+      docRef.current = nextDoc
+      setTimeState(nextTime)
+      setDoc(nextDoc)
+      setTaskModal('closed')
+      onCardEditComplete?.()
+      await saveDocument(nextDoc)
+    })()
+  }
+
+  function handleUnarchiveCard(card: Card) {
+    const docSnap = docRef.current
+    const timeSnap = timeStateRef.current
+    if (!docSnap || !isCardArchived(card)) {
+      return
+    }
+    const nextDoc = structuredClone(docSnap)
+    const idx = nextDoc.cards.findIndex((c) => c.cardId === card.cardId)
+    if (idx < 0) {
+      return
+    }
+    const snapshot = nextDoc.cards[idx]!
+    nextDoc.cards[idx] = {
+      ...snapshot,
+      archived: undefined,
+      archivedAt: undefined,
+    }
+    const prevTime = timeSnap
+    void (async () => {
+      const nowMs = Date.now()
+      const nextTime = reconcileBoardTimeState(prevTime, nextDoc.cards, nextDoc.columns, nowMs, nextDoc.workingHours)
+      appendNewSegments(nextDoc, prevTime, nextTime)
+      writeTimeBoardStateToDoc(nextDoc, nextTime)
+      timeStateRef.current = nextTime
+      docRef.current = nextDoc
+      setTimeState(nextTime)
+      setDoc(nextDoc)
+      setTaskModal('closed')
+      onCardEditComplete?.()
       await saveDocument(nextDoc)
     })()
   }
@@ -434,6 +585,8 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
     let nextTime = timeState
     nextTime = reconcileBoardTimeState(nextTime, nextDoc.cards, nextDoc.columns, Date.now(), nextDoc.workingHours)
     writeTimeBoardStateToDoc(nextDoc, nextTime)
+    timeStateRef.current = nextTime
+    docRef.current = nextDoc
     setTimeState(nextTime)
     setDoc(nextDoc)
     void saveDocument(nextDoc)
@@ -464,7 +617,11 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
           {persistError}
         </div>
       ) : null}
-      {saving ? <p className="fb-board__saving">Salvando…</p> : null}
+      {saving ? (
+        <p className="fb-board__saving" data-testid="board-page-saving">
+          Salvando…
+        </p>
+      ) : null}
 
       <DndContext
         sensors={sensors}
@@ -485,6 +642,7 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
                   saving={saving}
                   onEdit={handleEditCard}
                   onDelete={handleDeleteCard}
+                  onArchive={handleArchiveCard}
                   onAddCard={handleAddCardToColumn}
                 />
               ))}
@@ -528,6 +686,8 @@ export function BoardView({ session, boardId, columnEditorMenuTick = 0, cardToEd
           onSubmit={taskModal.mode === 'create' ? handleCreateTask : handleUpdateTask}
           editingCard={taskModal.mode === 'create' ? null : taskModal.card}
           defaultColumnId={taskModal.mode === 'create' ? taskModal.columnId : undefined}
+          onArchiveCard={handleArchiveCard}
+          onUnarchiveCard={handleUnarchiveCard}
         />
       ) : null}
     </div>
@@ -542,6 +702,7 @@ function BoardColumn({
   saving,
   onEdit,
   onDelete,
+  onArchive,
   onAddCard,
 }: {
   column: Column
@@ -551,6 +712,7 @@ function BoardColumn({
   saving: boolean
   onEdit: (c: Card) => void
   onDelete: (c: Card) => void
+  onArchive: (c: Card) => void
   onAddCard: (columnId: string) => void
 }) {
   const { setNodeRef } = useDroppable({ id: column.columnId })
@@ -587,6 +749,7 @@ function BoardColumn({
             timeState={timeState}
             onEdit={onEdit}
             onDelete={onDelete}
+            onArchive={onArchive}
           />
         ) : (
           <div className="fb-board__col-body">
@@ -600,6 +763,7 @@ function BoardColumn({
                   timeState={timeState}
                   onEdit={() => onEdit(card)}
                   onDelete={() => onDelete(card)}
+                  onArchive={() => onArchive(card)}
                 />
               ) : null
             })}
@@ -664,12 +828,14 @@ function SortableCard({
   timeState,
   onEdit,
   onDelete,
+  onArchive,
 }: {
   card: Card
   columnRole: ColumnRole
   timeState: TimeBoardState
   onEdit: () => void
   onDelete: () => void
+  onArchive: () => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: card.cardId,
@@ -795,6 +961,33 @@ function SortableCard({
         </button>
         <button
           type="button"
+          className="fb-card__btn"
+          data-testid={`card-archive-${card.cardId}`}
+          aria-label="Arquivar card"
+          title="Arquivar"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation()
+            onArchive()
+          }}
+        >
+          <svg
+            className="fb-card__btn-svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <path d="M21 8v13H3V8" />
+            <path d="M1 3h22v5H1z" />
+            <path d="M10 12h4" />
+          </svg>
+        </button>
+        <button
+          type="button"
           className="fb-card__btn fb-card__btn--danger"
           data-testid={`card-delete-${card.cardId}`}
           aria-label="Excluir card"
@@ -834,6 +1027,7 @@ function VirtualizedDoneColumnBody({
   timeState,
   onEdit,
   onDelete,
+  onArchive,
 }: {
   cardIds: string[]
   cardById: Map<string, Card>
@@ -841,6 +1035,7 @@ function VirtualizedDoneColumnBody({
   timeState: TimeBoardState
   onEdit: (c: Card) => void
   onDelete: (c: Card) => void
+  onArchive: (c: Card) => void
 }) {
   const parentRef = useRef<HTMLDivElement>(null)
 
@@ -898,6 +1093,7 @@ function VirtualizedDoneColumnBody({
                 timeState={timeState}
                 onEdit={() => onEdit(card)}
                 onDelete={() => onDelete(card)}
+                onArchive={() => onArchive(card)}
               />
             </div>
           )
