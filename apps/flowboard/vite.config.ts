@@ -60,7 +60,8 @@ export default defineConfig({
   ],
   test: {
     environment: 'happy-dom',
-    include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'server/**/*.test.ts'],
     setupFiles: ['src/vitest.setup.ts'],
+    environmentMatchGlobs: [['server/**/*.test.ts', 'node']],
   },
 })
