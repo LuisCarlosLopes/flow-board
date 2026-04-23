@@ -1,0 +1,157 @@
+title: "Editar horas de apontamento (modal)"
+slug: "edit-horas-apontamento"
+created_at: "2026-04-22"
+context: "FlowBoard — vista Horas no período (HoursView), domínio timeSegments, persistência GitHub"
+
+objective: >
+  Permitir ao usuário ajustar as horas registradas a partir da tela "Horas no período",
+  abrindo uma modal para editar o valor, com persistência no documento do quadro e
+  atualização do total e da tabela após salvar.
+
+acceptance_criteria:
+  - "Na vista Horas no período, cada linha da tabela (tarefa/quadro) oferece ação explícita para editar o tempo (ex.: botão ou célula acionável com rótulo/aria adequados)."
+  - "Ao acionar, abre-se uma modal com contexto mínimo da tarefa (título, quadro) e campo para o novo total de horas no período exibido (ou regra explícita na spec se o escopo for outro)."
+  - "Salvar aplica a alteração no armazenamento (GitHub) de forma consistente com timeSegments/cardTimeState e regras de domínio existentes; erros de rede/persistência são comunicados."
+  - "O rodapé Total reflete a soma após edição; a lista recarrega ou atualiza sem estado incoerente."
+  - "Comportamento verificável: testes automatizados (domínio e/ou E2E) alinhados ao TSD; lint limpo no pacote afetado."
+
+scope:
+  in:
+    - "apps/flowboard/src/features/hours/ (HoursView, modal, estilos)"
+    - "Domínio e persistência: ajuste de timeSegments ou contrato acordado no TSD"
+    - "apps/flowboard/src/infrastructure/persistence/ conforme contrato de BoardDocumentJson"
+  out:
+    - "Backend próprio; mudança de autenticação GitHub"
+    - "Sincronização multi-dispositivo em tempo real"
+    - "Exportação/relatórios PDF além do que já existir"
+
+tech_context: "TypeScript, React, Vite; Constitution I (regras no domínio); persistência só via GitHub API no MVP."
+
+baseline_ref: "HEAD"
+
+squad:
+  status: concluído
+  track: FEATURE
+  track_override: true
+  score: 5
+  confidence: 92
+  current_phase: null
+  completed_phases:
+    - spec
+    - spec-reviewer
+    - architect
+    - planner
+    - plan-reviewer
+    - task-breakdown
+    - HITL
+    - implementer
+    - verifier
+    - code-reviewer
+    - tester
+  next_phase: null
+  iteration: 1
+  blockers: []
+  hitl_required: true
+
+decisions:
+  - id: "M1-architect-2026-04-22"
+    summary: >
+      Redistribuição proporcional aprovada com restrições: tetos por dia/expediente;
+      INFEASIBLE_TARGET se alvo não couber; alvo 0 remove segmentos selecionados;
+      sincronia timeSegments ↔ completed via reconstrução por card (ver architect-feature.md).
+
+pipeline:
+  - spec
+  - spec-reviewer
+  - architect
+  - planner
+  - plan-reviewer
+  - task-breakdown
+  - HITL
+  - implementer
+  - verifier
+  - code-reviewer
+  - tester
+
+# architect listado: incluir no fluxo se spec/spec-reviewer exigirem; pode ser skip com decisão em state
+
+repo_write_scope:
+  - ".memory-bank/specs/edit-horas-apontamento/"
+  - "apps/flowboard/src/domain/applyTargetHoursForCardInPeriod.ts"
+  - "apps/flowboard/src/domain/applyTargetHoursForCardInPeriod.test.ts"
+  - "apps/flowboard/src/features/hours/HoursView.tsx"
+  - "apps/flowboard/src/features/hours/HoursView.css"
+  - "apps/flowboard/tests/e2e/hours-view.spec.ts"
+
+artifact_reuse:
+  - artifact: ".memory-bank/specs/hours-apontamento-rules/"
+    decision: "reused-as-context-only"
+    reason: "Domínio de segmentos, working hours e agregação já documentados; esta feature trata de edição na UI, não reabre o escopo concluído de regras de soma."
+  - artifact: "apps/flowboard/src/domain/hoursAggregation.ts, HoursView.tsx"
+    decision: "reused-as-context-only"
+    reason: "Baseline de agregação por card e linhas somadas no período."
+
+approvals:
+  - phase: HITL_pre_implementer
+    at: "2026-04-22"
+    by: human
+    note: "Usuário solicitou chamar o implementer; IPD + task-breakdown aprovados para execução."
+retries_by_phase: {}
+last_failure: null
+subtasks: []
+history:
+  - phase: spec
+    agent: spec
+    status: ok_manual_fallback
+    artifact: "spec-feature.md"
+    note: "TSD gravado; subagente spec indisponível (limite API) — orquestrador produziu spec após leitura de HoursView, hoursAggregation, timeBridge, types, boardRepository."
+  - phase: spec-reviewer
+    agent: spec-reviewer
+    status: ok_manual_fallback
+    artifact: "spec-reviewer-feature.md"
+    note: "Revisão adversarial manual (subagente indisponível); AMARELO 78 — M1 exige architect."
+  - phase: architect
+    agent: architect
+    status: ok
+    artifact: "architect-feature.md"
+    note: "ARD com decisão M1 fechada; redistribuição proporcional com restrições e códigos de resultado de domínio."
+  - phase: planner
+    agent: planner
+    status: ok
+    artifact: "planner-FEATURE.md"
+    note: "IPD com mapa de alterações, contrato de domínio, UX saveBoard/SHA, política de arredondamento e DoD."
+  - phase: plan-reviewer
+    agent: plan-reviewer
+    status: ok
+    artifact: "plan-reviewer-FEATURE.md"
+    note: "VERDE 90/100; go para task-breakdown (avisos DoD RF-04 e E2 incorporados no breakdown)."
+  - phase: task-breakdown
+    agent: task-breakdown
+    status: ok
+    artifact: "task-breakdown-FEATURE.md"
+    note: "6 tarefas ordenadas, rastreáveis ao IPD."
+  - phase: implementer
+    agent: implementer
+    status: ok
+    artifact: "implementer-FEATURE.md"
+    note: "T1–T6 entregues; Vitest + build OK; Playwright hours-view Chromium OK; ver divergência backdrop pointer-events no relatório."
+  - phase: verifier
+    agent: verifier
+    status: ok
+    artifact: "verifier-feature.md"
+    note: "GO — IPD×Delivery×código; test+lint+build+Playwright chromium OK; ficheiros proibidos intocados."
+  - phase: code-reviewer
+    agent: code-reviewer
+    status: ok
+    artifact: "code-reviewer-feature.md"
+    note: "0 críticos; 1 ALTO a11y (aria-hidden sobre ancestral do dialog) — corrigido após relatório: backdrop irmão com aria-hidden; dialog fora."
+  - phase: tester
+    agent: tester
+    status: ok
+    artifact: "tester-feature.md"
+    note: "PASS gate testes; Vitest + Playwright hours-view chromium revalidados."
+summary: >
+  Edição de horas na vista Horas: domínio applyTargetHoursForCardInPeriod, modal em HoursView,
+  E2E hours-view, relatórios implementer/verifier/code-reviewer/tester. Pós–code-review: estrutura
+  modal (backdrop irmão) para corrigir achado ALTO de acessibilidade. Risco residual: achados MÉDIO
+  do code-reviewer (pointer-events, focus trap, d'≤0 vs IPD) não todos endereçados — ver relatório.
