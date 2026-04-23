@@ -45,6 +45,11 @@ async function handleApiRequest(req: IncomingMessage, res: ServerResponse, next:
       return
     }
 
+    if (url.pathname === '/api/auth/session') {
+      handleSession(req, res)
+      return
+    }
+
     if (url.pathname.startsWith('/api/github/')) {
       await handleGitHubProxy(req, res, url)
       return
@@ -91,6 +96,10 @@ async function handleLogin(req: IncomingMessage, res: ServerResponse): Promise<v
 
   setSessionCookie(req, res, {
     pat,
+    repoUrl,
+    owner: parsed.owner,
+    repo: parsed.repo,
+    webUrl: parsed.webUrl,
     user,
   })
   sendJson(res, 200, user)
@@ -119,6 +128,26 @@ function handleUser(req: IncomingMessage, res: ServerResponse): void {
   }
 
   sendJson(res, 200, session.user)
+}
+
+function handleSession(req: IncomingMessage, res: ServerResponse): void {
+  if (req.method !== 'GET') {
+    sendMethodNotAllowed(res, 'GET')
+    return
+  }
+
+  const session = requireAuthenticatedSession(req, res)
+  if (!session) {
+    return
+  }
+
+  sendJson(res, 200, {
+    repoUrl: session.repoUrl,
+    owner: session.owner,
+    repo: session.repo,
+    webUrl: session.webUrl,
+    user: session.user,
+  })
 }
 
 async function handleGitHubProxy(req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> {

@@ -20,7 +20,7 @@ export async function validatePatAndFetchUser(pat: string): Promise<GitHubUserPr
   if (
     typeof body.login !== 'string' ||
     !body.login.trim() ||
-    (body.name !== null && typeof body.name !== 'string' && typeof body.name !== 'undefined') ||
+    (body.name !== null && typeof body.name !== 'string') ||
     typeof body.avatar_url !== 'string' ||
     !body.avatar_url.trim()
   ) {

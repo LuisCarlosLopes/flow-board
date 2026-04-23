@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fetchAuthenticatedUser, loginWithPat, logoutSession } from './authApi'
+import { fetchAuthenticatedUser, loginWithPat, logoutSession, restoreAuthenticatedSession } from './authApi'
 
 function mockJsonResponse(status: number, body?: unknown): Response {
   return {
@@ -42,6 +42,34 @@ describe('authApi', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockJsonResponse(401, { message: 'unauthorized' }))
 
     await expect(fetchAuthenticatedUser()).resolves.toBeNull()
+  })
+
+  it('restores authenticated session snapshot', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      mockJsonResponse(200, {
+        repoUrl: 'https://github.com/octo/flowboard-data',
+        owner: 'octo',
+        repo: 'flowboard-data',
+        webUrl: 'https://github.com/octo/flowboard-data',
+        user: {
+          login: 'octocat',
+          name: 'The Octocat',
+          avatar_url: 'https://avatars.githubusercontent.com/u/1',
+        },
+      }),
+    )
+
+    await expect(restoreAuthenticatedSession()).resolves.toEqual({
+      repoUrl: 'https://github.com/octo/flowboard-data',
+      owner: 'octo',
+      repo: 'flowboard-data',
+      webUrl: 'https://github.com/octo/flowboard-data',
+      user: {
+        login: 'octocat',
+        name: 'The Octocat',
+        avatar_url: 'https://avatars.githubusercontent.com/u/1',
+      },
+    })
   })
 
   it('throws AuthApiError when logout fails', async () => {

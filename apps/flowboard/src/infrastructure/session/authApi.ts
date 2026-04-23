@@ -4,6 +4,14 @@ export type AuthenticatedGitHubUser = {
   avatar_url: string
 }
 
+export type AuthenticatedSessionSnapshot = {
+  repoUrl: string
+  owner: string
+  repo: string
+  webUrl: string
+  user: AuthenticatedGitHubUser
+}
+
 type LoginInput = {
   repoUrl: string
   pat: string
@@ -44,6 +52,43 @@ export async function fetchAuthenticatedUser(): Promise<AuthenticatedGitHubUser 
   return handleAuthResponse(res)
 }
 
+export async function restoreAuthenticatedSession(): Promise<AuthenticatedSessionSnapshot | null> {
+  const res = await fetch('/api/auth/session', {
+    credentials: 'same-origin',
+  })
+
+  if (res.status === 401) {
+    return null
+  }
+  if (!res.ok) {
+    const message = await readErrorMessage(res, 'Falha ao restaurar a sessão.')
+    throw new AuthApiError(message, res.status)
+  }
+
+  const body = (await res.json()) as Partial<AuthenticatedSessionSnapshot>
+  if (
+    typeof body.repoUrl !== 'string' ||
+    !body.repoUrl.trim() ||
+    typeof body.owner !== 'string' ||
+    !body.owner.trim() ||
+    typeof body.repo !== 'string' ||
+    !body.repo.trim() ||
+    typeof body.webUrl !== 'string' ||
+    !body.webUrl.trim() ||
+    !body.user
+  ) {
+    throw new AuthApiError('Resposta inválida do servidor de autenticação.', res.status)
+  }
+
+  return {
+    repoUrl: body.repoUrl,
+    owner: body.owner,
+    repo: body.repo,
+    webUrl: body.webUrl,
+    user: validateUserPayload(body.user, res.status),
+  }
+}
+
 export async function logoutSession(): Promise<void> {
   const res = await fetch('/api/auth/logout', {
     method: 'POST',
@@ -65,14 +110,18 @@ async function handleAuthResponse(res: Response): Promise<AuthenticatedGitHubUse
   }
 
   const body = (await res.json()) as Partial<AuthenticatedGitHubUser>
+  return validateUserPayload(body, res.status)
+}
+
+function validateUserPayload(body: Partial<AuthenticatedGitHubUser>, status: number): AuthenticatedGitHubUser {
   if (
     typeof body.login !== 'string' ||
     !body.login.trim() ||
-    (body.name !== null && typeof body.name !== 'string' && typeof body.name !== 'undefined') ||
+    (body.name !== null && typeof body.name !== 'string') ||
     typeof body.avatar_url !== 'string' ||
     !body.avatar_url.trim()
   ) {
-    throw new AuthApiError('Resposta inválida do servidor de autenticação.', res.status)
+    throw new AuthApiError('Resposta inválida do servidor de autenticação.', status)
   }
 
   return {

@@ -3,6 +3,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 
 export const SESSION_COOKIE_NAME = 'flowboard.session.v2'
 const SESSION_COOKIE_VERSION = 'v1'
+// Segurança + UX: mantém a sessão ativa por uma jornada de trabalho sem virar "lembrar para sempre".
 const SESSION_TTL_SECONDS = 60 * 60 * 8
 
 export type SessionGitHubUser = {
@@ -13,6 +14,10 @@ export type SessionGitHubUser = {
 
 export type FlowBoardServerSession = {
   pat: string
+  repoUrl: string
+  owner: string
+  repo: string
+  webUrl: string
   user: SessionGitHubUser
   issuedAtMs: number
   expiresAtMs: number
@@ -55,7 +60,7 @@ export function readSessionFromRequest(req: IncomingMessage): SessionReadResult 
 export function setSessionCookie(
   req: IncomingMessage,
   res: ServerResponse,
-  payload: { pat: string; user: SessionGitHubUser },
+  payload: Omit<FlowBoardServerSession, 'issuedAtMs' | 'expiresAtMs'>,
 ): void {
   const issuedAtMs = Date.now()
   const expiresAtMs = issuedAtMs + SESSION_TTL_SECONDS * 1000
@@ -112,10 +117,23 @@ function decryptSession(raw: string): FlowBoardServerSession | null {
     decipher.final(),
   ]).toString('utf8')
 
-  const parsed = JSON.parse(decrypted) as Partial<FlowBoardServerSession>
+  let parsed: Partial<FlowBoardServerSession>
+  try {
+    parsed = JSON.parse(decrypted) as Partial<FlowBoardServerSession>
+  } catch {
+    return null
+  }
   if (
     typeof parsed.pat !== 'string' ||
     !parsed.pat.trim() ||
+    typeof parsed.repoUrl !== 'string' ||
+    !parsed.repoUrl.trim() ||
+    typeof parsed.owner !== 'string' ||
+    !parsed.owner.trim() ||
+    typeof parsed.repo !== 'string' ||
+    !parsed.repo.trim() ||
+    typeof parsed.webUrl !== 'string' ||
+    !parsed.webUrl.trim() ||
     !parsed.user ||
     typeof parsed.user.login !== 'string' ||
     !parsed.user.login.trim() ||
@@ -130,6 +148,10 @@ function decryptSession(raw: string): FlowBoardServerSession | null {
 
   return {
     pat: parsed.pat,
+    repoUrl: parsed.repoUrl,
+    owner: parsed.owner,
+    repo: parsed.repo,
+    webUrl: parsed.webUrl,
     user: parsed.user,
     issuedAtMs: parsed.issuedAtMs,
     expiresAtMs: parsed.expiresAtMs,
@@ -140,6 +162,10 @@ function sessionKey(): Buffer {
   const configured = process.env.FLOWBOARD_SESSION_SECRET?.trim()
   if (configured) {
     return createHash('sha256').update(configured, 'utf8').digest()
+  }
+
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('FLOWBOARD_SESSION_SECRET é obrigatório em produção.')
   }
 
   if (!fallbackSecret) {
