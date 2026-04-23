@@ -1,0 +1,234 @@
+# File Change Map for Server-Side PAT Handling
+
+## Directory Structure (After Implementation)
+
+apps/flowboard/
+├── server/                              ★ NEW DIRECTORY
+│   ├── index.ts                        ★ NEW (150 lines) - Express app entry
+│   ├── types.ts                        ★ NEW (30 lines) - Session type definitions
+│   ├── middleware/
+│   │   ├── session.ts                  ★ NEW (40 lines) - iron-session config
+│   │   └── auth.ts                     ★ NEW (20 lines) - requireAuth middleware
+│   └── routes/
+│       ├── auth.ts                     ★ NEW (80 lines) - Login/user/logout
+│       ├── auth.test.ts                ★ NEW (120 lines) - Auth tests
+│       ├── github-proxy.ts             ★ NEW (40 lines) - GitHub API proxy
+│       └── github-proxy.test.ts        ★ NEW (80 lines) - Proxy tests
+│
+├── src/                                 (Existing client code)
+│   ├── App.tsx                         ✏️  MODIFY (10 lines changed)
+│   ├── features/
+│   │   ├── auth/
+│   │   │   └── LoginView.tsx           ✏️  MODIFY (20 lines changed)
+│   │   └── app/
+│   │       └── AppShell.tsx            ✏️  MODIFY (5 lines changed)
+│   └── infrastructure/
+│       ├── session/
+│       │   ├── sessionStore.ts         ✏️  MODIFY (50 lines changed)
+│       │   └── sessionStore.test.ts    ✏️  MODIFY (30 lines changed)
+│       └── github/
+│           ├── client.ts               ✏️  MODIFY (30 lines changed)
+│           └── fromSession.ts          ✏️  MODIFY (5 lines changed)
+│
+├── tests/
+│   └── e2e/
+│       └── auth.setup.ts               ✏️  MODIFY (if exists)
+│
+├── scripts/
+│   └── ensure-e2e-auth.mjs            ✏️  MODIFY (minor)
+│
+├── .env.example                        ★ NEW (4 lines)
+├── package.json                        ✏️  MODIFY (add 6 deps + 3 scripts)
+├── tsconfig.node.json                  ✏️  MODIFY (add server/)
+├── vite.config.ts                      ✏️  MODIFY (CSP update)
+└── README.md                           ✏️  MODIFY (docs update)
+
+.memory-bank/
+└── adrs/
+    ├── 004-flowboard-session-and-pat-storage.md  ✏️  MODIFY (superseded note)
+    └── 009-flowboard-server-side-pat-handling.md ★ NEW (ADR)
+
+---
+
+## Critical Path (Must Implement in Order)
+
+### Phase 1: Backend Foundation
+1. server/index.ts
+2. server/middleware/session.ts
+3. server/types.ts
+4. package.json (add deps)
+5. tsconfig.node.json
+
+### Phase 2: Authentication
+6. server/middleware/auth.ts
+7. server/routes/auth.ts
+8. server/routes/auth.test.ts
+
+### Phase 3: GitHub Proxy
+9. server/routes/github-proxy.ts
+10. server/routes/github-proxy.test.ts
+
+### Phase 4: Client Refactoring (Can break existing app temporarily)
+11. src/infrastructure/session/sessionStore.ts
+12. src/infrastructure/github/client.ts
+13. src/features/auth/LoginView.tsx
+14. src/App.tsx
+15. src/features/app/AppShell.tsx
+16. src/infrastructure/github/fromSession.ts
+
+### Phase 5: Testing & Config
+17. src/infrastructure/session/sessionStore.test.ts
+18. vite.config.ts (CSP)
+19. tests/e2e/auth.setup.ts
+20. .env.example
+
+### Phase 6: Documentation
+21. README.md
+22. .memory-bank/adrs/009-flowboard-server-side-pat-handling.md
+23. .memory-bank/adrs/004-flowboard-session-and-pat-storage.md
+
+---
+
+## Dependency Graph
+
+```
+server/index.ts
+    ├─ requires → server/middleware/session.ts
+    │                 └─ requires → server/types.ts
+    ├─ requires → server/middleware/auth.ts
+    │                 └─ requires → server/types.ts
+    └─ requires → server/routes/auth.ts
+                      └─ requires → server/types.ts
+    └─ requires → server/routes/github-proxy.ts
+                      └─ requires → server/middleware/auth.ts
+
+src/App.tsx
+    └─ requires → src/infrastructure/session/sessionStore.ts (modified)
+
+src/features/auth/LoginView.tsx
+    └─ requires → src/infrastructure/session/sessionStore.ts (modified)
+
+src/features/app/AppShell.tsx
+    └─ requires → src/infrastructure/session/sessionStore.ts (modified)
+
+src/infrastructure/github/client.ts
+    └─ called by → src/infrastructure/github/fromSession.ts
+```
+
+---
+
+## File Size Estimates
+
+| File | Type | Lines | Complexity |
+|------|------|-------|------------|
+| server/index.ts | New | 150 | Medium |
+| server/routes/auth.ts | New | 80 | High (core logic) |
+| server/routes/github-proxy.ts | New | 40 | Low |
+| server/middleware/session.ts | New | 40 | Low |
+| server/middleware/auth.ts | New | 20 | Low |
+| server/types.ts | New | 30 | Low |
+| server/routes/auth.test.ts | New | 120 | Medium |
+| server/routes/github-proxy.test.ts | New | 80 | Medium |
+| src/infrastructure/session/sessionStore.ts | Modify | +50 | Medium |
+| src/infrastructure/github/client.ts | Modify | +30 | Medium |
+| src/features/auth/LoginView.tsx | Modify | +20 | Low |
+| src/App.tsx | Modify | +10 | Low |
+| src/features/app/AppShell.tsx | Modify | +5 | Low |
+| **TOTAL** | | **675** | |
+
+---
+
+## Testing Strategy per File
+
+| File | Test Type | Test File | Priority |
+|------|-----------|-----------|----------|
+| server/routes/auth.ts | Unit | server/routes/auth.test.ts | HIGH |
+| server/routes/github-proxy.ts | Unit | server/routes/github-proxy.test.ts | HIGH |
+| server/middleware/auth.ts | Unit | (inline in auth.test.ts) | MEDIUM |
+| src/infrastructure/session/sessionStore.ts | Unit | sessionStore.test.ts | HIGH |
+| src/features/auth/LoginView.tsx | Integration | LoginView.integration.test.tsx | HIGH |
+| Full auth flow | E2E | tests/e2e/auth.spec.ts | HIGH |
+| GitHub proxy | E2E | tests/e2e/boards.spec.ts (existing) | MEDIUM |
+
+---
+
+## Rollout Safety Checklist
+
+Before touching client files (Phase 4):
+- ✅ Backend server starts without errors
+- ✅ All auth endpoints respond correctly (Postman)
+- ✅ GitHub proxy works for GET requests
+- ✅ Unit tests pass for server/
+
+During client refactoring (Phase 4):
+- ⚠️  App WILL break temporarily (localStorage → API)
+- ⚠️  Keep old code in comments for quick rollback
+- ⚠️  Test each file change individually
+
+After client refactoring (Phase 5):
+- ✅ Integration tests pass
+- ✅ E2E tests pass
+- ✅ Manual smoke test: login → boards → logout
+
+---
+
+## Quickstart for Implementer
+
+1. **Setup backend (1-2 days):**
+   ```bash
+   cd apps/flowboard
+   npm install express iron-session cookie-parser @types/express @types/cookie-parser tsx
+   mkdir -p server/{middleware,routes}
+   touch server/{index,types}.ts server/middleware/{session,auth}.ts server/routes/{auth,github-proxy}.ts
+   ```
+
+2. **Implement backend (1-2 days):**
+   - Copy session config template from IPD §4.3
+   - Implement auth routes following IPD §5.2
+   - Implement proxy following IPD §5.3
+   - Test with Postman
+
+3. **Update client (1-2 days):**
+   - Start with sessionStore.ts (fetch API instead of localStorage)
+   - Update LoginView.tsx (call /api/auth/login)
+   - Update App.tsx (call /api/auth/user on mount)
+   - Update AppShell.tsx (call /api/auth/logout)
+   - Update client.ts (call /api/github/* instead of api.github.com)
+
+4. **Verify & document (1 day):**
+   - Run all tests
+   - Update README
+   - Write ADR-009
+
+**Total: 4-7 days for experienced developer**
+
+---
+
+## MVP Shortcut (Fastest Path to Working Demo)
+
+**Day 1:** Backend skeleton
+- server/index.ts (minimal Express + iron-session)
+- server/routes/auth.ts (login only, hardcoded success)
+- package.json (deps)
+
+**Day 2:** Client integration
+- sessionStore.ts (fetch /api/auth/login)
+- LoginView.tsx (POST to API)
+- client.ts (change URLs to /api/github/*)
+
+**Day 3:** Real GitHub integration
+- server/routes/auth.ts (real validation)
+- server/routes/github-proxy.ts (wildcard proxy)
+
+**Day 4:** Testing & polish
+- Fix bugs
+- Add basic tests
+- Update README
+
+**Result:** Working prototype in 4 days, then iterate to production-ready in remaining time.
+
+---
+
+Legend:
+★ NEW file to create
+✏️  MODIFY existing file
