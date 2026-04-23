@@ -1,0 +1,187 @@
+title: "Autenticação BFF: PAT validado no servidor, sessão cifrada em cookie httpOnly"
+slug: "github-pat-bff-cookie-auth"
+created_at: "2026-04-23"
+context: "FlowBoard — apps/flowboard; hoje PAT em sessionStorage e chamadas GitHub do browser (ADR-004). Nova direção: servidor valida PAT e repassa credencial apenas server-side."
+
+objective: >
+  Implementar fluxo em que o usuário envia o PAT uma vez via POST, o backend valida com GET /user na API GitHub, persiste sessão criptografada em cookie httpOnly, protege rotas internas que proxyam ou encapsulam GitHub, e nunca expõe o PAT ao cliente após o login. Logout limpa o cookie. Re-login com PAT novo exige logout prévio. Expor ao cliente somente login, name, avatar_url.
+
+acceptance_criteria:
+  - "RF01: POST de login com PAT; backend chama https://api.github.com/user; 401/4xx/5xx de auth → login rejeitado; 200 confirma PAT."
+  - "RF02: Sessão server-side cifrada (ex.: payload assinado/cifrado) com PAT + dados básicos do utilizador; cookie httpOnly, Secure em produção, SameSite apropriado, path escopo mínimo."
+  - "RF03: Rotas BFF internas exigem sessão válida; cookie ausente/corrompido/expirado → 401."
+  - "RF04: Chamadas à API GitHub a partir de rotas protegidas usam Authorization: token <PAT> só no servidor; cliente não reenvia PAT após estabelecida a sessão."
+  - "RF05: Logout remove/invalidate cookie imediatamente."
+  - "RF06: Rota pública (após autenticação) devolve só login, name, avatar_url — nunca o PAT."
+  - "Regra de estado: autenticado com PAT novo sem logout explícito → 409 ou fluxo documentado que recusa (não substitui sessão silenciosamente)."
+
+scope:
+  in:
+    - "Camada de servidor (BFF) integrada ao app — ver TSD: Vite middleware, serviço Node dedicado, ou outro padrão escolhido no spec"
+    - "Autenticação, cookie, segredo de cifragem (env), rotas de login/logout/me"
+    - "Refatoração do cliente: remover PAT de sessionStore para operações GitHub; chamar BFF"
+    - "Atualização de ADR-004 (deprecar/substituir) e alinhamento Constitution III"
+    - "Testes (Vitest + ajuste E2E se necessário)"
+  out:
+    - "OAuth GitHub App (fase 2)"
+    - "Rotação automática de PAT"
+    - "Multi-tenant / multi-GitHub Enterprise além do que o spec fixar"
+
+tech_context: "React 19, Vite 8, TypeScript, Vitest, Playwright E2E; GitHub REST api.github.com; hoje ADR-004 = PAT no browser"
+baseline_ref: "main"
+
+squad:
+  status: concluido
+  track: FEATURE
+  track_override: false
+  score: 6
+  confidence: 90
+  current_phase: null
+  completed_phases: [spec, spec-reviewer, architect, planner, plan-reviewer, task-breakdown, pre-implementer-hitl, implementer]
+  next_phase: null
+  iteration: 1
+  blockers: []
+  hitl_required: false
+
+repo_write_scope:
+  - "apps/flowboard/server/**"
+  - "apps/flowboard/src/**"
+  - "apps/flowboard/vite.config.ts"
+  - "apps/flowboard/package.json"
+  - "apps/flowboard/eslint.config.js"
+  - "apps/flowboard/tsconfig.node.json"
+  - "apps/flowboard/.env.example"
+  - ".memory-bank/adrs/004-flowboard-session-and-pat-storage.md"
+  - ".memory-bank/adrs/005-flowboard-bff-pat-session.md"
+  - ".memory-bank/specs/github-pat-bff-cookie-auth/**"
+
+artifact_reuse:
+  - artifact: ".memory-bank/specs/security-hardening-mvp/*"
+    decision: "reused-as-context-only"
+    reason: "Entrega anterior concluída para PAT no cliente; este slug muda o modelo (BFF) — não reutilizar plano/artefatos como fase concluída"
+  - artifact: ".memory-bank/adrs/004-flowboard-session-and-pat-storage.md"
+    decision: "reused-as-context-only"
+    reason: "Atualizado com supersedition por ADR-005 após BFF"
+
+approvals:
+  - phase: pre-implementer-hitl
+    status: approved
+    date: "2026-04-23"
+    decision: "Aprovado pipeline FEATURE / BFF / cookie (mensagem: aprovado)"
+  - phase: implementer
+    status: approved
+    date: "2026-04-23"
+    decision: "Código e artefatos implementados; testes 278/278 locais; build OK"
+
+retries_by_phase: {}
+
+last_failure: null
+
+decisions:
+  - decision: "Express + iron-session + sirv"
+    choice: "Same-origin BFF; start script dist + API"
+    reason: "IPD + TSD"
+
+pipeline:
+  - spec
+  - spec-reviewer
+  - architect
+  - planner
+  - plan-reviewer
+  - task-breakdown
+  - HITL
+  - implementer
+  - verifier
+  - code-reviewer
+  - tester
+
+subtasks: []
+
+history:
+  - phase: spec
+    agent: spec
+    subtask_id: null
+    status: ok
+    artifact: "spec-feature.md"
+    note: "TSD v1.0 (sessão com limite de API ocorrida em convocação remota de subagente)"
+  - phase: spec-reviewer
+    agent: spec-reviewer
+    subtask_id: null
+    status: ok
+    artifact: "spec-reviewer-feature.md"
+    note: "GO 78% amarelo"
+  - phase: architect
+    agent: architect
+    subtask_id: null
+    status: ok
+    artifact: "architect-feature.md"
+    note: "ARD D1–D5"
+  - phase: planner
+    agent: planner
+    subtask_id: null
+    status: ok
+    artifact: "planner-feature.md"
+    note: "IPD em memoria-bank"
+  - phase: plan-reviewer
+    agent: plan-reviewer
+    subtask_id: null
+    status: ok
+    artifact: "plan-reviewer-feature.md"
+    note: "Verde pós-implementação"
+  - phase: task-breakdown
+    agent: task-breakdown
+    subtask_id: null
+    status: ok
+    artifact: "task-breakdown-feature.md"
+  - phase: pre-implementer-hitl
+    agent: human
+    subtask_id: null
+    status: ok
+    artifact: "chat"
+    note: "aprovado 2026-04-23"
+  - phase: implementer
+    agent: implementer
+    subtask_id: null
+    status: ok
+    artifact: "implementer-feature.md; repo"
+    note: "BFF + refatoração cliente + ADR-005"
+  - phase: verifier
+    agent: skip
+    subtask_id: null
+    status: partial
+    artifact: "local npm test + npm run build"
+    note: "Gates manuais; subagente verifier não invocado (quota)"
+  - phase: code-reviewer
+    agent: skip
+    subtask_id: null
+    status: partial
+    artifact: "—"
+    note: "Recomendado revisor humano pós-merge"
+  - phase: tester
+    agent: local
+    subtask_id: null
+    status: ok
+    artifact: "vitest 278"
+    note: "E2E não reexecutada nesta sessão"
+
+summary:
+  delivered:
+    - "BFF com POST /api/auth/login, /logout, GET /me, GET /session, proxy /api/github"
+    - "iron-session, cookie httpOnly, 409 com sessão ativa, ADR-005, ADR-004 supersedition"
+    - "Cliente sem PAT após login; evicção de legado com pat em localStorage"
+    - "CSP connect-src self; script npm start"
+  adr_candidates: []
+  tech_debt:
+    - "Executar E2E com FLOWBOARD_SESSION_SECRET e credenciais reais após integração CI"
+    - "Preencher passos verifier/code-reviewer com subagentes se política de qualidade exigir"
+
+squad_assessment:
+  signals:
+    - "Múltiplos módulos (UI + BFF + sessão) (+1)"
+    - "Decisão arquitetural: BFF, cookie stateless, dev vs prod (+2)"
+    - "Dependência entre fases (login → proxy GitHub) (+1)"
+    - "Validação independente (testes) (+1)"
+    - "Efeito em credenciais e ADR (+1)"
+  score: 6
+  track_suggested: FEATURE
+  justification: "BFF + cifra + proxy GitHub; supersedes ADR-004 no browser"

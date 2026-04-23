@@ -34,3 +34,4 @@ after-hours.yml
 *.njsproj
 *.sln
 *.sw?
+apps/flowboard/playwright-report/

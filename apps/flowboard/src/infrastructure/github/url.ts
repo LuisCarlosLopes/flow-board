@@ -9,6 +9,9 @@ export type RepoResolution = {
 /** Official GitHub REST API origin allowed for PAT requests (session allowlist). */
 export const GITHUB_API_BASE = 'https://api.github.com' as const
 
+/** Same-origin BFF prefix; the server adds Authorization to api.github.com. */
+export const BFF_GITHUB_API_PREFIX = '/api/github' as const
+
 const GITHUB_HOST = 'github.com'
 
 /** True if `apiBase` resolves to the official GitHub API origin. */

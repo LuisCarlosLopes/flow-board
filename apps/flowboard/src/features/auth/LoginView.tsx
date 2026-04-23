@@ -1,8 +1,6 @@
 import { type FormEvent, useState } from 'react'
-import { GitHubContentsClient, GitHubHttpError } from '../../infrastructure/github/client'
 import { parseRepoUrl } from '../../infrastructure/github/url'
-import { bootstrapFlowBoardData } from '../../infrastructure/persistence/boardRepository'
-import { createSession, saveSession, type FlowBoardSession } from '../../infrastructure/session/sessionStore'
+import { evictLegacyPatFromStorage, fetchSession, type FlowBoardSession } from '../../infrastructure/session/sessionStore'
 import { OnboardingPage } from './OnboardingPage'
 import './LoginView.css'
 
@@ -30,23 +28,40 @@ export function LoginView({ onConnected }: Props) {
       return
     }
 
-    const client = new GitHubContentsClient({
-      token: pat.trim(),
-      owner: parsed.owner,
-      repo: parsed.repo,
-    })
-
     setBusy(true)
     try {
-      await client.verifyRepositoryAccess()
-      await bootstrapFlowBoardData(client)
-      const session = createSession(pat.trim(), repoUrl.trim(), parsed)
-      saveSession(session)
+      evictLegacyPatFromStorage()
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ pat: pat.trim(), repoUrl: repoUrl.trim() }),
+      })
+      if (res.status === 409) {
+        setError('Já existe uma sessão ativa. Use “Sair” antes de conectar com outro token.')
+        return
+      }
+      if (res.status === 400) {
+        const j = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
+        setError(j?.error?.message ?? 'Dados inválidos.')
+        return
+      }
+      if (res.status === 401) {
+        setError('Token inválido ou repositório inacessível. Verifique o PAT e a URL do repo.')
+        return
+      }
+      if (!res.ok) {
+        setError('Falha ao conectar. Tente novamente.')
+        return
+      }
+      const session = await fetchSession()
+      if (!session) {
+        setError('Sessão não pôde ser carregada. Tente novamente.')
+        return
+      }
       onConnected(session)
     } catch (err) {
-      if (err instanceof GitHubHttpError) {
-        setError(err.message)
-      } else if (err instanceof Error) {
+      if (err instanceof Error) {
         setError(err.message)
       } else {
         setError('Falha ao conectar. Tente novamente.')
@@ -109,8 +124,8 @@ export function LoginView({ onConnected }: Props) {
             />
           </label>
           <p className="fb-login__hint">
-            O token é um segredo: não compartilhe, não commite em arquivos do repositório de dados e
-            revogue tokens antigos periodicamente.
+            O token é enviado uma vez ao servidor, validado na API do GitHub e nunca fica guardado no
+            navegador. Não compartilhe, não commite e revogue tokens antigos periodicamente.
           </p>
           <button className="fb-login__btn" type="submit" disabled={busy}>
             {busy ? 'Conectando…' : 'Conectar'}

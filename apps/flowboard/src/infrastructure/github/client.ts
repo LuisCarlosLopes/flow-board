@@ -24,6 +24,8 @@ export type GitHubClientOptions = {
   repo: string
   apiBase?: string
   fetchImpl?: typeof fetch
+  /** When true, omit Authorization; same-origin BFF injects the PAT. */
+  useBff?: boolean
 }
 
 /**
@@ -35,22 +37,27 @@ export class GitHubContentsClient {
   private readonly repo: string
   private readonly apiBase: string
   private readonly fetchImpl: typeof fetch
+  private readonly useBff: boolean
 
   constructor(opts: GitHubClientOptions) {
     this.token = opts.token
     this.owner = opts.owner
     this.repo = opts.repo
     this.apiBase = opts.apiBase ?? GITHUB_API_BASE
+    this.useBff = opts.useBff ?? false
     // Evita "Illegal invocation" no browser quando `fetch` é chamado sem receiver (`this`).
     this.fetchImpl = opts.fetchImpl ?? ((input, init) => globalThis.fetch(input, init))
   }
 
-  private headers(): HeadersInit {
-    return {
-      Authorization: `Bearer ${this.token}`,
+  private headers(): Record<string, string> {
+    const h: Record<string, string> = {
       Accept: 'application/vnd.github+json',
       'X-GitHub-Api-Version': '2022-11-28',
     }
+    if (!this.useBff) {
+      h.Authorization = `Bearer ${this.token}`
+    }
+    return h
   }
 
   private url(path: string): string {

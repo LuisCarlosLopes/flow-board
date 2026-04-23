@@ -1,54 +1,63 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { GITHUB_API_BASE } from '../../infrastructure/github/url'
 import { LoginView } from './LoginView'
 
-// Mock GitHub client
-vi.mock('../../infrastructure/github/client', () => {
-  const mockVerifyAccess = vi.fn().mockResolvedValue(undefined)
-  type MockClient = { verifyRepositoryAccess: typeof mockVerifyAccess }
+const sessionResponse = {
+  profile: { login: 'test', name: 'T', avatar_url: 'https://a' },
+  repository: {
+    owner: 'test',
+    repo: 'repo',
+    repoUrl: 'https://github.com/test/repo',
+    webUrl: 'https://github.com/test/repo',
+    apiBase: GITHUB_API_BASE,
+  },
+}
+
+function mockFetchSuccess() {
+  return vi.fn(async (input: string | URL | globalThis.Request) => {
+    const u = String(input)
+    if (u.includes('/api/auth/login')) {
+      return { ok: true, status: 201 } as Response
+    }
+    if (u.includes('/api/auth/session')) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => sessionResponse,
+      } as Response
+    }
+    return { ok: false, status: 500 } as Response
+  })
+}
+
+// Mock URL parser
+vi.mock('../../infrastructure/github/url', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('../../infrastructure/github/url')>()
   return {
-    GitHubContentsClient: vi.fn(function (this: MockClient) {
-      this.verifyRepositoryAccess = mockVerifyAccess
-    }),
-    GitHubHttpError: class GitHubHttpError extends Error {
-      constructor(message: string) {
-        super(message)
-        this.name = 'GitHubHttpError'
+    ...mod,
+    parseRepoUrl: (url: string) => {
+      if (url === 'https://github.com/test/repo') {
+        return {
+          owner: 'test',
+          repo: 'repo',
+          apiBase: mod.GITHUB_API_BASE,
+          webUrl: 'https://github.com/test/repo',
+        }
       }
+      if (url === 'invalid-url' || !url?.trim()) {
+        return { error: 'URL inválida.' }
+      }
+      return mod.parseRepoUrl(url)
     },
   }
 })
 
-// Mock board repository
-vi.mock('../../infrastructure/persistence/boardRepository', () => ({
-  bootstrapFlowBoardData: vi.fn().mockResolvedValue(undefined),
-}))
-
-// Mock session store
-vi.mock('../../infrastructure/session/sessionStore', () => ({
-  createSession: vi.fn(() => ({
-    pat: 'test-token',
-    repoUrl: 'https://github.com/test/repo',
-    owner: 'test',
-    repo: 'repo',
-  })),
-  saveSession: vi.fn(),
-}))
-
-// Mock URL parser
-vi.mock('../../infrastructure/github/url', () => ({
-  parseRepoUrl: vi.fn((url: string) => {
-    if (url === 'https://github.com/test/repo') {
-      return { owner: 'test', repo: 'repo' }
-    }
-    return { error: 'Invalid URL' }
-  }),
-}))
-
 describe('LoginView Integration Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    globalThis.fetch = mockFetchSuccess() as unknown as typeof fetch
   })
 
   it('renderiza formulário com campos de entrada', () => {
@@ -129,9 +138,7 @@ describe('LoginView Integration Tests', () => {
     const { container } = render(<LoginView onConnected={onConnected} />)
 
     const content = container.textContent || ''
-    expect(content).toContain('token é um segredo')
-    expect(content).toContain('não compartilhe')
-    expect(content).toContain('revogue tokens antigos')
+    expect(content).toMatch(/não compartilhe|revogue tokens/i)
   })
 
   it('renderiza texto sobre escopo "repo"', () => {

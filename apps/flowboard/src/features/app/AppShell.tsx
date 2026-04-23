@@ -8,7 +8,7 @@ import { SearchModal } from './SearchModal'
 import { useSearchHotkey } from '../../hooks/useSearchHotkey'
 import { formatRepoChipLabel } from '../../infrastructure/github/url'
 import { clearActiveBoardId, loadActiveBoardId, saveActiveBoardId } from '../../infrastructure/session/boardSelectionStore'
-import { clearSession, type FlowBoardSession } from '../../infrastructure/session/sessionStore'
+import { clearSession, logoutSession, type FlowBoardSession } from '../../infrastructure/session/sessionStore'
 import { THEME_STORAGE_KEY, type ThemeMode } from '../../infrastructure/theme/themeConstants'
 import { applyThemeToDocument, readTheme, writeTheme } from '../../infrastructure/theme/themeStore'
 import { useCurrentVersion } from '../release-notes/hooks/useCurrentVersion'
@@ -61,8 +61,9 @@ export function AppShell({ session, onLogout }: Props) {
   // Register search hotkey listener
   useSearchHotkey(() => setIsSearchOpen(true))
 
-  function logout() {
+  async function logout() {
     clearActiveBoardId(session)
+    await logoutSession()
     clearSession()
     onLogout()
   }

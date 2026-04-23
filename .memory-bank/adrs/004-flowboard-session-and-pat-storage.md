@@ -1,7 +1,7 @@
 # ADR-004: FlowBoard — Sessão e armazenamento do PAT no MVP
 
-**Status:** Aceito  
-**Data:** 2026-04-19  
+**Status:** Supersedido (armazenamento de PAT no browser) por [ADR-005](./005-flowboard-bff-pat-session.md) em instalações com BFF.  
+**Data (original):** 2026-04-19  
 **Feature de origem:** personal-kanban  
 **Autores:** architect (EPIC)
 

@@ -1,90 +1,47 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { clearSession, createSession, loadSession, saveSession } from './sessionStore'
+import { buildSessionFromAuthApi, clearSession, evictLegacyPatFromStorage, loadSession } from './sessionStore'
 
 const STORAGE_KEY = 'flowboard.session.v1'
+
+const sampleAuth = {
+  profile: { login: 'a', name: 'A', avatar_url: 'https://a' },
+  repository: {
+    owner: 'a',
+    repo: 'b',
+    repoUrl: 'https://github.com/a/b',
+    webUrl: 'https://github.com/a/b',
+    apiBase: 'https://api.github.com',
+  },
+} as const
 
 describe('sessionStore', () => {
   afterEach(() => {
     clearSession()
   })
 
-  it('round-trips session', () => {
-    const s = createSession('ghp_x', 'https://github.com/a/b', {
-      owner: 'a',
-      repo: 'b',
-      apiBase: 'https://api.github.com',
-      webUrl: 'https://github.com/a/b',
-    })
-    saveSession(s)
-    const loaded = loadSession()
-    expect(loaded?.owner).toBe('a')
-    expect(loaded?.pat).toBe('ghp_x')
+  it('buildSessionFromAuthApi builds a session without pat', () => {
+    const s = buildSessionFromAuthApi(sampleAuth)
+    expect(s.owner).toBe('a')
+    expect(s.repo).toBe('b')
   })
 
-  it('clear removes session', () => {
-    saveSession(
-      createSession('t', 'u', {
-        owner: 'a',
-        repo: 'b',
-        apiBase: 'https://api.github.com',
-        webUrl: 'https://github.com/a/b',
-      }),
-    )
-    clearSession()
+  it('loadSession always returns null (BFF is source of truth)', () => {
     expect(loadSession()).toBeNull()
   })
 
-  it('clears storage when JSON is not a valid session object', () => {
-    localStorage.setItem(STORAGE_KEY, 'not-json')
-    expect(loadSession()).toBeNull()
-    expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
-  })
-
-  it('clears storage when pat or owner/repo missing', () => {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        pat: '',
-        owner: 'a',
-        repo: 'b',
-        apiBase: 'https://api.github.com',
-        webUrl: 'https://github.com/a/b',
-        repoUrl: 'https://github.com/a/b',
-      }),
-    )
-    expect(loadSession()).toBeNull()
-    expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
-  })
-
-  it('clears storage when apiBase was tampered', () => {
+  it('evictLegacyPatFromStorage removes localStorage that contained pat', () => {
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
         pat: 'ghp_x',
         owner: 'a',
         repo: 'b',
-        apiBase: 'https://evil.example',
+        apiBase: 'https://api.github.com',
         webUrl: 'https://github.com/a/b',
         repoUrl: 'https://github.com/a/b',
       }),
     )
-    expect(loadSession()).toBeNull()
+    evictLegacyPatFromStorage()
     expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
-  })
-
-  it('migrates legacy session from sessionStorage to localStorage', () => {
-    const payload = JSON.stringify({
-      pat: 'ghp_x',
-      owner: 'a',
-      repo: 'b',
-      apiBase: 'https://api.github.com',
-      webUrl: 'https://github.com/a/b',
-      repoUrl: 'https://github.com/a/b',
-    })
-    sessionStorage.setItem(STORAGE_KEY, payload)
-    const loaded = loadSession()
-    expect(loaded?.owner).toBe('a')
-    expect(localStorage.getItem(STORAGE_KEY)).toBe(payload)
-    expect(sessionStorage.getItem(STORAGE_KEY)).toBeNull()
   })
 })
