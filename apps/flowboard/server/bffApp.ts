@@ -1,9 +1,9 @@
 import express, { type Request, type Response } from 'express'
 import { getIronSession } from 'iron-session'
-import { GITHUB_API_BASE, parseRepoUrl } from '../src/infrastructure/github/url'
-import { GitHubContentsClient, GitHubHttpError } from '../src/infrastructure/github/client'
-import { bootstrapFlowBoardData } from '../src/infrastructure/persistence/boardRepository'
-import { flowboardSessionOptions } from './sessionOptions'
+import { GITHUB_API_BASE, parseRepoUrl } from '../src/infrastructure/github/url.js'
+import { GitHubContentsClient, GitHubHttpError } from '../src/infrastructure/github/client.js'
+import { bootstrapFlowBoardData } from '../src/infrastructure/persistence/boardRepository.js'
+import { flowboardSessionOptions } from './sessionOptions.js'
 
 type SessionPayload = {
   pat?: string

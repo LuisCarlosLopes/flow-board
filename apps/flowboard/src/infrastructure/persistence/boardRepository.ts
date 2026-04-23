@@ -1,13 +1,13 @@
-import { GitHubContentsClient } from '../github/client'
+import { GitHubContentsClient } from '../github/client.js'
 import {
   CATALOG_PATH,
   boardFilePath,
   createPresetBoardDocument,
   emptyCatalog,
-} from './boardFactory'
-import type { BoardDocumentJson, CatalogJson } from './types'
+} from './boardFactory.js'
+import type { BoardDocumentJson, CatalogJson } from './types.js'
 
-export type { CatalogJson } from './types'
+export type { CatalogJson } from './types.js'
 
 export function createBoardRepository(client: GitHubContentsClient) {
   return {

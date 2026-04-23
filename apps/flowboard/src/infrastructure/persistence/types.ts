@@ -1,4 +1,4 @@
-import type { BoardWorkingHours, Card, CardTimeState, ColumnRole } from '../../domain/types'
+import type { BoardWorkingHours, Card, CardTimeState, ColumnRole } from '../../domain/types.js'
 
 /** JSON persisted per board (ADR-002). */
 export type BoardDocumentJson = {

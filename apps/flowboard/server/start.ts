@@ -3,7 +3,7 @@ import express from 'express'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import sirv from 'sirv'
-import { createBff } from './bffApp'
+import { createBff } from './bffApp.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const dist = path.join(__dirname, '../dist')

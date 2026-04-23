@@ -1,7 +1,7 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import type { Plugin } from 'vite'
-import { createBff } from './server/bffApp'
+import { createBff } from './server/bffApp.js'
 
 /**
  * CSP apenas no HTML emitido pelo build de produção (HITL D4).

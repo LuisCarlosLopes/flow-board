@@ -1,4 +1,4 @@
-import type { BoardDocumentJson, CatalogJson } from './types'
+import type { BoardDocumentJson, CatalogJson } from './types.js'
 
 export function boardFilePath(boardId: string): string {
   return `flowboard/boards/${boardId}.json`
