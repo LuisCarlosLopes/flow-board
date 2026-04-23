@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { GITHUB_API_BASE } from '../../infrastructure/github/url'
@@ -57,7 +57,11 @@ vi.mock('../../infrastructure/github/url', async (importOriginal) => {
 describe('LoginView Integration Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    globalThis.fetch = mockFetchSuccess() as unknown as typeof fetch
+    vi.stubGlobal('fetch', mockFetchSuccess())
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
   it('renderiza formulário com campos de entrada', () => {
