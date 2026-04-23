@@ -1,45 +1,48 @@
-import { GITHUB_API_BASE, isOfficialGithubApiBase, type RepoResolution } from '../github/url'
+import type { RepoResolution } from '../github/url'
+import type { AuthenticatedGitHubUser } from './authApi'
 
-const STORAGE_KEY = 'flowboard.session.v1'
+const STORAGE_KEY = 'flowboard.session.v2'
+const LEGACY_STORAGE_KEY = 'flowboard.session.v1'
 
-/** Migra sessão antiga (sessionStorage) para localStorage — compatível com Playwright storageState. */
-function migrateFromSessionStorageIfNeeded(): void {
-  if (typeof sessionStorage === 'undefined' || typeof localStorage === 'undefined') {
+function clearLegacyPatStorage(): void {
+  if (typeof localStorage === 'undefined') {
     return
   }
-  if (localStorage.getItem(STORAGE_KEY)) {
-    return
+  localStorage.removeItem(LEGACY_STORAGE_KEY)
+  if (typeof sessionStorage !== 'undefined') {
+    sessionStorage.removeItem(LEGACY_STORAGE_KEY)
   }
-  const legacy = sessionStorage.getItem(STORAGE_KEY)
-  if (!legacy) {
-    return
-  }
-  localStorage.setItem(STORAGE_KEY, legacy)
-  sessionStorage.removeItem(STORAGE_KEY)
 }
 
-export type FlowBoardSession = RepoResolution & {
-  pat: string
+export type FlowBoardSession = Pick<RepoResolution, 'owner' | 'repo' | 'webUrl'> & {
   /** Original URL entered by the user */
   repoUrl: string
+  user: AuthenticatedGitHubUser
 }
 
 export function loadSession(): FlowBoardSession | null {
   if (typeof localStorage === 'undefined') {
     return null
   }
-  migrateFromSessionStorageIfNeeded()
+  clearLegacyPatStorage()
   const raw = localStorage.getItem(STORAGE_KEY)
   if (!raw) {
     return null
   }
   try {
     const v = JSON.parse(raw) as FlowBoardSession
-    if (!v.pat || !v.owner || !v.repo) {
-      localStorage.removeItem(STORAGE_KEY)
-      return null
-    }
-    if (!isOfficialGithubApiBase(typeof v.apiBase === 'string' ? v.apiBase : '')) {
+    if (
+      !v.owner ||
+      !v.repo ||
+      !v.repoUrl ||
+      !v.webUrl ||
+      !v.user ||
+      typeof v.user.login !== 'string' ||
+      !v.user.login.trim() ||
+      (v.user.name !== null && typeof v.user.name !== 'string') ||
+      typeof v.user.avatar_url !== 'string' ||
+      !v.user.avatar_url.trim()
+    ) {
       localStorage.removeItem(STORAGE_KEY)
       return null
     }
@@ -51,23 +54,25 @@ export function loadSession(): FlowBoardSession | null {
 }
 
 export function saveSession(session: FlowBoardSession): void {
+  clearLegacyPatStorage()
   localStorage.setItem(STORAGE_KEY, JSON.stringify(session))
 }
 
 export function clearSession(): void {
+  clearLegacyPatStorage()
   localStorage.removeItem(STORAGE_KEY)
-  if (typeof sessionStorage !== 'undefined') {
-    sessionStorage.removeItem(STORAGE_KEY)
-  }
 }
 
-export function createSession(pat: string, repoUrl: string, resolution: RepoResolution): FlowBoardSession {
+export function createSession(
+  repoUrl: string,
+  resolution: Pick<RepoResolution, 'owner' | 'repo' | 'webUrl'>,
+  user: AuthenticatedGitHubUser,
+): FlowBoardSession {
   return {
-    pat,
     repoUrl,
     owner: resolution.owner,
     repo: resolution.repo,
-    apiBase: GITHUB_API_BASE,
     webUrl: resolution.webUrl,
+    user,
   }
 }

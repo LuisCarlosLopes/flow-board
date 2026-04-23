@@ -30,6 +30,30 @@ describe('GitHubContentsClient', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
+  it('supports proxy mode without Authorization header', async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      expect(url).toBe('/api/github/repos/o/r/contents/flowboard/catalog.json')
+      expect(init?.headers).toEqual({
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+      })
+      return mockResponse(200, {
+        sha: 'sha-1',
+        content: btoa(JSON.stringify({ ok: true })),
+        encoding: 'base64',
+      })
+    })
+    const client = new GitHubContentsClient({
+      owner: 'o',
+      repo: 'r',
+      apiBase: '/api/github',
+      fetchImpl: fetchMock,
+    })
+
+    const got = await client.getFileJson('flowboard/catalog.json')
+    expect(got.sha).toBe('sha-1')
+  })
+
   it('throws on 401', async () => {
     const fetchMock = vi.fn().mockImplementation(() => mockResponse(401))
     const client = new GitHubContentsClient({

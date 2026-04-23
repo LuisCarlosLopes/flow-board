@@ -63,12 +63,15 @@ describe('SearchModal', () => {
   beforeEach(() => {
     clearSearchModalBoardCache()
     mockSession = {
-      pat: 'test-pat',
       repoUrl: 'https://github.com/test/repo',
       webUrl: 'https://github.com/test/repo',
       owner: 'test',
       repo: 'repo',
-      apiBase: 'https://api.github.com',
+      user: {
+        login: 'octocat',
+        name: 'The Octocat',
+        avatar_url: 'https://avatars.githubusercontent.com/u/1',
+      },
     }
     loadBoardMock.mockResolvedValue({ doc: emptyBoardDoc('board-1'), sha: 'abc' })
   })

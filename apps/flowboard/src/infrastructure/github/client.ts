@@ -19,7 +19,7 @@ export class GitHubHttpError extends Error {
 }
 
 export type GitHubClientOptions = {
-  token: string
+  token?: string
   owner: string
   repo: string
   apiBase?: string
@@ -37,7 +37,7 @@ export class GitHubContentsClient {
   private readonly fetchImpl: typeof fetch
 
   constructor(opts: GitHubClientOptions) {
-    this.token = opts.token
+    this.token = opts.token ?? ''
     this.owner = opts.owner
     this.repo = opts.repo
     this.apiBase = opts.apiBase ?? GITHUB_API_BASE
@@ -47,10 +47,18 @@ export class GitHubContentsClient {
 
   private headers(): HeadersInit {
     return {
-      Authorization: `Bearer ${this.token}`,
+      ...(this.token
+        ? {
+            Authorization: `Bearer ${this.token}`,
+          }
+        : {}),
       Accept: 'application/vnd.github+json',
       'X-GitHub-Api-Version': '2022-11-28',
     }
+  }
+
+  private repositoryUrl(): string {
+    return `${this.apiBase}/repos/${encodeURIComponent(this.owner)}/${encodeURIComponent(this.repo)}`
   }
 
   private url(path: string): string {
@@ -59,7 +67,7 @@ export class GitHubContentsClient {
       .filter(Boolean)
       .map(encodeURIComponent)
       .join('/')
-    return `${this.apiBase}/repos/${this.owner}/${this.repo}/contents/${encoded}`
+    return `${this.repositoryUrl()}/contents/${encoded}`
   }
 
   async getFileJson(path: string, signal?: AbortSignal): Promise<{ sha: string; json: unknown }> {
@@ -102,8 +110,7 @@ export class GitHubContentsClient {
 
   /** Validates PAT can read the configured repository (GET /repos/{owner}/{repo}). */
   async verifyRepositoryAccess(): Promise<void> {
-    const url = `${this.apiBase}/repos/${encodeURIComponent(this.owner)}/${encodeURIComponent(this.repo)}`
-    const res = await this.fetchImpl(url, {
+    const res = await this.fetchImpl(this.repositoryUrl(), {
       headers: this.headers(),
     })
     if (res.status === 401) {

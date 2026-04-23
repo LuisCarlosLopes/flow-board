@@ -7,6 +7,7 @@ import { HoursView } from '../hours/HoursView'
 import { SearchModal } from './SearchModal'
 import { useSearchHotkey } from '../../hooks/useSearchHotkey'
 import { formatRepoChipLabel } from '../../infrastructure/github/url'
+import { logoutSession } from '../../infrastructure/session/authApi'
 import { clearActiveBoardId, loadActiveBoardId, saveActiveBoardId } from '../../infrastructure/session/boardSelectionStore'
 import { clearSession, type FlowBoardSession } from '../../infrastructure/session/sessionStore'
 import { THEME_STORAGE_KEY, type ThemeMode } from '../../infrastructure/theme/themeConstants'
@@ -61,8 +62,13 @@ export function AppShell({ session, onLogout }: Props) {
   // Register search hotkey listener
   useSearchHotkey(() => setIsSearchOpen(true))
 
-  function logout() {
+  async function logout() {
     clearActiveBoardId(session)
+    try {
+      await logoutSession()
+    } catch {
+      /* ignore logout network failures; clear client state anyway */
+    }
     clearSession()
     onLogout()
   }

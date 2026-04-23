@@ -18,7 +18,9 @@ npm test
 npm run build
 ```
 
-Não é obrigatório arquivo `.env` para o MVP: URL do repositório e PAT são informados na tela de login e guardados só em `sessionStorage` (não vão para os JSON do repositório).
+Não é obrigatório arquivo `.env` para usar o app localmente: URL do repositório e PAT são informados na tela de login, o PAT é validado server-side e fica apenas em cookie `httpOnly` criptografado (nunca vai para os JSON do repositório nem para `localStorage`).
+
+Se quiser manter as sessões válidas após reiniciar o servidor local, defina `FLOWBOARD_SESSION_SECRET` no ambiente do processo Vite/preview; sem ela o app usa um segredo efêmero e invalida as sessões no restart.
 
 ## Segurança (RF14)
 
@@ -83,7 +85,7 @@ Referência: PRD/TSD em `.memory-bank/specs/personal-kanban/`. Testes com **Vite
 ## Definition of Done (IPD §3)
 
 - [x] Login valida PAT contra API; erros 401/403/404 com mensagens claras
-- [x] Logout limpa `sessionStorage` e estado em memória (volta à tela de login)
+- [x] Logout invalida o cookie `httpOnly` da sessão e limpa o estado local do app (volta à tela de login)
 - [x] Catálogo e quadros atualizados com SHA; 409/429 tratados no cliente (`GitHubHttpError`, retry em 409 para `putJsonWithRetry`)
 - [x] Colunas respeitam P01–P02; edição inválida rejeitada (`validateColumnLayout`)
 - [x] Movimento de card aplica regras de tempo; total de horas no card (segmentos concluídos)

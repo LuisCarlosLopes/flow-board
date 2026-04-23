@@ -1,7 +1,8 @@
 import { type FormEvent, useState } from 'react'
-import { GitHubContentsClient, GitHubHttpError } from '../../infrastructure/github/client'
 import { parseRepoUrl } from '../../infrastructure/github/url'
 import { bootstrapFlowBoardData } from '../../infrastructure/persistence/boardRepository'
+import { createClientFromSession } from '../../infrastructure/github/fromSession'
+import { AuthApiError, loginWithPat } from '../../infrastructure/session/authApi'
 import { createSession, saveSession, type FlowBoardSession } from '../../infrastructure/session/sessionStore'
 import { OnboardingPage } from './OnboardingPage'
 import './LoginView.css'
@@ -30,21 +31,19 @@ export function LoginView({ onConnected }: Props) {
       return
     }
 
-    const client = new GitHubContentsClient({
-      token: pat.trim(),
-      owner: parsed.owner,
-      repo: parsed.repo,
-    })
-
     setBusy(true)
     try {
-      await client.verifyRepositoryAccess()
+      const user = await loginWithPat({
+        repoUrl: repoUrl.trim(),
+        pat: pat.trim(),
+      })
+      const session = createSession(repoUrl.trim(), parsed, user)
+      const client = createClientFromSession(session)
       await bootstrapFlowBoardData(client)
-      const session = createSession(pat.trim(), repoUrl.trim(), parsed)
       saveSession(session)
       onConnected(session)
     } catch (err) {
-      if (err instanceof GitHubHttpError) {
+      if (err instanceof AuthApiError) {
         setError(err.message)
       } else if (err instanceof Error) {
         setError(err.message)

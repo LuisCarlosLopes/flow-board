@@ -3,20 +3,24 @@ import { render, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { LoginView } from './LoginView'
 
-// Mock GitHub client
-vi.mock('../../infrastructure/github/client', () => {
-  const mockVerifyAccess = vi.fn().mockResolvedValue(undefined)
-  type MockClient = { verifyRepositoryAccess: typeof mockVerifyAccess }
+vi.mock('../../infrastructure/session/authApi', () => {
+  class AuthApiError extends Error {
+    readonly status: number
+
+    constructor(message: string, status: number) {
+      super(message)
+      this.name = 'AuthApiError'
+      this.status = status
+    }
+  }
+
   return {
-    GitHubContentsClient: vi.fn(function (this: MockClient) {
-      this.verifyRepositoryAccess = mockVerifyAccess
+    loginWithPat: vi.fn().mockResolvedValue({
+      login: 'octocat',
+      name: 'The Octocat',
+      avatar_url: 'https://avatars.githubusercontent.com/u/1',
     }),
-    GitHubHttpError: class GitHubHttpError extends Error {
-      constructor(message: string) {
-        super(message)
-        this.name = 'GitHubHttpError'
-      }
-    },
+    AuthApiError,
   }
 })
 
@@ -25,13 +29,22 @@ vi.mock('../../infrastructure/persistence/boardRepository', () => ({
   bootstrapFlowBoardData: vi.fn().mockResolvedValue(undefined),
 }))
 
+vi.mock('../../infrastructure/github/fromSession', () => ({
+  createClientFromSession: vi.fn(() => ({})),
+}))
+
 // Mock session store
 vi.mock('../../infrastructure/session/sessionStore', () => ({
   createSession: vi.fn(() => ({
-    pat: 'test-token',
     repoUrl: 'https://github.com/test/repo',
     owner: 'test',
     repo: 'repo',
+    webUrl: 'https://github.com/test/repo',
+    user: {
+      login: 'octocat',
+      name: 'The Octocat',
+      avatar_url: 'https://avatars.githubusercontent.com/u/1',
+    },
   })),
   saveSession: vi.fn(),
 }))
