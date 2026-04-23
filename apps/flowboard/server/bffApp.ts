@@ -41,7 +41,7 @@ export function createBff() {
   const app = express()
   app.set('trust proxy', 1)
   app.disable('x-powered-by')
-  app.use(express.json({ limit: '50mb' }))
+  app.use('/api/auth', express.json({ limit: '16kb' }))
 
   app.post('/api/auth/logout', async (req, res) => {
     const { session, error } = await readSession(req, res)
