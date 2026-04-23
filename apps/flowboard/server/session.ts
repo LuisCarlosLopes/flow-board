@@ -4,7 +4,8 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 export const SESSION_COOKIE_NAME = 'flowboard.session.v2'
 const SESSION_COOKIE_VERSION = 'v1'
 // Segurança + UX: mantém a sessão ativa por uma jornada de trabalho sem virar "lembrar para sempre".
-const SESSION_TTL_SECONDS = 60 * 60 * 8
+const SESSION_TTL_HOURS = 8
+const SESSION_TTL_SECONDS = SESSION_TTL_HOURS * 60 * 60
 
 export type SessionGitHubUser = {
   login: string
@@ -36,7 +37,7 @@ type SessionReadResult =
   | { kind: 'invalid' }
   | { kind: 'authenticated'; session: FlowBoardServerSession }
 
-let fallbackSecret: string | null = null
+let fallbackSecretKey: Buffer | null = null
 let warnedAboutEphemeralSecret = false
 
 export function readSessionFromRequest(req: IncomingMessage): SessionReadResult {
@@ -168,8 +169,8 @@ function sessionKey(): Buffer {
     throw new Error('FLOWBOARD_SESSION_SECRET é obrigatório em produção.')
   }
 
-  if (!fallbackSecret) {
-    fallbackSecret = randomBytes(32).toString('base64url')
+  if (!fallbackSecretKey) {
+    fallbackSecretKey = randomBytes(32)
   }
 
   if (!warnedAboutEphemeralSecret) {
@@ -179,7 +180,7 @@ function sessionKey(): Buffer {
     )
   }
 
-  return createHash('sha256').update(fallbackSecret, 'utf8').digest()
+  return fallbackSecretKey
 }
 
 function parseCookies(header: string | undefined): Record<string, string> {

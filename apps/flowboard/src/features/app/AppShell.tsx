@@ -66,8 +66,10 @@ export function AppShell({ session, onLogout }: Props) {
     clearActiveBoardId(session)
     try {
       await logoutSession()
-    } catch {
-      /* ignore logout network failures; clear client state anyway */
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('AppShell: failed to invalidate server session during logout', error)
+      }
     }
     clearSession()
     onLogout()

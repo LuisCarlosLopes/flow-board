@@ -2,7 +2,12 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Connect, Plugin } from 'vite'
 import { parseRepoUrl } from '../src/infrastructure/github/url'
 import { proxyGitHubRequest, readJsonBody, validatePatAndFetchUser, verifyRepositoryAccess } from './github'
-import { clearSessionCookie, readSessionFromRequest, setSessionCookie } from './session'
+import {
+  clearSessionCookie,
+  readSessionFromRequest,
+  setSessionCookie,
+  type FlowBoardServerSession,
+} from './session'
 
 const JSON_HEADERS = {
   'Content-Type': 'application/json; charset=utf-8',
@@ -160,7 +165,7 @@ async function handleGitHubProxy(req: IncomingMessage, res: ServerResponse, url:
   await proxyGitHubRequest(req, res, session.pat, suffix)
 }
 
-function requireAuthenticatedSession(req: IncomingMessage, res: ServerResponse) {
+function requireAuthenticatedSession(req: IncomingMessage, res: ServerResponse): FlowBoardServerSession | null {
   const result = readSessionFromRequest(req)
   if (result.kind === 'authenticated') {
     return result.session

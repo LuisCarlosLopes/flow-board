@@ -12,30 +12,31 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false
+    const finalizeRestore = (nextSession: FlowBoardSession | null) => {
+      if (cancelled) {
+        return
+      }
+      setSession(nextSession)
+      setBootstrapping(false)
+    }
 
     async function restoreSession() {
       try {
         const restored = await restoreAuthenticatedSession()
         if (!restored) {
-          if (!cancelled) {
-            clearSession()
-            setSession(null)
-            setBootstrapping(false)
-          }
+          clearSession()
+          finalizeRestore(null)
           return
         }
 
         saveSession(restored)
-        if (!cancelled) {
-          setSession(restored)
-          setBootstrapping(false)
+        finalizeRestore(restored)
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.error('App: failed to restore authenticated session', error)
         }
-      } catch {
-        if (!cancelled) {
-          clearSession()
-          setSession(null)
-          setBootstrapping(false)
-        }
+        clearSession()
+        finalizeRestore(null)
       }
     }
 
