@@ -8,9 +8,11 @@ import { createBff } from './server/bffApp'
  * `dev` não injeta meta, para preservar HMR e DX.
  */
 function contentSecurityPolicyProduction(): Plugin {
+  // Inline theme boot in index.html (avoid FOUC). Hash from `dist/index.html` after build.
+  // Vercel Live injects feedback.js in preview — allow origin.
   const content = [
     "default-src 'self'",
-    "script-src 'self'",
+    "script-src 'self' 'sha256-0Zix8lvcORkHx/kXIVJ4+me0niDBmIFygHUaKUAMSCg=' https://vercel.live",
     "style-src 'self' https://fonts.googleapis.com 'unsafe-inline'",
     "font-src 'self' https://fonts.gstatic.com",
     "connect-src 'self'",

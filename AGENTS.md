@@ -16,7 +16,11 @@ cd apps/flowboard
 npm install
 ```
 
-Para o app no dia a dia não é obrigatório `.env`: URL do repositório e PAT entram na UI e ficam em `sessionStorage`. **Testes E2E** exigem `apps/flowboard/.env` com credenciais de um repositório de dados de teste (ver secção E2E e tabela de variáveis). Qualquer `.env` está no `.gitignore` — **nunca commite**.
+A autenticação passa por um **BFF** (rotas `/api/*`): o PAT é validado no servidor e a sessão fica em cookie httpOnly. Para `npm run dev` / testes de API estáveis, use `FLOWBOARD_SESSION_SECRET` (≥32 caracteres) em `apps/flowboard/.env` (ver `apps/flowboard/.env.example`). **Testes E2E** exigem o mesmo ficheiro com credenciais de um repositório de dados (secção E2E). Qualquer `.env` está no `.gitignore` — **nunca commite**.
+
+### Vercel
+
+No dashboard do projeto, defina **Root Directory** = `apps/flowboard` (monorepo). A pasta `api/` e `vercel.json` alimentam as Serverless Functions que montam o mesmo BFF do Express. Configure **Environment Variables** com `FLOWBOARD_SESSION_SECRET` (igual em todos os ambientes em que a sessão deve ser legível; alterar o segredo invalida cookies antigos). O *build* de produção injeta CSP no `index.html`; o script inline de tema no HTML usa hash na política; o domínio `https://vercel.live` está permitido para o script de feedback em *preview* da Vercel.
 
 ### Desenvolvimento e build
 

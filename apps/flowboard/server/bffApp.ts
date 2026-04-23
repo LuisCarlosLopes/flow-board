@@ -28,6 +28,7 @@ async function readSession(
  */
 export function createBff() {
   const app = express()
+  app.set('trust proxy', 1)
   app.disable('x-powered-by')
   app.use(express.json({ limit: '50mb' }))
 
