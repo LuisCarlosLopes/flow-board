@@ -63,7 +63,12 @@ export function AppShell({ session, onLogout }: Props) {
 
   async function logout() {
     clearActiveBoardId(session)
-    await logoutSession()
+    try {
+      await logoutSession()
+    } catch {
+      // Best-effort server logout: still clear local session and return
+      // the UI to a logged-out state if the request fails.
+    }
     clearSession()
     onLogout()
   }
