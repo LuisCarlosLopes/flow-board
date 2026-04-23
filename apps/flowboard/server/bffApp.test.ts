@@ -59,9 +59,15 @@ function mockGithubFetch(responses: MockResponse[]): void {
   vi.stubGlobal(
     'fetch',
     vi.fn((url: string | URL | Request, init?: RequestInit) => {
-      const u = String(url instanceof Request ? (url as Request).url : url)
-      if (!u.startsWith('https://api.github.com')) {
-        return realFetch(u, init)
+      const raw = url instanceof Request ? (url as Request).url : String(url)
+      let origin: string
+      try {
+        origin = new URL(raw).origin
+      } catch {
+        origin = ''
+      }
+      if (origin !== 'https://api.github.com') {
+        return realFetch(raw, init)
       }
       const resp = responses[idx++] ?? { status: 500, ok: false }
       return Promise.resolve(resp)
