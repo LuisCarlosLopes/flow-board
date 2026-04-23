@@ -16,11 +16,22 @@ type SessionPayload = {
   userAvatarUrl?: string
 }
 
+type IronSessionT = Awaited<ReturnType<typeof getIronSession<SessionPayload>>>
+
+/**
+ * Nunca deixa exceção do iron-session (cookie adulterado / segredo trocado) virar 500.
+ */
 async function readSession(
   req: Request,
   res: Response,
-): Promise<Awaited<ReturnType<typeof getIronSession<SessionPayload>>>> {
-  return getIronSession<SessionPayload>(req, res, flowboardSessionOptions)
+): Promise<{ session: IronSessionT | null; error: 'invalid_session' | null }> {
+  try {
+    const session = await getIronSession<SessionPayload>(req, res, flowboardSessionOptions)
+    return { session, error: null }
+  } catch (err) {
+    console.error('[flowboard] getIronSession', err)
+    return { session: null, error: 'invalid_session' }
+  }
 }
 
 /**
@@ -33,13 +44,25 @@ export function createBff() {
   app.use(express.json({ limit: '50mb' }))
 
   app.post('/api/auth/logout', async (req, res) => {
-    const session = await readSession(req, res)
-    session.destroy()
+    const { session, error } = await readSession(req, res)
+    if (session) {
+      try {
+        session.destroy()
+      } catch (e) {
+        console.error('[flowboard] session.destroy', e)
+      }
+    } else if (error) {
+      // nada: cookie já inválido
+    }
     res.status(204).end()
   })
 
   app.get('/api/auth/me', async (req, res) => {
-    const session = await readSession(req, res)
+    const { session, error: sessionErr } = await readSession(req, res)
+    if (sessionErr || !session) {
+      res.status(401).json({ error: { code: 'UNAUTHORIZED' } })
+      return
+    }
     if (!session.pat) {
       res.status(401).json({ error: { code: 'UNAUTHORIZED' } })
       return
@@ -52,7 +75,11 @@ export function createBff() {
   })
 
   app.get('/api/auth/session', async (req, res) => {
-    const session = await readSession(req, res)
+    const { session, error: sessionErr } = await readSession(req, res)
+    if (sessionErr || !session) {
+      res.status(401).json({ error: { code: 'UNAUTHORIZED' } })
+      return
+    }
     if (!session.pat) {
       res.status(401).json({ error: { code: 'UNAUTHORIZED' } })
       return
@@ -74,7 +101,21 @@ export function createBff() {
   })
 
   app.post('/api/auth/login', async (req, res) => {
-    const session = await readSession(req, res)
+    const { session, error: sessionErr } = await readSession(req, res)
+    if (sessionErr) {
+      res.clearCookie(flowboardSessionOptions.cookieName, {
+        path: flowboardSessionOptions.cookieOptions?.path ?? '/',
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+      })
+      res.status(400).json({ error: { code: 'STALE_SESSION' } })
+      return
+    }
+    if (!session) {
+      res.status(500).json({ error: { code: 'SERVER_ERROR' } })
+      return
+    }
     if (session.pat) {
       res.status(409).json({ error: { code: 'SESSION_ACTIVE' } })
       return
@@ -145,7 +186,11 @@ export function createBff() {
 
   const githubProxy = express.Router()
   githubProxy.all(/.*/, async (req, res) => {
-    const session = await readSession(req, res)
+    const { session, error: sessionErr } = await readSession(req, res)
+    if (sessionErr || !session) {
+      res.status(401).json({ error: { code: 'UNAUTHORIZED' } })
+      return
+    }
     if (!session.pat) {
       res.status(401).json({ error: { code: 'UNAUTHORIZED' } })
       return

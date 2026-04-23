@@ -9,9 +9,12 @@ function sessionPassword(): string {
     return s
   }
   if (s && s.length < 32) {
-    throw new Error('FLOWBOARD_SESSION_SECRET must be at least 32 characters when set')
+    // Não fazer throw no load do módulo: em Vercel isso dava 500 em todas as rotas /api.
+    console.error(
+      '[flowboard] FLOWBOARD_SESSION_SECRET has fewer than 32 characters; using dev fallback. Fix the env var.',
+    )
   }
-  // Dev / bundling: `vite build` imports this module with no secret; `server/start` validates before listen in production.
+  // Dev / bundling / Vercel sem secret válido: fallback (inseguro se usado além de depuração).
   return '0000000000000000000000000000000000000000000000000000000000000000-dev-unsafe-'
 }
 
