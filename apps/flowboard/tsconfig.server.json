@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.node.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.server.tsbuildinfo",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": false,
+    "lib": ["ES2023", "DOM"],
+    "noEmit": false,
+    "outDir": "./dist-server",
+    "rootDir": ".",
+    "declaration": false,
+    "sourceMap": false
+  },
+  "include": ["server/**/*.ts"],
+  "exclude": ["**/*.test.ts", "**/*.test.tsx"]
+}

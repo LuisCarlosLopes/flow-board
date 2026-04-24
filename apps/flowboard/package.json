@@ -6,8 +6,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && tsc -p tsconfig.server.json",
     "lint": "eslint .",
+    "start": "node --experimental-specifier-resolution=node dist-server/server/index.js",
     "test": "vitest run",
     "test:e2e": "node scripts/ensure-e2e-auth.mjs",
     "test:e2e:raw": "playwright test",

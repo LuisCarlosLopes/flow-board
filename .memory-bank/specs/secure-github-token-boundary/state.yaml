@@ -1,0 +1,194 @@
+title: "Fronteira segura para token GitHub"
+slug: "secure-github-token-boundary"
+created_at: "2026-04-24"
+context: "FlowBoard — apps/flowboard; autenticação GitHub hoje usa PAT direto no browser e sessão em localStorage com migração legada de sessionStorage"
+
+objective: >
+  Reduzir a exposição do PAT no cliente removendo o token do modelo de sessão persistido
+  no browser e introduzindo uma fronteira segura para chamadas autenticadas à API GitHub,
+  preservando a persistência dos dados FlowBoard no repositório GitHub configurado pelo usuário.
+
+acceptance_criteria:
+  - "Após login bem-sucedido, a sessão persistida no browser não contém PAT, token GitHub bruto nem segredo equivalente."
+  - "Chamadas autenticadas para leitura/escrita GitHub deixam de enviar o PAT diretamente a partir de JavaScript da SPA."
+  - "Logout invalida a sessão local e qualquer credencial transitiva/servidor associada à sessão do usuário."
+  - "Migração de sessões legadas com PAT em localStorage/sessionStorage remove o PAT do storage e força reconexão ou reemissão segura conforme decisão aprovada."
+  - "Erros de autenticação, autorização, expiração e conflito GitHub continuam apresentados de forma clara e sem vazamento de segredo."
+  - "E2E e testes unitários cobrem que storage do browser não contém PAT após login, reload e logout."
+  - "ADR-001 e ADR-004 são substituídas, deprecadas ou atualizadas antes de merge para registrar a nova fronteira de segurança."
+
+scope:
+  in:
+    - "Novo contrato de autenticação/sessão para FlowBoard sem PAT persistido no cliente."
+    - "Fronteira segura para requisições GitHub autenticadas, mantendo dados de domínio em flowboard/** no repositório GitHub."
+    - "Migração/limpeza de sessões legadas que contenham PAT em localStorage ou sessionStorage."
+    - "Ajustes na UI de login/logout e mensagens de erro necessárias para o novo fluxo."
+    - "Atualização de testes unitários, testes E2E e ADRs afetadas."
+  out:
+    - "Persistência de dados de domínio fora do repositório GitHub configurado pelo usuário."
+    - "OAuth GitHub completo como obrigação da primeira entrega, salvo decisão explícita no gate arquitetural."
+    - "Suporte a GitHub Enterprise ou apiBase customizado."
+    - "Rotação automática de PAT no GitHub ou revogação do PAT original na conta do usuário."
+    - "Mudança funcional em quadro, cards, apontamento de horas, releases ou anexos fora do necessário para adaptar a persistência."
+
+tech_context: "React 19, Vite 8, TypeScript, Vitest, Playwright; Constitution II ainda exige dados de domínio no GitHub, mas Constitution III exige ADR atualizado para qualquer mudança de PAT/sessão."
+baseline_ref: "main"
+
+squad:
+  status: "concluido"
+  track: "FEATURE"
+  track_override: false
+  score: 6
+  confidence: 88
+  current_phase: "tester"
+  completed_phases:
+    - "spec"
+    - "spec-reviewer"
+    - "architect"
+    - "planner"
+    - "plan-reviewer"
+    - "task-breakdown"
+    - "pre-implementer-hitl"
+    - "implementer"
+    - "verifier"
+    - "code-reviewer"
+    - "tester"
+  next_phase: null
+  iteration: 1
+  blockers: []
+  hitl_required: false
+
+repo_write_scope:
+  - ".memory-bank/specs/secure-github-token-boundary/**"
+  - ".memory-bank/adrs/001-flowboard-spa-github-persistence.md"
+  - ".memory-bank/adrs/004-flowboard-session-and-pat-storage.md"
+  - ".memory-bank/adrs/NNN-flowboard-secure-github-token-boundary.md"
+  - "apps/flowboard/src/infrastructure/session/**"
+  - "apps/flowboard/src/infrastructure/github/**"
+  - "apps/flowboard/src/features/auth/**"
+  - "apps/flowboard/tests/e2e/**"
+  - "apps/flowboard/src/**/*.test.ts"
+  - "apps/flowboard/src/**/*.test.tsx"
+
+artifact_reuse:
+  - artifact: ".memory-bank/specs/security-hardening-mvp/state.yaml"
+    decision: "reused-as-context-only"
+    reason: "A entrega anterior endureceu o MVP mantendo PAT no cliente; o objetivo atual troca a fronteira de segurança e exige nova feature."
+  - artifact: ".memory-bank/adrs/004-flowboard-session-and-pat-storage.md"
+    decision: "reused-as-context-only"
+    reason: "ADR vigente documenta trade-offs aceitos para PAT no cliente e precisa ser substituída ou atualizada."
+  - artifact: ".memory-bank/adrs/001-flowboard-spa-github-persistence.md"
+    decision: "reused-as-context-only"
+    reason: "ADR vigente registra SPA falando direto com GitHub API e entra em conflito com a nova direção."
+
+approvals:
+  - phase: "pre-implementer-hitl"
+    approved_by: "user"
+    at: "2026-04-24"
+    note: "Usuário aprovou prosseguir e implementar a feature."
+retries_by_phase: {}
+last_failure: null
+
+decisions:
+  - decision: "Track FEATURE"
+    choice: "FEATURE"
+    reason: "Score 6: múltiplos módulos (+1), decisão arquitetural (+2), dependências entre subtarefas (+1), validação independente (+1), critério de aceite de segurança complexo (+1)."
+  - decision: "Não implementar antes de HITL"
+    choice: "Pipeline para em task-breakdown aguardando aprovação humana do pacote executável."
+    reason: "A squad-codesteer exige gate humano antes do implementer; a mudança altera credenciais e ADRs."
+
+pipeline:
+  - "spec"
+  - "spec-reviewer"
+  - "architect"
+  - "planner"
+  - "plan-reviewer"
+  - "task-breakdown"
+  - "pre-implementer-hitl"
+  - "implementer"
+  - "verifier"
+  - "code-reviewer"
+  - "tester"
+
+subtasks: []
+
+history:
+  - phase: "bootstrap"
+    agent: "orchestrator"
+    subtask_id: null
+    status: "ok"
+    artifact: "state.yaml"
+    note: "Feature criada para trocar o modelo de segurança do PAT; security-hardening-mvp reaproveitada apenas como contexto."
+  - phase: "spec"
+    agent: "spec"
+    subtask_id: null
+    status: "ok"
+    artifact: "spec-feature.md"
+    note: "TSD v1.0 gerada com confiança 88/100; revisada para v1.1 após feedback do spec-reviewer."
+  - phase: "spec-reviewer"
+    agent: "spec-reviewer"
+    subtask_id: null
+    status: "ok"
+    artifact: "spec-reviewer-feature.md"
+    note: "TSD v1.1 aprovada com ressalvas; score 85/100, 0 críticos, 3 avisos."
+  - phase: "architect"
+    agent: "architect"
+    subtask_id: null
+    status: "ok"
+    artifact: "architect-feature.md"
+    note: "ARD criado; ADR-009 adicionada com decisão BFF/proxy same-origin de credencial + gateway de persistência no cliente."
+  - phase: "planner"
+    agent: "planner"
+    subtask_id: null
+    status: "ok"
+    artifact: "planner-feature.md"
+    note: "IPD v1.0 gerado com confiança 88/100, bloqueios 0, mapa de alterações amplo para BFF same-origin."
+  - phase: "plan-reviewer"
+    agent: "plan-reviewer"
+    subtask_id: null
+    status: "ok"
+    artifact: "plan-reviewer-feature.md"
+    note: "IPD v1.1 aprovado com ressalvas; score 80/100, 0 críticos, 2 avisos, 3 sugestões."
+  - phase: "task-breakdown"
+    agent: "task-breakdown"
+    subtask_id: null
+    status: "ok"
+    artifact: "task-breakdown-feature.md"
+    note: "Pacote executável decomposto em 8 tasks; ressalvas do plan-reviewer incorporadas como cuidados operacionais."
+  - phase: "pre-implementer-hitl"
+    agent: "orchestrator"
+    subtask_id: null
+    status: "ok"
+    artifact: "state.yaml"
+    note: "Gate humano aprovado pelo usuário para iniciar a implementação."
+  - phase: "implementer"
+    agent: "implementer"
+    subtask_id: null
+    status: "ok"
+    artifact: "apps/flowboard/**"
+    note: "BFF same-origin implementado; sessão pública sem PAT; gateways client-side migrados para /api/*."
+  - phase: "verifier"
+    agent: "verifier"
+    subtask_id: null
+    status: "ok"
+    artifact: "apps/flowboard/server/*.test.ts"
+    note: "Validação automática cobrindo middleware, sessão, allowlist, gateways e migração fail-closed."
+  - phase: "code-reviewer"
+    agent: "code-reviewer"
+    subtask_id: null
+    status: "ok"
+    artifact: "apps/flowboard/README.md"
+    note: "ADRs e README alinhados à ADR-009 e ao runtime same-origin."
+  - phase: "tester"
+    agent: "tester"
+    subtask_id: null
+    status: "ok"
+    artifact: "apps/flowboard/tests/e2e/security-*.spec.ts"
+    note: "Unit, coverage relevante (>80% linhas), build, lint e E2E escopado de storage/boundary executados com sucesso."
+
+summary: >
+  Feature concluída. O FlowBoard agora estabelece sessão segura same-origin via BFF,
+  mantém apenas metadados públicos no browser, remove sessões legadas com PAT de forma
+  fail-closed, executa operações autenticadas por `/api/auth/session` e
+  `/api/flowboard/contents`, e possui evidência automatizada unitária e E2E para a
+  nova fronteira de segurança.

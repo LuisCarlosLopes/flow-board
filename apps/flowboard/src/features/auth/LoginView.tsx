@@ -1,8 +1,8 @@
 import { type FormEvent, useState } from 'react'
-import { GitHubContentsClient, GitHubHttpError } from '../../infrastructure/github/client'
+import { AuthGateway } from '../../infrastructure/auth/authGateway'
+import { GitHubHttpError } from '../../infrastructure/github/client'
 import { parseRepoUrl } from '../../infrastructure/github/url'
-import { bootstrapFlowBoardData } from '../../infrastructure/persistence/boardRepository'
-import { createSession, saveSession, type FlowBoardSession } from '../../infrastructure/session/sessionStore'
+import { saveSession, type FlowBoardSession } from '../../infrastructure/session/sessionStore'
 import { OnboardingPage } from './OnboardingPage'
 import './LoginView.css'
 
@@ -11,6 +11,7 @@ type Props = {
 }
 
 export function LoginView({ onConnected }: Props) {
+  const authGateway = new AuthGateway()
   const [repoUrl, setRepoUrl] = useState('')
   const [pat, setPat] = useState('')
   const [error, setError] = useState('')
@@ -29,18 +30,10 @@ export function LoginView({ onConnected }: Props) {
       setError('Informe o Personal Access Token.')
       return
     }
-
-    const client = new GitHubContentsClient({
-      token: pat.trim(),
-      owner: parsed.owner,
-      repo: parsed.repo,
-    })
-
     setBusy(true)
     try {
-      await client.verifyRepositoryAccess()
-      await bootstrapFlowBoardData(client)
-      const session = createSession(pat.trim(), repoUrl.trim(), parsed)
+      const session = await authGateway.createSession(repoUrl.trim(), pat.trim())
+      setPat('')
       saveSession(session)
       onConnected(session)
     } catch (err) {

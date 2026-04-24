@@ -4,12 +4,11 @@ import type { FlowBoardSession } from './sessionStore'
 
 function makeSession(owner: string, repo: string): FlowBoardSession {
   return {
-    pat: 'ghp_test',
     repoUrl: `https://github.com/${owner}/${repo}`,
     owner,
     repo,
-    apiBase: 'https://api.github.com',
     webUrl: `https://github.com/${owner}/${repo}`,
+    authenticated: true,
   }
 }
 
@@ -60,4 +59,3 @@ describe('boardSelectionStore', () => {
     }
   })
 })
-

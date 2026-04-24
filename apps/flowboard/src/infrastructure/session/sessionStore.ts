@@ -1,45 +1,30 @@
-import { GITHUB_API_BASE, isOfficialGithubApiBase, type RepoResolution } from '../github/url'
-
 const STORAGE_KEY = 'flowboard.session.v1'
 
-/** Migra sessão antiga (sessionStorage) para localStorage — compatível com Playwright storageState. */
-function migrateFromSessionStorageIfNeeded(): void {
-  if (typeof sessionStorage === 'undefined' || typeof localStorage === 'undefined') {
-    return
-  }
-  if (localStorage.getItem(STORAGE_KEY)) {
-    return
-  }
-  const legacy = sessionStorage.getItem(STORAGE_KEY)
-  if (!legacy) {
-    return
-  }
-  localStorage.setItem(STORAGE_KEY, legacy)
-  sessionStorage.removeItem(STORAGE_KEY)
-}
-
-export type FlowBoardSession = RepoResolution & {
-  pat: string
-  /** Original URL entered by the user */
+export type FlowBoardSession = {
+  owner: string
+  repo: string
   repoUrl: string
+  webUrl: string
+  authenticated: true
+  expiresAt?: string
 }
 
 export function loadSession(): FlowBoardSession | null {
   if (typeof localStorage === 'undefined') {
     return null
   }
-  migrateFromSessionStorageIfNeeded()
+  clearForbiddenLegacyStorage()
   const raw = localStorage.getItem(STORAGE_KEY)
   if (!raw) {
     return null
   }
   try {
     const v = JSON.parse(raw) as FlowBoardSession
-    if (!v.pat || !v.owner || !v.repo) {
+    if (hasForbiddenSecretShape(v)) {
       localStorage.removeItem(STORAGE_KEY)
       return null
     }
-    if (!isOfficialGithubApiBase(typeof v.apiBase === 'string' ? v.apiBase : '')) {
+    if (!isValidPublicSession(v)) {
       localStorage.removeItem(STORAGE_KEY)
       return null
     }
@@ -61,13 +46,60 @@ export function clearSession(): void {
   }
 }
 
-export function createSession(pat: string, repoUrl: string, resolution: RepoResolution): FlowBoardSession {
+export function createSession(session: Omit<FlowBoardSession, 'authenticated'> & { authenticated?: true }): FlowBoardSession {
   return {
-    pat,
-    repoUrl,
-    owner: resolution.owner,
-    repo: resolution.repo,
-    apiBase: GITHUB_API_BASE,
-    webUrl: resolution.webUrl,
+    owner: session.owner,
+    repo: session.repo,
+    repoUrl: session.repoUrl,
+    webUrl: session.webUrl,
+    authenticated: true,
+    ...(session.expiresAt ? { expiresAt: session.expiresAt } : {}),
   }
+}
+
+function clearForbiddenLegacyStorage(): void {
+  if (typeof localStorage !== 'undefined' && hasForbiddenStoragePayload(localStorage.getItem(STORAGE_KEY))) {
+    localStorage.removeItem(STORAGE_KEY)
+  }
+  if (typeof sessionStorage !== 'undefined' && hasForbiddenStoragePayload(sessionStorage.getItem(STORAGE_KEY))) {
+    sessionStorage.removeItem(STORAGE_KEY)
+  }
+}
+
+function hasForbiddenStoragePayload(raw: string | null): boolean {
+  if (!raw) {
+    return false
+  }
+  try {
+    return hasForbiddenSecretShape(JSON.parse(raw))
+  } catch {
+    return false
+  }
+}
+
+function hasForbiddenSecretShape(value: unknown): boolean {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    return false
+  }
+  const candidate = value as Record<string, unknown>
+  return ['pat', 'token', 'accessToken', 'refreshToken', 'authorization', 'apiBase'].some((key) => key in candidate)
+}
+
+function isValidPublicSession(value: unknown): value is FlowBoardSession {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    return false
+  }
+  const candidate = value as Record<string, unknown>
+  return (
+    typeof candidate.owner === 'string' &&
+    candidate.owner.trim().length > 0 &&
+    typeof candidate.repo === 'string' &&
+    candidate.repo.trim().length > 0 &&
+    typeof candidate.repoUrl === 'string' &&
+    candidate.repoUrl.trim().length > 0 &&
+    typeof candidate.webUrl === 'string' &&
+    candidate.webUrl.trim().length > 0 &&
+    candidate.authenticated === true &&
+    (candidate.expiresAt === undefined || typeof candidate.expiresAt === 'string')
+  )
 }

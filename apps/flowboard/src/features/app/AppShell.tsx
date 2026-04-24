@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { AuthGateway } from '../../infrastructure/auth/authGateway'
 import { ArchivedCardsPage } from '../board/ArchivedCardsPage'
 import { BoardView } from '../board/BoardView'
 import { BoardListView } from '../boards/BoardListView'
@@ -20,6 +21,7 @@ type Props = {
 }
 
 export function AppShell({ session, onLogout }: Props) {
+  const authGateway = new AuthGateway()
   const navigate = useNavigate()
   const location = useLocation()
   const onArchivedRoute = location.pathname === '/archived'
@@ -61,8 +63,9 @@ export function AppShell({ session, onLogout }: Props) {
   // Register search hotkey listener
   useSearchHotkey(() => setIsSearchOpen(true))
 
-  function logout() {
+  async function logout() {
     clearActiveBoardId(session)
+    await authGateway.deleteSession().catch(() => undefined)
     clearSession()
     onLogout()
   }
@@ -127,7 +130,7 @@ export function AppShell({ session, onLogout }: Props) {
           <span className="fb-chip fb-chip--accent fb-repo-chip" title={session.webUrl}>
             GitHub · {repoChip}
           </span>
-          <button type="button" className="fb-btn-text" onClick={logout}>
+          <button type="button" className="fb-btn-text" onClick={() => void logout()}>
             Sair
           </button>
         </div>

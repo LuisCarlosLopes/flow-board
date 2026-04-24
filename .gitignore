@@ -7,3 +7,4 @@ _codesteer/
 .claude/
 apps/flowboard/test-results/
 apps/flowboard/playwright-report/
+apps/flowboard/dist-server/

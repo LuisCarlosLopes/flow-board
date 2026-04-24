@@ -4,6 +4,7 @@
 **Data:** 2026-04-19  
 **Feature de origem:** personal-kanban  
 **Autores:** architect (EPIC)
+**Atualização 2026-04-24:** parcialmente supersedida pela `ADR-009` para a fronteira de credenciais e transporte autenticado
 
 ---
 
@@ -14,6 +15,8 @@ O produto FlowBoard deve armazenar quadros, cards e segmentos de tempo em JSON n
 ## Decisão
 
 Decidimos implementar **aplicação web (SPA) executando no navegador** que persiste **somente** via **GitHub REST API** autenticada com **PAT** fornecido pelo usuário, sem serviço próprio de dados entre o cliente e o GitHub no MVP.
+
+> **Trecho supersedido pela `ADR-009`:** a autenticação e o transporte autenticado não ocorrem mais diretamente do browser para `https://api.github.com`. O FlowBoard agora usa uma fronteira same-origin (`/api/*`) para guardar o PAT fora do JavaScript do cliente, mantendo o GitHub apenas como fonte de verdade dos dados `flowboard/**`.
 
 ## Alternativas Consideradas
 
@@ -30,7 +33,7 @@ Decidimos implementar **aplicação web (SPA) executando no navegador** que pers
 - ✅ Menos superfície operacional (sem servidor de app a proteger)
 
 **Trade-offs aceitos:**
-- ⚠️ PAT no cliente exige disciplina de armazenamento e mitigação de XSS (ver ADR-004)
+- ⚠️ Este trade-off foi substituído pela `ADR-009`: o PAT deixou de ser persistido no cliente, mas o runtime same-origin passou a fazer parte do deployment autenticado.
 - ⚠️ Limites de rate e disponibilidade da `api.github.com` são dependência dura
 
 ## Guardrails derivados desta decisão
@@ -40,4 +43,4 @@ Decidimos implementar **aplicação web (SPA) executando no navegador** que pers
 
 ## Status de vigência
 
-- **Aceito** — em vigor desde 2026-04-19, aplica-se ao MVP FlowBoard a partir de `personal-kanban`.
+- **Aceito com supersessão parcial** — o princípio “GitHub como fonte de verdade dos dados” continua vigente; a topologia “browser fala autenticado direto com GitHub” foi substituída pela `ADR-009`.

@@ -1,7 +1,15 @@
-import { GitHubContentsClient, GitHubHttpError, putFileBase64WithRetry } from '../../infrastructure/github/client'
+import {
+  GitHubHttpError,
+  putFileBase64WithRetry,
+  type FlowBoardBlobGateway,
+  type FlowBoardJsonGateway,
+} from '../../infrastructure/github/client'
 import { fileToBase64 } from '../../infrastructure/github/fileBlob'
 
-export async function deleteRepoPathIfExists(client: GitHubContentsClient, path: string): Promise<void> {
+export async function deleteRepoPathIfExists(
+  client: Pick<FlowBoardBlobGateway, 'tryGetFileRaw'> & Pick<FlowBoardJsonGateway, 'deleteFile'>,
+  path: string,
+): Promise<void> {
   const got = await client.tryGetFileRaw(path)
   if (!got) {
     return
@@ -17,7 +25,7 @@ export async function deleteRepoPathIfExists(client: GitHubContentsClient, path:
 }
 
 export async function uploadAttachmentBlobs(
-  client: GitHubContentsClient,
+  client: Pick<FlowBoardBlobGateway, 'putFileBase64' | 'tryGetFileRaw'>,
   blobs: { storagePath: string; file: File }[],
 ): Promise<void> {
   const done: string[] = []

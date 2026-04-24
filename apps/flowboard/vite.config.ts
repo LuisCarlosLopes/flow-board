@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import type { Plugin } from 'vite'
+import { createFlowBoardApiApp, createNodeMiddleware } from './server/app'
 
 /**
  * CSP apenas no HTML emitido pelo build de produção (HITL D4).
@@ -12,8 +13,8 @@ function contentSecurityPolicyProduction(): Plugin {
     "script-src 'self'",
     "style-src 'self' https://fonts.googleapis.com 'unsafe-inline'",
     "font-src 'self' https://fonts.gstatic.com",
-    "connect-src 'self' https://api.github.com",
-    "img-src 'self' data:",
+    "connect-src 'self'",
+    "img-src 'self' data: blob:",
     "base-uri 'self'",
     "form-action 'self'",
   ].join('; ')
@@ -41,12 +42,27 @@ function contentSecurityPolicyProduction(): Plugin {
   }
 }
 
+function flowBoardApiBridge(): Plugin {
+  const app = createFlowBoardApiApp()
+  const middleware = createNodeMiddleware(app)
+
+  return {
+    name: 'flowboard-api-bridge',
+    configureServer(server) {
+      server.middlewares.use(middleware)
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(middleware)
+    },
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), contentSecurityPolicyProduction()],
+  plugins: [flowBoardApiBridge(), react(), contentSecurityPolicyProduction()],
   test: {
     environment: 'happy-dom',
-    include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'server/**/*.test.ts'],
     setupFiles: ['src/vitest.setup.ts'],
   },
 })

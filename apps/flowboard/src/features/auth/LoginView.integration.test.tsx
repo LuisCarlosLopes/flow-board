@@ -3,36 +3,40 @@ import { render, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { LoginView } from './LoginView'
 
-// Mock GitHub client
-vi.mock('../../infrastructure/github/client', () => {
-  const mockVerifyAccess = vi.fn().mockResolvedValue(undefined)
-  type MockClient = { verifyRepositoryAccess: typeof mockVerifyAccess }
+const { createSessionMock } = vi.hoisted(() => ({
+  createSessionMock: vi.fn().mockResolvedValue({
+    owner: 'test',
+    repo: 'repo',
+    repoUrl: 'https://github.com/test/repo',
+    webUrl: 'https://github.com/test/repo',
+    authenticated: true,
+  }),
+}))
+
+vi.mock('../../infrastructure/auth/authGateway', () => {
   return {
-    GitHubContentsClient: vi.fn(function (this: MockClient) {
-      this.verifyRepositoryAccess = mockVerifyAccess
-    }),
-    GitHubHttpError: class GitHubHttpError extends Error {
-      constructor(message: string) {
-        super(message)
-        this.name = 'GitHubHttpError'
+    AuthGateway: vi.fn(function () {
+      return {
+        createSession: createSessionMock,
       }
-    },
+    }),
   }
 })
 
-// Mock board repository
-vi.mock('../../infrastructure/persistence/boardRepository', () => ({
-  bootstrapFlowBoardData: vi.fn().mockResolvedValue(undefined),
+vi.mock('../../infrastructure/github/client', () => ({
+  GitHubHttpError: class GitHubHttpError extends Error {
+    readonly status: number
+
+    constructor(message: string, status: number) {
+      super(message)
+      this.name = 'GitHubHttpError'
+      this.status = status
+    }
+  },
 }))
 
 // Mock session store
 vi.mock('../../infrastructure/session/sessionStore', () => ({
-  createSession: vi.fn(() => ({
-    pat: 'test-token',
-    repoUrl: 'https://github.com/test/repo',
-    owner: 'test',
-    repo: 'repo',
-  })),
   saveSession: vi.fn(),
 }))
 
@@ -49,6 +53,13 @@ vi.mock('../../infrastructure/github/url', () => ({
 describe('LoginView Integration Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    createSessionMock.mockResolvedValue({
+      owner: 'test',
+      repo: 'repo',
+      repoUrl: 'https://github.com/test/repo',
+      webUrl: 'https://github.com/test/repo',
+      authenticated: true,
+    })
   })
 
   it('renderiza formulário com campos de entrada', () => {
@@ -213,6 +224,7 @@ describe('LoginView Integration Tests', () => {
     await waitFor(() => {
       expect(onConnected).toHaveBeenCalled()
     }, { timeout: 1000 })
+    expect(patInput.value).toBe('')
   })
 
   it('validação: rejeita URL inválida com mensagem', async () => {
@@ -284,5 +296,32 @@ describe('LoginView Integration Tests', () => {
 
     const labels = container.querySelectorAll('label')
     expect(labels.length).toBeGreaterThan(0)
+  })
+
+  it('mostra erro retornado pelo gateway quando a autenticação falha', async () => {
+    createSessionMock.mockRejectedValueOnce(new Error('Não autorizado (401). Verifique o PAT.'))
+    const onConnected = vi.fn()
+    const { container } = render(<LoginView onConnected={onConnected} />)
+    const repoInput = container.querySelector('input[name="repo-url"]') as HTMLInputElement
+    const patInput = container.querySelector('input[name="repo-pat"]') as HTMLInputElement
+    const submitBtn = container.querySelector('button[type="submit"]') as HTMLButtonElement
+    const user = userEvent.setup()
+
+    await user.type(repoInput, 'https://github.com/test/repo')
+    await user.type(patInput, 'ghp_test1234567890')
+    await user.click(submitBtn)
+
+    await waitFor(() => {
+      expect(container.querySelector('.fb-login__err')?.textContent).toContain('Não autorizado')
+    })
+  })
+
+  it('abre o onboarding do PAT', async () => {
+    const onConnected = vi.fn()
+    const { getByRole, findByRole } = render(<LoginView onConnected={onConnected} />)
+    const user = userEvent.setup()
+
+    await user.click(getByRole('button', { name: 'Como gerar Personal Access Token' }))
+    await expect(findByRole('dialog')).resolves.toBeInTheDocument()
   })
 })

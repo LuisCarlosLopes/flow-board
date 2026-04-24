@@ -6,6 +6,20 @@ export type ContentsGetResponse = {
   encoding: 'base64'
 }
 
+export type FlowBoardJsonGateway = {
+  tryGetFileJson(path: string, signal?: AbortSignal): Promise<{ sha: string; json: unknown } | null>
+  putFileJson(path: string, json: unknown, sha: string | null): Promise<void>
+  deleteFile(path: string, sha: string): Promise<void>
+}
+
+export type FlowBoardBlobGateway = {
+  getFileRaw(path: string, signal?: AbortSignal): Promise<{ sha: string; contentBase64: string }>
+  tryGetFileRaw(path: string, signal?: AbortSignal): Promise<{ sha: string; contentBase64: string } | null>
+  putFileBase64(path: string, contentBase64: string, sha: string | null, message?: string): Promise<void>
+}
+
+export type FlowBoardContentsGateway = FlowBoardJsonGateway & FlowBoardBlobGateway
+
 export class GitHubHttpError extends Error {
   readonly status: number
   readonly retryAfterMs?: number
@@ -45,7 +59,7 @@ export class GitHubContentsClient {
     this.fetchImpl = opts.fetchImpl ?? ((input, init) => globalThis.fetch(input, init))
   }
 
-  private headers(): HeadersInit {
+  private headers(): Record<string, string> {
     return {
       Authorization: `Bearer ${this.token}`,
       Accept: 'application/vnd.github+json',
@@ -275,7 +289,7 @@ function utf8ToBase64(text: string): string {
  * Retries PUT once after 409 by re-reading SHA via getter (ADR-005).
  */
 export async function putJsonWithRetry(
-  client: GitHubContentsClient,
+  client: Pick<FlowBoardJsonGateway, 'putFileJson'>,
   path: string,
   json: unknown,
   readCurrent: () => Promise<{ sha: string; json: unknown }>,
@@ -298,7 +312,7 @@ export async function putJsonWithRetry(
  * Same as {@link putJsonWithRetry} for binary/text blobs: re-read SHA after 409 (concorrência GitHub).
  */
 export async function putFileBase64WithRetry(
-  client: GitHubContentsClient,
+  client: Pick<FlowBoardBlobGateway, 'putFileBase64'>,
   path: string,
   contentBase64: string,
   readCurrentSha: () => Promise<string | null>,

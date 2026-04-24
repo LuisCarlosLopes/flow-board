@@ -1,4 +1,4 @@
-import { GitHubContentsClient } from '../github/client'
+import type { FlowBoardJsonGateway } from '../github/client'
 import {
   CATALOG_PATH,
   boardFilePath,
@@ -9,14 +9,16 @@ import type { BoardDocumentJson, CatalogJson } from './types'
 
 export type { CatalogJson } from './types'
 
-export function createBoardRepository(client: GitHubContentsClient) {
+type BoardRepositoryGateway = Pick<FlowBoardJsonGateway, 'tryGetFileJson' | 'putFileJson'>
+
+export function createBoardRepository(client: BoardRepositoryGateway) {
   return {
     async loadCatalog(): Promise<{ catalog: CatalogJson; sha: string | null }> {
       const got = await client.tryGetFileJson(CATALOG_PATH)
       if (!got) {
         return { catalog: emptyCatalog(), sha: null }
       }
-      return { catalog: parseCatalog(got.json), sha: got.sha }
+      return { catalog: parseCatalogJson(got.json), sha: got.sha }
     },
 
     async saveCatalog(catalog: CatalogJson, previousSha: string | null): Promise<void> {
@@ -32,7 +34,7 @@ export function createBoardRepository(client: GitHubContentsClient) {
       if (!got) {
         return null
       }
-      return { doc: parseBoard(got.json), sha: got.sha }
+      return { doc: parseBoardDocumentJson(got.json), sha: got.sha }
     },
 
     async saveBoard(boardId: string, doc: BoardDocumentJson, previousSha: string | null): Promise<void> {
@@ -90,7 +92,7 @@ export async function renameBoardEntry(
 
 export async function deleteBoardEntry(
   repo: BoardRepository,
-  client: GitHubContentsClient,
+  client: Pick<FlowBoardJsonGateway, 'tryGetFileJson' | 'deleteFile'>,
   boardId: string,
 ): Promise<CatalogJson> {
   const { catalog, sha: catSha } = await repo.loadCatalog()
@@ -113,7 +115,7 @@ export async function deleteBoardEntry(
   return nextCatalog
 }
 
-function parseCatalog(json: unknown): CatalogJson {
+export function parseCatalogJson(json: unknown): CatalogJson {
   if (json === null || typeof json !== 'object' || Array.isArray(json)) {
     throw new Error('catalog.json inválido')
   }
@@ -140,7 +142,7 @@ function parseCatalog(json: unknown): CatalogJson {
   return o as unknown as CatalogJson
 }
 
-function parseBoard(json: unknown): BoardDocumentJson {
+export function parseBoardDocumentJson(json: unknown): BoardDocumentJson {
   if (json === null || typeof json !== 'object' || Array.isArray(json)) {
     throw new Error('board.json inválido')
   }
@@ -159,7 +161,7 @@ function parseBoard(json: unknown): BoardDocumentJson {
 
 /** Ensures catalog + at least one preset board exist (bootstrap empty repo). */
 export async function bootstrapFlowBoardData(
-  client: GitHubContentsClient,
+  client: BoardRepositoryGateway,
 ): Promise<{ catalog: CatalogJson; board: BoardDocumentJson }> {
   const repo = createBoardRepository(client)
   const { catalog, sha } = await repo.loadCatalog()

@@ -1,12 +1,13 @@
 # FlowBoard (MVP)
 
-Kanban pessoal com rastreamento de tempo. Os dados ficam em arquivos JSON no repositório GitHub que você indicar (API Contents + PAT). Desktop-first, single-user.
+Kanban pessoal com rastreamento de tempo. Os dados continuam em arquivos JSON no repositório GitHub que você indicar, mas a autenticação agora passa por uma fronteira same-origin (`/api/*`) com sessão por cookie `HttpOnly`. Desktop-first, single-user.
 
 ## Requisitos
 
 - Node.js compatível com Vite 8 / TypeScript 6
 - Conta GitHub e repositório (público ou privado) para armazenar `flowboard/`
 - Personal Access Token com permissão de leitura/escrita no conteúdo do repositório (tipicamente escopo `repo` em repos privados)
+- Runtime same-origin do FlowBoard ativo para fluxos autenticados (`npm run dev` e `npm run preview` já expõem a API local do app)
 
 ## Desenvolvimento
 
@@ -18,14 +19,21 @@ npm test
 npm run build
 ```
 
-Não é obrigatório arquivo `.env` para o MVP: URL do repositório e PAT são informados na tela de login e guardados só em `sessionStorage` (não vão para os JSON do repositório).
+Não é obrigatório arquivo `.env` para o uso diário: URL do repositório e PAT são informados na tela de login. O PAT é enviado apenas no estabelecimento da sessão e fica retido no runtime server-side; o browser persiste só metadados públicos da sessão em `localStorage`.
+
+Configuração opcional somente do runtime server-side:
+
+- `FLOWBOARD_SESSION_TTL_SECONDS` — TTL da sessão segura em segundos
+- `FLOWBOARD_COOKIE_SECURE` — força cookie `Secure` (`true`/`false`)
+- `PORT` — porta do runtime same-origin
 
 ## Segurança (RF14)
 
 - Use um **Personal Access Token** com o **menor escopo** necessário para o seu caso.
 - **Não** commite o PAT; não grave o token nos arquivos JSON sob `flowboard/`.
 - Revogue tokens antigos periodicamente.
-- O app exibe aviso mínimo na tela de login sobre o risco do PAT.
+- O browser não persiste `pat`, `Authorization` nem `apiBase`; chamadas autenticadas da SPA usam apenas `/api/auth/session` e `/api/flowboard/contents`.
+- O risco residual continua na digitação inicial do PAT na tela de login. XSS no origin durante esse momento ainda é capaz de observar a credencial antes de ela entrar no vault server-side.
 
 ## Troca de repositório (RF04)
 
@@ -56,8 +64,8 @@ Referência: PRD/TSD em `.memory-bank/specs/personal-kanban/`. Testes com **Vite
 | RF | Descrição (resumo) | Evidência |
 |----|--------------------|-----------|
 | RF01 | Nome FlowBoard na UI | `index.html` (`<title>`), `AppShell` / login marca "FlowBoard" |
-| RF02 | Login repo + PAT + validação API | `LoginView.tsx`, `GitHubContentsClient.verifyRepositoryAccess` |
-| RF03 | Sessão + logout | `sessionStore.ts`, `sessionStore.test.ts`, botão Sair em `AppShell` |
+| RF02 | Login repo + PAT + validação API | `LoginView.tsx`, `authGateway.ts`, `server/app.ts` |
+| RF03 | Sessão + logout | `sessionStore.ts`, `server/sessions.ts`, botão Sair em `AppShell` |
 | RF04 | Troca de repo | Documentado acima; fluxo = logout + novo login |
 | RF05 | Múltiplos quadros | `BoardListView.tsx`, `boardRepository.ts` |
 | RF06 | Colunas + preset + edição válida | `ColumnEditorModal.tsx`, `boardRules.ts`, `boardRules.test.ts` |
@@ -82,15 +90,15 @@ Referência: PRD/TSD em `.memory-bank/specs/personal-kanban/`. Testes com **Vite
 
 ## Definition of Done (IPD §3)
 
-- [x] Login valida PAT contra API; erros 401/403/404 com mensagens claras
-- [x] Logout limpa `sessionStorage` e estado em memória (volta à tela de login)
+- [x] Login valida PAT contra API; erros 401/403/404 com mensagens claras e sem expor o segredo ao browser após a autenticação
+- [x] Logout revoga a sessão no BFF, limpa `localStorage` público e estado em memória (volta à tela de login)
 - [x] Catálogo e quadros atualizados com SHA; 409/429 tratados no cliente (`GitHubHttpError`, retry em 409 para `putJsonWithRetry`)
 - [x] Colunas respeitam P01–P02; edição inválida rejeitada (`validateColumnLayout`)
 - [x] Movimento de card aplica regras de tempo; total de horas no card (segmentos concluídos)
 - [x] Tela horas: dia / semana / mês + escopo quadro atual e todos os quadros
 - [x] Não há busca topbar, notificações, favoritos ou labels persistidos no MVP
 - [x] Matriz RF×teste (esta tabela) e README preenchidos
-- [x] README com PAT, escopos e aviso de segurança
+- [x] README com PAT, escopos, runtime same-origin e aviso de segurança
 
 ## Licença
 
