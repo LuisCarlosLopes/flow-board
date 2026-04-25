@@ -5,7 +5,9 @@
   "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }],
   "functions": {
     "api/flowboard/**": {
-      "includeFiles": "server/**"
+      "includeFiles": "server/**+src/**",
+      "memory": 1024,
+      "maxDuration": 60
     }
   }
 }

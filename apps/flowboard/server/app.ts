@@ -6,7 +6,7 @@ import { GitHubHttpError, GitHubContentsClient } from '../src/infrastructure/git
 import { parseRepoUrl } from '../src/infrastructure/github/url.ts'
 import { bootstrapFlowBoardData } from '../src/infrastructure/persistence/boardRepository.ts'
 import type { PublicFlowboardSession } from './flowboardSessionData.ts'
-import { getSessionOptions } from './sessionOptions.ts'
+import { getSessionOptions, SessionConfigurationError } from './sessionOptions.ts'
 import { withIronSession } from './ironHono.ts'
 import { runGithubInvoke } from './invokeHandler.ts'
 import type { FlowboardIronSession } from './flowboardSessionData.ts'
@@ -131,4 +131,22 @@ app.post('/flowboard/github/invoke', async (c) => {
   const session = await getIronSession<FlowboardIronSession>(c.req.raw, new Response(), opts)
   const body: unknown = await c.req.json().catch(() => null)
   return runGithubInvoke(body, session)
+})
+
+app.onError((err, c) => {
+  if (err instanceof SessionConfigurationError) {
+    return c.json(
+      {
+        error:
+          'Configuração em falta: defina SESSION_SECRET (≥32 caracteres) nas variáveis do servidor (ex.: Vercel → Environment Variables).',
+        code: 'E_SESSION_CONFIG',
+      },
+      503,
+    )
+  }
+  console.error(err)
+  return c.json(
+    { error: isProduction ? 'Erro interno do servidor' : err instanceof Error ? err.message : 'Erro' },
+    500,
+  )
 })

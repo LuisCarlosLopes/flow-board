@@ -4,6 +4,9 @@
   "version": "0.0.0",
   "license": "MIT",
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "concurrently -k -n bff,vite -c cyan,magenta \"npm run dev:server\" \"npm run dev:vite\"",
     "dev:vite": "vite",

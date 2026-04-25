@@ -2,6 +2,14 @@ import type { SessionOptions } from 'iron-session'
 
 const COOKIE_NAME = 'flowboard.sid'
 
+/** Disparada quando `SESSION_SECRET` falta no runtime (p.ex. Vercel sem variável). Hono mapeia para 503. */
+export class SessionConfigurationError extends Error {
+  override readonly name = 'SessionConfigurationError'
+  constructor() {
+    super('SESSION_SECRET is required and must be at least 32 characters')
+  }
+}
+
 function isLocalDevNode(): boolean {
   const n = process.env.NODE_ENV
   // Só com NODE_ENV explícito (p.ex. `npm run dev:server` usa cross-env); nunca tratar
@@ -18,7 +26,7 @@ function sessionPassword(): string {
     // Apenas em dev/test local ou NODE_ENV ausente; produção e CI têm de definir SESSION_SECRET (ver README)
     return 'dev-local-flowboard-iron-session-32+'
   }
-  throw new Error('SESSION_SECRET is required and must be at least 32 characters')
+  throw new SessionConfigurationError()
 }
 
 export function getSessionOptions(): SessionOptions {
