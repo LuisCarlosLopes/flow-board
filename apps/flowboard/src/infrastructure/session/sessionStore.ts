@@ -8,34 +8,23 @@ export type FlowBoardSession = RepoResolution & {
 }
 
 /**
- * Best-effort removal of the legacy local/session storage snapshot that used to include the PAT.
- * Safe to call on startup before session restore via BFF.
+ * Removes the pre-BFF local/session storage key that used to hold the PAT in the browser.
+ * Always delete the key if present — the BFF cookie is the only credential store now.
+ * Call on startup (and after login) so old bundles or race conditions cannot leave secrets in storage.
  */
 export function clearLegacyPatStorage(): void {
   if (typeof localStorage === 'undefined' || typeof sessionStorage === 'undefined') {
     return
   }
-  const fromLocal = localStorage.getItem(LEGACY_STORAGE_KEY)
-  const fromSession = sessionStorage.getItem(LEGACY_STORAGE_KEY)
-  if (fromLocal) {
-    try {
-      const v = JSON.parse(fromLocal) as { pat?: unknown }
-      if (v && 'pat' in v && v.pat) {
-        localStorage.removeItem(LEGACY_STORAGE_KEY)
-      }
-    } catch {
-      localStorage.removeItem(LEGACY_STORAGE_KEY)
-    }
+  try {
+    localStorage.removeItem(LEGACY_STORAGE_KEY)
+  } catch {
+    /* ignore */
   }
-  if (fromSession) {
-    try {
-      const v = JSON.parse(fromSession) as { pat?: unknown }
-      if (v && 'pat' in v && v.pat) {
-        sessionStorage.removeItem(LEGACY_STORAGE_KEY)
-      }
-    } catch {
-      sessionStorage.removeItem(LEGACY_STORAGE_KEY)
-    }
+  try {
+    sessionStorage.removeItem(LEGACY_STORAGE_KEY)
+  } catch {
+    /* ignore */
   }
 }
 

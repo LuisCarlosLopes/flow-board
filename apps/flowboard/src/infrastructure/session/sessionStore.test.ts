@@ -54,4 +54,10 @@ describe('sessionStore', () => {
     clearLegacyPatStorage()
     expect(sessionStorage.getItem(LEGACY_KEY)).toBeNull()
   })
+
+  it('clearLegacyPatStorage removes the key even if JSON has no pat', () => {
+    localStorage.setItem(LEGACY_KEY, JSON.stringify({ owner: 'a', repo: 'b' }))
+    clearLegacyPatStorage()
+    expect(localStorage.getItem(LEGACY_KEY)).toBeNull()
+  })
 })

@@ -1,6 +1,6 @@
 import { type FormEvent, useState } from 'react'
 import { postBffLogin } from '../../infrastructure/session/sessionApi'
-import { type FlowBoardSession } from '../../infrastructure/session/sessionStore'
+import { clearLegacyPatStorage, type FlowBoardSession } from '../../infrastructure/session/sessionStore'
 import { OnboardingPage } from './OnboardingPage'
 import './LoginView.css'
 
@@ -30,6 +30,7 @@ export function LoginView({ onConnected }: Props) {
     setBusy(true)
     try {
       const session = await postBffLogin(pat.trim(), repoUrl.trim())
+      clearLegacyPatStorage()
       onConnected(session)
     } catch (err) {
       if (err instanceof Error) {
