@@ -118,6 +118,10 @@ Referência: PRD/TSD em `.memory-bank/specs/personal-kanban/`. Testes com **Vite
 - [x] Matriz RF×teste (esta tabela) e README preenchidos
 - [x] README com PAT, escopos e aviso de segurança
 
+## Deploy (Vercel)
+
+No painel do projeto, em **Settings → General → Root Directory** defina `apps/flowboard` (o repositório `flow-board` tem o código da app nessa subpasta; se o root do deploy for a raiz do git, a pasta `api/` do BFF não entra e `/api/flowboard/*` responde 404). Variáveis: `SESSION_SECRET` (≥32 caracteres) e, em produção, o iron-session ajusta `secure` com `VERCEL=1` quando aplicável.
+
 ## Licença
 
 Conforme o repositório pai do projeto.

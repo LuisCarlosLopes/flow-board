@@ -9,10 +9,11 @@ import type { Plugin } from 'vite'
 function contentSecurityPolicyProduction(): Plugin {
   const content = [
     "default-src 'self'",
-    "script-src 'self'",
+    /** Toolbar/preview: https://vercel.com/docs/vercel-toolbar */
+    "script-src 'self' https://vercel.live",
     "style-src 'self' https://fonts.googleapis.com 'unsafe-inline'",
     "font-src 'self' https://fonts.gstatic.com",
-    "connect-src 'self' https://api.github.com",
+    "connect-src 'self' https://api.github.com https://vercel.live wss://vercel.live",
     "img-src 'self' data:",
     "base-uri 'self'",
     "form-action 'self'",
