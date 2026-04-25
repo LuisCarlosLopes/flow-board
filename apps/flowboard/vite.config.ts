@@ -12,6 +12,7 @@ function contentSecurityPolicyProduction(): Plugin {
     "default-src 'self'",
     "script-src 'self'",
     "script-src-elem 'self' https://vercel.live",
+    "frame-src 'self' https://vercel.live",
     "style-src 'self' https://fonts.googleapis.com 'unsafe-inline'",
     "font-src 'self' https://fonts.gstatic.com",
     "connect-src 'self' https://vercel.live",
