@@ -1,19 +1,15 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { loadEnv } from 'vite'
+import dotenv from 'dotenv'
 
 /**
- * BFF roda fora do Vite; variáveis em `apps/flowboard/.env` (ex.: SESSION_SECRET) não
- * chegam ao processo `tsx` automaticamente. Alinha com o carregamento em `playwright.config.ts`.
- * Em Vercel, o ficheiro .env geralmente não existe no bundle; `process.env` do runtime mantém prioridade
- * se definires variáveis no painel.
+ * BFF fora do Vite. Usar `dotenv` (e não `vite`/`loadEnv`) para não puxar o Vite
+ * no bundle do serverless (Vercel) — isso provocava FUNCTION_INVOCATION_FAILED.
+ * Em Vercel não há `.env` no deploy; o painel injeta `process.env`.
  */
 const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const mode = process.env.NODE_ENV ?? 'development'
-const loaded = loadEnv(mode, appRoot, '')
-// Não sobrescrever chaves já definidas no runtime (ex.: Vercel, CI com segredos injectados)
-for (const [key, value] of Object.entries(loaded)) {
-  if (process.env[key] === undefined && value !== undefined) {
-    process.env[key] = value
-  }
+
+const paths = [path.join(appRoot, '.env'), path.join(appRoot, '.env.local')]
+for (const p of paths) {
+  dotenv.config({ path: p })
 }
