@@ -26,6 +26,7 @@ Configuração opcional somente do runtime server-side:
 - `FLOWBOARD_SESSION_TTL_SECONDS` — TTL da sessão segura em segundos
 - `FLOWBOARD_COOKIE_SECURE` — força cookie `Secure` (`true`/`false`)
 - `PORT` — porta do runtime same-origin
+- `FLOWBOARD_SESSION_SECRET` — segredo obrigatório em produção para selar a sessão `HttpOnly` que carrega a credencial GitHub de forma cifrada
 
 ## Segurança (RF14)
 

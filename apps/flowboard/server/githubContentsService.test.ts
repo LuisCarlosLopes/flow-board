@@ -16,7 +16,7 @@ describe('GitHubContentsService', () => {
     const fetchMock = vi.fn().mockImplementation(() => mockResponse(200, { id: 1 }))
     const service = new GitHubContentsService(
       {
-        sessionId: 's1',
+        cookieValue: 'sealed',
         token: 'ghp_secret',
         expiresAtMs: Date.now() + 1000,
         session: {
@@ -60,7 +60,7 @@ describe('GitHubContentsService', () => {
       .mockImplementationOnce(() => mockResponse(200, {}))
     const service = new GitHubContentsService(
       {
-        sessionId: 's1',
+        cookieValue: 'sealed',
         token: 'ghp_secret',
         expiresAtMs: Date.now() + 1000,
         session: {

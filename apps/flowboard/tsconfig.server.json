@@ -12,6 +12,6 @@
     "declaration": false,
     "sourceMap": false
   },
-  "include": ["server/**/*.ts"],
+  "include": ["server/**/*.ts", "api/**/*.ts"],
   "exclude": ["**/*.test.ts", "**/*.test.tsx"]
 }

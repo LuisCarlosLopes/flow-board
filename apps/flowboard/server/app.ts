@@ -3,7 +3,8 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { parseRepoUrl } from '../src/infrastructure/github/url'
 import { GitHubHttpError, GitHubContentsClient } from '../src/infrastructure/github/client'
 import { bootstrapFlowBoardData } from '../src/infrastructure/persistence/boardRepository'
-import { SessionVault } from './sessions'
+import { sendWebResponse, toWebRequest } from './httpAdapter'
+import { createSessionRecord, readSessionRecord } from './sessions'
 import {
   SESSION_COOKIE_NAME,
   buildExpiredSessionCookie,
@@ -41,7 +42,7 @@ type ContentRequestBody = {
 
 export function createFlowBoardApiApp(options: CreateFlowBoardApiAppOptions = {}) {
   const config = options.config ?? loadServerConfig()
-  const vault = new SessionVault(config, options.now)
+  const now = options.now ?? Date.now
 
   async function handle(request: Request): Promise<Response | null> {
     const url = new URL(request.url)
@@ -64,7 +65,7 @@ export function createFlowBoardApiApp(options: CreateFlowBoardApiAppOptions = {}
     }
 
     if (request.method === 'GET') {
-      const record = readSessionRecord(request)
+      const record = getSessionRecord(request)
       if (!record) {
         return errorResponse(401, 'session_invalid', 'Sessão expirada. Conecte novamente.', {
           headers: { 'Set-Cookie': buildExpiredSessionCookie(config) },
@@ -74,8 +75,9 @@ export function createFlowBoardApiApp(options: CreateFlowBoardApiAppOptions = {}
     }
 
     if (request.method === 'DELETE') {
-      const sessionId = parseCookies(request.headers.get('cookie'))[SESSION_COOKIE_NAME]
-      vault.revoke(sessionId)
+      if (!isTrustedOrigin(request)) {
+        return errorResponse(403, 'invalid_origin', 'Origem não permitida.')
+      }
       return new Response(null, {
         status: 204,
         headers: {
@@ -114,16 +116,18 @@ export function createFlowBoardApiApp(options: CreateFlowBoardApiAppOptions = {}
       await bootstrapClient.verifyRepositoryAccess()
       await bootstrapFlowBoardData(bootstrapClient)
 
-      const record = vault.create(
+      const record = createSessionRecord(
+        config,
         { owner: parsed.owner, repo: parsed.repo, repoUrl, webUrl: parsed.webUrl },
         pat,
+        now,
       )
 
       return jsonResponse(
         201,
         { session: record.session },
         {
-          'Set-Cookie': buildSessionCookie(record.sessionId, config),
+          'Set-Cookie': buildSessionCookie(record.cookieValue, config),
         },
       )
     } catch (error) {
@@ -132,7 +136,7 @@ export function createFlowBoardApiApp(options: CreateFlowBoardApiAppOptions = {}
   }
 
   async function handleFlowBoardContents(request: Request, url: URL): Promise<Response> {
-    const record = readSessionRecord(request)
+    const record = getSessionRecord(request)
     if (!record) {
       return errorResponse(401, 'session_invalid', 'Sessão expirada. Conecte novamente.', {
         headers: { 'Set-Cookie': buildExpiredSessionCookie(config) },
@@ -205,12 +209,12 @@ export function createFlowBoardApiApp(options: CreateFlowBoardApiAppOptions = {}
     }
   }
 
-  function readSessionRecord(request: Request) {
-    const sessionId = parseCookies(request.headers.get('cookie'))[SESSION_COOKIE_NAME]
-    return vault.get(sessionId)
+  function getSessionRecord(request: Request) {
+    const cookieValue = parseCookies(request.headers.get('cookie'))[SESSION_COOKIE_NAME]
+    return readSessionRecord(config, cookieValue, now)
   }
 
-  return { handle, config, vault }
+  return { handle, config }
 }
 
 export function createNodeMiddleware(app: ReturnType<typeof createFlowBoardApiApp>) {
@@ -227,45 +231,6 @@ export function createNodeMiddleware(app: ReturnType<typeof createFlowBoardApiAp
       next(error)
     }
   }
-}
-
-async function toWebRequest(req: IncomingMessage): Promise<Request> {
-  const body = await readBody(req)
-  const host = req.headers.host ?? 'localhost'
-  const protocol = req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http'
-  const url = new URL(req.url ?? '/', `${protocol}://${host}`)
-  const init: RequestInit & { duplex?: 'half' } = {
-    method: req.method ?? 'GET',
-    headers: new Headers(
-      Object.entries(req.headers)
-        .filter((entry): entry is [string, string | string[]] => entry[1] !== undefined)
-        .map(
-          ([key, value]): [string, string] => [key, Array.isArray(value) ? value.join(', ') : value],
-        ),
-    ),
-  }
-  if (body.length > 0 && req.method && !['GET', 'HEAD'].includes(req.method.toUpperCase())) {
-    init.body = new Uint8Array(body)
-    init.duplex = 'half'
-  }
-  return new Request(url, init)
-}
-
-async function sendWebResponse(res: ServerResponse, response: Response): Promise<void> {
-  res.statusCode = response.status
-  response.headers.forEach((value, key) => {
-    res.setHeader(key, value)
-  })
-  const body = await response.arrayBuffer()
-  res.end(Buffer.from(body))
-}
-
-async function readBody(req: IncomingMessage): Promise<Buffer> {
-  const chunks: Buffer[] = []
-  for await (const chunk of req) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
-  }
-  return Buffer.concat(chunks)
 }
 
 function mapGitHubError(error: unknown): Response {

@@ -4,6 +4,7 @@ export const SESSION_COOKIE_NAME = 'fb_session'
 
 export type ServerConfig = {
   sessionTtlSeconds: number
+  sessionSecret: string | null
   cookieSecure: boolean
   port: number
 }
@@ -12,9 +13,13 @@ export function loadServerConfig(env: NodeJS.ProcessEnv = process.env): ServerCo
   const sessionTtlSeconds = positiveInt(env.FLOWBOARD_SESSION_TTL_SECONDS) ?? 12 * 60 * 60
   const port = positiveInt(env.PORT) ?? 5173
   const cookieSecure = parseBoolean(env.FLOWBOARD_COOKIE_SECURE) ?? env.NODE_ENV === 'production'
+  const sessionSecret =
+    env.FLOWBOARD_SESSION_SECRET?.trim() ||
+    (env.NODE_ENV === 'production' ? null : 'flowboard-dev-session-secret')
 
   return {
     sessionTtlSeconds,
+    sessionSecret,
     cookieSecure,
     port,
   }
@@ -36,9 +41,9 @@ export function parseCookies(header: string | null): Record<string, string> {
   )
 }
 
-export function buildSessionCookie(sessionId: string, config: ServerConfig): string {
+export function buildSessionCookie(sessionValue: string, config: ServerConfig): string {
   const parts = [
-    `${SESSION_COOKIE_NAME}=${encodeURIComponent(sessionId)}`,
+    `${SESSION_COOKIE_NAME}=${encodeURIComponent(sessionValue)}`,
     'Path=/',
     'HttpOnly',
     'SameSite=Lax',

@@ -2,6 +2,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createFlowBoardApiApp } from './app'
 import { SESSION_COOKIE_NAME } from './security'
+import { createSessionRecord } from './sessions'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 
 function mockResponse(status: number, body?: unknown, headers?: Record<string, string>) {
@@ -56,7 +57,8 @@ describe('FlowBoard API app', () => {
 
   it('rejects paths outside flowboard allowlist', async () => {
     const app = createFlowBoardApiApp()
-    const record = app.vault.create(
+    const record = createSessionRecord(
+      app.config,
       {
         owner: 'octo',
         repo: 'repo',
@@ -69,7 +71,7 @@ describe('FlowBoard API app', () => {
     const response = await app.handle(
       new Request('http://localhost:5173/api/flowboard/contents?path=README.md&kind=json', {
         headers: {
-          Cookie: `${SESSION_COOKIE_NAME}=${record.sessionId}`,
+          Cookie: `${SESSION_COOKIE_NAME}=${record.cookieValue}`,
         },
       }),
     )
@@ -97,7 +99,8 @@ describe('FlowBoard API app', () => {
 
   it('restores public session through GET /api/auth/session', async () => {
     const app = createFlowBoardApiApp()
-    const record = app.vault.create(
+    const record = createSessionRecord(
+      app.config,
       {
         owner: 'octo',
         repo: 'repo',
@@ -110,7 +113,7 @@ describe('FlowBoard API app', () => {
     const response = await app.handle(
       new Request('http://localhost:5173/api/auth/session', {
         headers: {
-          Cookie: `${SESSION_COOKIE_NAME}=${record.sessionId}`,
+          Cookie: `${SESSION_COOKIE_NAME}=${record.cookieValue}`,
         },
       }),
     )
@@ -148,7 +151,8 @@ describe('FlowBoard API app', () => {
         }),
       )
     const app = createFlowBoardApiApp({ fetchImpl: fetchMock })
-    const record = app.vault.create(
+    const record = createSessionRecord(
+      app.config,
       {
         owner: 'octo',
         repo: 'repo',
@@ -161,7 +165,7 @@ describe('FlowBoard API app', () => {
     const response = await app.handle(
       new Request('http://localhost:5173/api/flowboard/contents?path=flowboard/catalog.json&kind=json', {
         headers: {
-          Cookie: `${SESSION_COOKIE_NAME}=${record.sessionId}`,
+          Cookie: `${SESSION_COOKIE_NAME}=${record.cookieValue}`,
         },
       }),
     )
@@ -179,7 +183,8 @@ describe('FlowBoard API app', () => {
       mockResponse(429, {}, { 'retry-after': '2' }),
     )
     const app = createFlowBoardApiApp({ fetchImpl: fetchMock })
-    const record = app.vault.create(
+    const record = createSessionRecord(
+      app.config,
       {
         owner: 'octo',
         repo: 'repo',
@@ -193,7 +198,7 @@ describe('FlowBoard API app', () => {
       new Request('http://localhost:5173/api/flowboard/contents', {
         method: 'PUT',
         headers: {
-          Cookie: `${SESSION_COOKIE_NAME}=${record.sessionId}`,
+          Cookie: `${SESSION_COOKIE_NAME}=${record.cookieValue}`,
           Origin: 'http://localhost:5173',
           'Content-Type': 'application/json',
         },
@@ -261,7 +266,8 @@ describe('FlowBoard API app', () => {
       .mockImplementationOnce(() => mockResponse(200, {}))
       .mockImplementationOnce(() => mockResponse(200, {}))
     const app = createFlowBoardApiApp({ fetchImpl: fetchMock })
-    const record = app.vault.create(
+    const record = createSessionRecord(
+      app.config,
       {
         owner: 'octo',
         repo: 'repo',
@@ -275,7 +281,7 @@ describe('FlowBoard API app', () => {
       new Request('http://localhost:5173/api/flowboard/contents', {
         method: 'PUT',
         headers: {
-          Cookie: `${SESSION_COOKIE_NAME}=${record.sessionId}`,
+          Cookie: `${SESSION_COOKIE_NAME}=${record.cookieValue}`,
           Origin: 'http://localhost:5173',
           'Content-Type': 'application/json',
         },
@@ -292,7 +298,7 @@ describe('FlowBoard API app', () => {
       new Request('http://localhost:5173/api/flowboard/contents', {
         method: 'DELETE',
         headers: {
-          Cookie: `${SESSION_COOKIE_NAME}=${record.sessionId}`,
+          Cookie: `${SESSION_COOKIE_NAME}=${record.cookieValue}`,
           Origin: 'http://localhost:5173',
           'Content-Type': 'application/json',
         },
