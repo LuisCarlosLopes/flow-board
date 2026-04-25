@@ -260,6 +260,44 @@ describe('FlowBoard API app', () => {
     expect(missingOriginResponse?.status).toBe(403)
   })
 
+  it('returns 503 with explicit config error when FLOWBOARD_SESSION_SECRET is missing in production', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(() => mockResponse(200, { id: 1 }))
+      .mockImplementationOnce(() => mockResponse(404))
+      .mockImplementationOnce(() => mockResponse(200, {}))
+      .mockImplementationOnce(() => mockResponse(200, {}))
+
+    const app = createFlowBoardApiApp({
+      config: {
+        sessionTtlSeconds: 60,
+        sessionSecret: null,
+        cookieSecure: true,
+        port: 5173,
+      },
+      fetchImpl: fetchMock,
+    })
+
+    const response = await app.handle(
+      new Request('http://localhost:5173/api/auth/session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Origin: 'http://localhost:5173',
+        },
+        body: JSON.stringify({
+          repoUrl: 'https://github.com/octo/repo',
+          pat: 'ghp_secret',
+        }),
+      }),
+    )
+
+    expect(response?.status).toBe(503)
+    await expect(response?.json()).resolves.toMatchObject({
+      error: { code: 'server_misconfigured' },
+    })
+  })
+
   it('handles blob writes and deletes inside the allowlist', async () => {
     const fetchMock = vi
       .fn()

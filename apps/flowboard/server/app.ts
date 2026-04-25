@@ -105,6 +105,13 @@ export function createFlowBoardApiApp(options: CreateFlowBoardApiAppOptions = {}
     if ('error' in parsed) {
       return errorResponse(400, 'invalid_request', parsed.error)
     }
+    if (!config.sessionSecret) {
+      return errorResponse(
+        503,
+        'server_misconfigured',
+        'FLOWBOARD_SESSION_SECRET não configurado no runtime do servidor.',
+      )
+    }
 
     try {
       const bootstrapClient = new GitHubContentsClient({

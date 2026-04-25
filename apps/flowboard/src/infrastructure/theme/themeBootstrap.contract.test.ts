@@ -7,12 +7,15 @@ import { THEME_STORAGE_KEY } from './themeConstants'
 
 const flowboardDir = dirname(fileURLToPath(import.meta.url))
 const indexHtmlPath = join(flowboardDir, '../../../index.html')
+const bootstrapJsPath = join(flowboardDir, '../../../public/theme-bootstrap.js')
 
 describe('theme bootstrap contract (index.html ↔ themeConstants)', () => {
-  it('inline script assigns k with THEME_STORAGE_KEY and reads theme via getItem(k)', () => {
+  it('loads external theme bootstrap script with the same storage key contract', () => {
     const html = readFileSync(indexHtmlPath, 'utf8')
-    expect(html).toContain(`var k = '${THEME_STORAGE_KEY}'`)
-    expect(html).toContain('localStorage.getItem(k)')
-    expect(html).toContain("v === 'light' ? 'light' : 'dark'")
+    const bootstrap = readFileSync(bootstrapJsPath, 'utf8')
+    expect(html).toContain('<script src="/theme-bootstrap.js"></script>')
+    expect(bootstrap).toContain(`'${THEME_STORAGE_KEY}'`)
+    expect(bootstrap).toContain('localStorage.getItem(key)')
+    expect(bootstrap).toContain("value === 'light' ? 'light' : 'dark'")
   })
 })
