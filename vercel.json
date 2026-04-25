@@ -1,0 +1,12 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "cd apps/flowboard && npm run build",
+  "installCommand": "cd apps/flowboard && npm install",
+  "outputDirectory": "apps/flowboard/dist",
+  "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }],
+  "functions": {
+    "api/**": {
+      "includeFiles": "apps/flowboard/server/**"
+    }
+  }
+}

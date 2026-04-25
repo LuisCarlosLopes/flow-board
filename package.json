@@ -1,0 +1,5 @@
+{
+  "name": "flow-board",
+  "private": true,
+  "description": "Raiz do monorepo: Vercel com projeto na raiz do git usa vercel.json e api/; o código da app está em apps/flowboard."
+}
