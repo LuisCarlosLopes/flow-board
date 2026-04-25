@@ -5,7 +5,7 @@ export async function toWebRequest(req: IncomingMessage): Promise<Request> {
   const host = req.headers.host ?? 'localhost'
   const protocol = req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http'
   const url = new URL(req.url ?? '/', `${protocol}://${host}`)
-  const init: RequestInit & { duplex?: 'half' } = {
+  const init: RequestInit = {
     method: req.method ?? 'GET',
     headers: new Headers(
       Object.entries(req.headers)
@@ -17,7 +17,6 @@ export async function toWebRequest(req: IncomingMessage): Promise<Request> {
   }
   if (body.length > 0 && req.method && !['GET', 'HEAD'].includes(req.method.toUpperCase())) {
     init.body = new Uint8Array(body)
-    init.duplex = 'half'
   }
   return new Request(url, init)
 }
