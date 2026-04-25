@@ -1,45 +1,38 @@
-import { GITHUB_API_BASE, isOfficialGithubApiBase, type RepoResolution } from '../github/url'
-
 const STORAGE_KEY = 'flowboard.session.v1'
 
-/** Migra sessão antiga (sessionStorage) para localStorage — compatível com Playwright storageState. */
-function migrateFromSessionStorageIfNeeded(): void {
-  if (typeof sessionStorage === 'undefined' || typeof localStorage === 'undefined') {
-    return
-  }
-  if (localStorage.getItem(STORAGE_KEY)) {
-    return
-  }
-  const legacy = sessionStorage.getItem(STORAGE_KEY)
-  if (!legacy) {
-    return
-  }
-  localStorage.setItem(STORAGE_KEY, legacy)
-  sessionStorage.removeItem(STORAGE_KEY)
-}
+const PROXY_API_BASE = '/api/github' as const
 
-export type FlowBoardSession = RepoResolution & {
-  pat: string
+export type FlowBoardSession = {
+  owner: string
+  repo: string
+  /** Always '/api/github' — PAT lives server-side in HttpOnly cookie. */
+  apiBase: typeof PROXY_API_BASE
+  /** Normalized https://github.com/owner/repo */
+  webUrl: string
   /** Original URL entered by the user */
   repoUrl: string
+}
+
+function isValidApiBase(apiBase: unknown): apiBase is typeof PROXY_API_BASE {
+  return apiBase === PROXY_API_BASE
 }
 
 export function loadSession(): FlowBoardSession | null {
   if (typeof localStorage === 'undefined') {
     return null
   }
-  migrateFromSessionStorageIfNeeded()
   const raw = localStorage.getItem(STORAGE_KEY)
   if (!raw) {
     return null
   }
   try {
     const v = JSON.parse(raw) as FlowBoardSession
-    if (!v.pat || !v.owner || !v.repo) {
+    if (!v.owner || !v.repo) {
       localStorage.removeItem(STORAGE_KEY)
       return null
     }
-    if (!isOfficialGithubApiBase(typeof v.apiBase === 'string' ? v.apiBase : '')) {
+    if (!isValidApiBase(v.apiBase)) {
+      // Limpa sessões antigas (que tinham pat ou apiBase diferente)
       localStorage.removeItem(STORAGE_KEY)
       return null
     }
@@ -61,13 +54,15 @@ export function clearSession(): void {
   }
 }
 
-export function createSession(pat: string, repoUrl: string, resolution: RepoResolution): FlowBoardSession {
+export function createSession(
+  repoUrl: string,
+  resolution: { owner: string; repo: string; webUrl: string },
+): FlowBoardSession {
   return {
-    pat,
     repoUrl,
     owner: resolution.owner,
     repo: resolution.repo,
-    apiBase: GITHUB_API_BASE,
+    apiBase: PROXY_API_BASE,
     webUrl: resolution.webUrl,
   }
 }

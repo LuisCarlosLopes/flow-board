@@ -1,5 +1,5 @@
 import { type FormEvent, useState } from 'react'
-import { GitHubContentsClient, GitHubHttpError } from '../../infrastructure/github/client'
+import { GitHubContentsClient } from '../../infrastructure/github/client'
 import { parseRepoUrl } from '../../infrastructure/github/url'
 import { bootstrapFlowBoardData } from '../../infrastructure/persistence/boardRepository'
 import { createSession, saveSession, type FlowBoardSession } from '../../infrastructure/session/sessionStore'
@@ -8,6 +8,25 @@ import './LoginView.css'
 
 type Props = {
   onConnected: (session: FlowBoardSession) => void
+}
+
+async function postLogin(pat: string, repoUrl: string): Promise<{ owner: string; repo: string; webUrl: string; repoUrl: string }> {
+  const res = await fetch('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pat, repoUrl }),
+    credentials: 'same-origin',
+  })
+  let data: { error?: string; owner?: string; repo?: string; webUrl?: string; repoUrl?: string } = {}
+  try {
+    data = (await res.json()) as typeof data
+  } catch {
+    // response body empty or non-JSON (e.g. gateway error)
+  }
+  if (!res.ok) {
+    throw new Error(data.error ?? `Erro ${res.status}`)
+  }
+  return data as { owner: string; repo: string; webUrl: string; repoUrl: string }
 }
 
 export function LoginView({ onConnected }: Props) {
@@ -20,6 +39,8 @@ export function LoginView({ onConnected }: Props) {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError('')
+
+    // Client-side format validation before hitting the server
     const parsed = parseRepoUrl(repoUrl.trim())
     if ('error' in parsed) {
       setError(parsed.error)
@@ -30,29 +51,31 @@ export function LoginView({ onConnected }: Props) {
       return
     }
 
-    const client = new GitHubContentsClient({
-      token: pat.trim(),
-      owner: parsed.owner,
-      repo: parsed.repo,
-    })
-
     setBusy(true)
     try {
-      await client.verifyRepositoryAccess()
-      await bootstrapFlowBoardData(client)
-      const session = createSession(pat.trim(), repoUrl.trim(), parsed)
+      // POST to BFF — PAT validated server-side, stored in HttpOnly cookie
+      const meta = await postLogin(pat.trim(), repoUrl.trim())
+
+      // Bootstrap default board data using the proxy (cookie carries the PAT)
+      const proxyClient = new GitHubContentsClient({
+        owner: meta.owner,
+        repo: meta.repo,
+      })
+      await bootstrapFlowBoardData(proxyClient)
+
+      const session = createSession(meta.repoUrl, {
+        owner: meta.owner,
+        repo: meta.repo,
+        webUrl: meta.webUrl,
+      })
       saveSession(session)
       onConnected(session)
     } catch (err) {
-      if (err instanceof GitHubHttpError) {
-        setError(err.message)
-      } else if (err instanceof Error) {
-        setError(err.message)
-      } else {
-        setError('Falha ao conectar. Tente novamente.')
-      }
+      setError(err instanceof Error ? err.message : 'Falha ao conectar. Tente novamente.')
     } finally {
       setBusy(false)
+      // Clear PAT from component state as soon as possible
+      setPat('')
     }
   }
 

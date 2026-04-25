@@ -1,15 +1,13 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { LoginView } from './LoginView'
 
-// Mock GitHub client
+// Mock GitHub client (usado pelo bootstrapFlowBoardData via proxy)
 vi.mock('../../infrastructure/github/client', () => {
-  const mockVerifyAccess = vi.fn().mockResolvedValue(undefined)
-  type MockClient = { verifyRepositoryAccess: typeof mockVerifyAccess }
   return {
-    GitHubContentsClient: vi.fn(function (this: MockClient) {
-      this.verifyRepositoryAccess = mockVerifyAccess
+    GitHubContentsClient: vi.fn(function (this: Record<string, unknown>) {
+      // proxy client sem token — nenhum método adicional necessário
     }),
     GitHubHttpError: class GitHubHttpError extends Error {
       constructor(message: string) {
@@ -28,10 +26,11 @@ vi.mock('../../infrastructure/persistence/boardRepository', () => ({
 // Mock session store
 vi.mock('../../infrastructure/session/sessionStore', () => ({
   createSession: vi.fn(() => ({
-    pat: 'test-token',
     repoUrl: 'https://github.com/test/repo',
     owner: 'test',
     repo: 'repo',
+    apiBase: '/api/github',
+    webUrl: 'https://github.com/test/repo',
   })),
   saveSession: vi.fn(),
 }))
@@ -40,15 +39,37 @@ vi.mock('../../infrastructure/session/sessionStore', () => ({
 vi.mock('../../infrastructure/github/url', () => ({
   parseRepoUrl: vi.fn((url: string) => {
     if (url === 'https://github.com/test/repo') {
-      return { owner: 'test', repo: 'repo' }
+      return { owner: 'test', repo: 'repo', webUrl: 'https://github.com/test/repo' }
     }
     return { error: 'Invalid URL' }
   }),
 }))
 
+function makeLoginFetch(ok = true, data?: Record<string, unknown>) {
+  return vi.fn().mockResolvedValue({
+    ok,
+    status: ok ? 200 : 401,
+    json: async () =>
+      data ??
+      (ok
+        ? {
+            owner: 'test',
+            repo: 'repo',
+            webUrl: 'https://github.com/test/repo',
+            repoUrl: 'https://github.com/test/repo',
+            apiBase: '/api/github',
+          }
+        : { error: 'PAT inválido.' }),
+  })
+}
+
 describe('LoginView Integration Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
   it('renderiza formulário com campos de entrada', () => {
@@ -112,16 +133,17 @@ describe('LoginView Integration Tests', () => {
     const submitBtn = container.querySelector('button[type="submit"]')
     const user = userEvent.setup()
 
-    // Submit with invalid data to trigger error
     await user.click(submitBtn!)
 
-    // After submit, error should appear
-    await waitFor(() => {
-      const errorDiv = container.querySelector('.fb-login__err')
-      if (errorDiv) {
-        expect(errorDiv).toHaveAttribute('role', 'alert')
-      }
-    }, { timeout: 500 })
+    await waitFor(
+      () => {
+        const errorDiv = container.querySelector('.fb-login__err')
+        if (errorDiv) {
+          expect(errorDiv).toHaveAttribute('role', 'alert')
+        }
+      },
+      { timeout: 500 },
+    )
   })
 
   it('renderiza dica de segurança sobre PAT', () => {
@@ -195,6 +217,8 @@ describe('LoginView Integration Tests', () => {
   })
 
   it('integração completa: submissão com dados válidos chama onConnected', async () => {
+    vi.stubGlobal('fetch', makeLoginFetch())
+
     const onConnected = vi.fn()
     const { container } = render(<LoginView onConnected={onConnected} />)
 
@@ -210,9 +234,34 @@ describe('LoginView Integration Tests', () => {
 
     await user.click(submitBtn!)
 
+    await waitFor(
+      () => {
+        expect(onConnected).toHaveBeenCalled()
+      },
+      { timeout: 1000 },
+    )
+  })
+
+  it('exibe erro quando servidor retorna 401 (PAT inválido)', async () => {
+    vi.stubGlobal('fetch', makeLoginFetch(false))
+
+    const onConnected = vi.fn()
+    const { container } = render(<LoginView onConnected={onConnected} />)
+
+    const repoInput = container.querySelector('input[name="repo-url"]') as HTMLInputElement
+    const patInput = container.querySelector('input[name="repo-pat"]') as HTMLInputElement
+    const submitBtn = container.querySelector('button[type="submit"]')
+    const user = userEvent.setup()
+
+    await user.type(repoInput, 'https://github.com/test/repo')
+    await user.type(patInput, 'ghp_invalido')
+    await user.click(submitBtn!)
+
     await waitFor(() => {
-      expect(onConnected).toHaveBeenCalled()
-    }, { timeout: 1000 })
+      const errorMsg = container.querySelector('.fb-login__err')
+      expect(errorMsg?.textContent).toBeTruthy()
+    })
+    expect(onConnected).not.toHaveBeenCalled()
   })
 
   it('validação: rejeita URL inválida com mensagem', async () => {
@@ -227,10 +276,13 @@ describe('LoginView Integration Tests', () => {
     await user.type(repoInput, 'invalid-url')
     await user.click(submitBtn!)
 
-    await waitFor(() => {
-      const errorMsg = container.querySelector('.fb-login__err')
-      expect(errorMsg?.textContent).toBeTruthy()
-    }, { timeout: 500 })
+    await waitFor(
+      () => {
+        const errorMsg = container.querySelector('.fb-login__err')
+        expect(errorMsg?.textContent).toBeTruthy()
+      },
+      { timeout: 500 },
+    )
   })
 
   it('renderiza brand com nome "FlowBoard"', () => {
