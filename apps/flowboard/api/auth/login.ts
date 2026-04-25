@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { parseRepoUrl } from '../../src/infrastructure/github/url.js'
-import { readJsonBody, readSessionFromRequest, sendJson, setSessionCookie } from '../_session.js'
+import { readJsonBody, sendJson, setSessionCookie } from '../_session.js'
 
 const GITHUB_API = 'https://api.github.com'
 
