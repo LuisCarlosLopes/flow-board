@@ -10,22 +10,48 @@ Kanban pessoal com rastreamento de tempo. Os dados ficam em arquivos JSON no rep
 
 ## Desenvolvimento
 
+O app é uma SPA (Vite) e um **BFF** na mesma origem (`/api/...`). Em local, o Vite faz *proxy* de `/api` para o servidor Node (porta `BFF_PORT`, predefinido `8787`).
+
 ```bash
 cd apps/flowboard
 npm install
+# Recomendado: SESSION_SECRET com ≥32 caracteres (obrigatório fora de NODE_ENV=development)
+export SESSION_SECRET="dev-local-secret-at-least-32-chars!!"
 npm run dev
-npm test
-npm run build
 ```
 
-Não é obrigatório arquivo `.env` para o MVP: URL do repositório e PAT são informados na tela de login e guardados só em `sessionStorage` (não vão para os JSON do repositório).
+`npm run dev` inicia o BFF e o Vite em paralelo. Só o front: `npm run dev:vite`. Só o BFF: `npm run dev:server` (define `NODE_ENV=development` para o iron-session em local). **Após alterar o BFF ou `sessionOptions`, reinicia** o `npm run dev` para o processo Node apanhar o código e o ambiente certos.
+
+Testes e build:
+
+```bash
+npm test
+npm run build
+npm run typecheck:server
+```
+
+### E2E (Playwright)
+
+O `playwright.config.ts` só considera o ambiente pronto quando `http://localhost:5173/api/flowboard/health` responde (Vite + proxy + BFF). Pare processos que ocupem as portas 5173/8787 antes de `npm run test:e2e` com servidor novo, ou use `reuseExistingServer` em local com `npm run dev` já a correr.
+
+Requer `FLOWBOARD_E2E_REPO_URL` e `FLOWBOARD_E2E_PAT` em `apps/flowboard/.env` (não comitar). Erros de login mostram a mensagem devolvida pelo BFF (ou o código HTTP), para facilitar diagnóstico.
+
+Variáveis úteis (ficheiro `.env` local, não comitar):
+
+| Variável | Onde | Descrição |
+|----------|------|-----------|
+| `SESSION_SECRET` | BFF | Palavra-passe de cifra do cookie de sessão (≥32 chars em produção). Em dev local, se `NODE_ENV` não estiver definido, usa-se fallback interno; em `NODE_ENV=production` é obrigatório. |
+| `BFF_PORT` | Dev | Porta do BFF (predefinido 8787; o proxy do Vite aponta para aqui) |
+
+URL do repositório e o PAT são enviados no **login** para `POST /api/flowboard/session`; o PAT fica no cookie de sessão **HttpOnly** (iron-session) e **não** em `localStorage` / `sessionStorage`. O cliente obtém `owner`/`repo`/URLs via `GET /api/flowboard/session` com `credentials: 'include'`. Chamadas de dados vão a `POST /api/flowboard/github/invoke`.
 
 ## Segurança (RF14)
 
 - Use um **Personal Access Token** com o **menor escopo** necessário para o seu caso.
 - **Não** commite o PAT; não grave o token nos arquivos JSON sob `flowboard/`.
 - Revogue tokens antigos periodicamente.
-- O app exibe aviso mínimo na tela de login sobre o risco do PAT.
+- O PAT não fica acessível a JavaScript de página: após o login, só o servidor (BFF) usa o token contra `api.github.com`, transportado no cookie cifrado.
+- Em produção (ex.: Vercel), defina `SESSION_SECRET` nas variáveis de ambiente do projeto; o *runtime* das funções em `/api` deve ser **Node.js** (não Edge) por causa de `iron-session`.
 
 ## Troca de repositório (RF04)
 
@@ -56,8 +82,8 @@ Referência: PRD/TSD em `.memory-bank/specs/personal-kanban/`. Testes com **Vite
 | RF | Descrição (resumo) | Evidência |
 |----|--------------------|-----------|
 | RF01 | Nome FlowBoard na UI | `index.html` (`<title>`), `AppShell` / login marca "FlowBoard" |
-| RF02 | Login repo + PAT + validação API | `LoginView.tsx`, `GitHubContentsClient.verifyRepositoryAccess` |
-| RF03 | Sessão + logout | `sessionStore.ts`, `sessionStore.test.ts`, botão Sair em `AppShell` |
+| RF02 | Login repo + PAT + validação API | `LoginView.tsx`, `POST /api/flowboard/session` (BFF: `server/app.ts`, `verifyRepositoryAccess` + bootstrap no servidor) |
+| RF03 | Sessão + logout | `sessionApi.ts`, iron-session, `GET/POST /api/flowboard/session`, `AppShell` |
 | RF04 | Troca de repo | Documentado acima; fluxo = logout + novo login |
 | RF05 | Múltiplos quadros | `BoardListView.tsx`, `boardRepository.ts` |
 | RF06 | Colunas + preset + edição válida | `ColumnEditorModal.tsx`, `boardRules.ts`, `boardRules.test.ts` |
@@ -67,7 +93,7 @@ Referência: PRD/TSD em `.memory-bank/specs/personal-kanban/`. Testes com **Vite
 | RF10 | Totais por atividade | `totalCompletedMs` no card em `BoardView.tsx` |
 | RF11 | Monitoramento período | `HoursView.tsx`, `hoursProjection.ts`, `hoursAggregation.ts` |
 | RF12 | Escopo quadro / todos | `HoursView.tsx` (chips "Quadro atual" / "Todos os quadros") |
-| RF13 | Persistência GitHub + SHA | `client.ts`, `boardRepository.ts`, `putJsonWithRetry` / 409 em testes |
+| RF13 | Persistência GitHub + SHA | `bffClient.ts` / `client.ts` (servidor), `boardRepository.ts`, `putJsonWithRetry` / 409 em testes |
 | RF14 | Documentação segurança in-app | `LoginView` (texto PAT), esta secção no README |
 
 ### Casos de borda (planner §3.1)
@@ -83,7 +109,7 @@ Referência: PRD/TSD em `.memory-bank/specs/personal-kanban/`. Testes com **Vite
 ## Definition of Done (IPD §3)
 
 - [x] Login valida PAT contra API; erros 401/403/404 com mensagens claras
-- [x] Logout limpa `sessionStorage` e estado em memória (volta à tela de login)
+- [x] Logout destrói a sessão no servidor (cookie) e o estado em memória (volta à tela de login)
 - [x] Catálogo e quadros atualizados com SHA; 409/429 tratados no cliente (`GitHubHttpError`, retry em 409 para `putJsonWithRetry`)
 - [x] Colunas respeitam P01–P02; edição inválida rejeitada (`validateColumnLayout`)
 - [x] Movimento de card aplica regras de tempo; total de horas no card (segmentos concluídos)

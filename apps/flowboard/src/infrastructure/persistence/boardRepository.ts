@@ -1,4 +1,4 @@
-import { GitHubContentsClient } from '../github/client'
+import type { GitHubDataClient } from '../github/client'
 import {
   CATALOG_PATH,
   boardFilePath,
@@ -9,7 +9,7 @@ import type { BoardDocumentJson, CatalogJson } from './types'
 
 export type { CatalogJson } from './types'
 
-export function createBoardRepository(client: GitHubContentsClient) {
+export function createBoardRepository(client: GitHubDataClient) {
   return {
     async loadCatalog(): Promise<{ catalog: CatalogJson; sha: string | null }> {
       const got = await client.tryGetFileJson(CATALOG_PATH)
@@ -90,7 +90,7 @@ export async function renameBoardEntry(
 
 export async function deleteBoardEntry(
   repo: BoardRepository,
-  client: GitHubContentsClient,
+  client: GitHubDataClient,
   boardId: string,
 ): Promise<CatalogJson> {
   const { catalog, sha: catSha } = await repo.loadCatalog()
@@ -159,7 +159,7 @@ function parseBoard(json: unknown): BoardDocumentJson {
 
 /** Ensures catalog + at least one preset board exist (bootstrap empty repo). */
 export async function bootstrapFlowBoardData(
-  client: GitHubContentsClient,
+  client: GitHubDataClient,
 ): Promise<{ catalog: CatalogJson; board: BoardDocumentJson }> {
   const repo = createBoardRepository(client)
   const { catalog, sha } = await repo.loadCatalog()

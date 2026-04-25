@@ -1,8 +1,6 @@
 import { type FormEvent, useState } from 'react'
-import { GitHubContentsClient, GitHubHttpError } from '../../infrastructure/github/client'
-import { parseRepoUrl } from '../../infrastructure/github/url'
-import { bootstrapFlowBoardData } from '../../infrastructure/persistence/boardRepository'
-import { createSession, saveSession, type FlowBoardSession } from '../../infrastructure/session/sessionStore'
+import { postBffLogin } from '../../infrastructure/session/sessionApi'
+import { type FlowBoardSession } from '../../infrastructure/session/sessionStore'
 import { OnboardingPage } from './OnboardingPage'
 import './LoginView.css'
 
@@ -20,33 +18,21 @@ export function LoginView({ onConnected }: Props) {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError('')
-    const parsed = parseRepoUrl(repoUrl.trim())
-    if ('error' in parsed) {
-      setError(parsed.error)
-      return
-    }
     if (!pat.trim()) {
       setError('Informe o Personal Access Token.')
       return
     }
-
-    const client = new GitHubContentsClient({
-      token: pat.trim(),
-      owner: parsed.owner,
-      repo: parsed.repo,
-    })
+    if (!repoUrl.trim()) {
+      setError('Informe a URL do repositório.')
+      return
+    }
 
     setBusy(true)
     try {
-      await client.verifyRepositoryAccess()
-      await bootstrapFlowBoardData(client)
-      const session = createSession(pat.trim(), repoUrl.trim(), parsed)
-      saveSession(session)
+      const session = await postBffLogin(pat.trim(), repoUrl.trim())
       onConnected(session)
     } catch (err) {
-      if (err instanceof GitHubHttpError) {
-        setError(err.message)
-      } else if (err instanceof Error) {
+      if (err instanceof Error) {
         setError(err.message)
       } else {
         setError('Falha ao conectar. Tente novamente.')
@@ -109,8 +95,8 @@ export function LoginView({ onConnected }: Props) {
             />
           </label>
           <p className="fb-login__hint">
-            O token é um segredo: não compartilhe, não commite em arquivos do repositório de dados e
-            revogue tokens antigos periodicamente.
+            O token é enviado ao servidor e guardado em cookie cifrado (HttpOnly), não fica acessível a JavaScript
+            de página. Não o commite em ficheiros do repositório de dados; revogue tokens antigos com frequência.
           </p>
           <button className="fb-login__btn" type="submit" disabled={busy}>
             {busy ? 'Conectando…' : 'Conectar'}

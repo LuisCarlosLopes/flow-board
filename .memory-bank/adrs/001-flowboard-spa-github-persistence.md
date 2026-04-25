@@ -33,6 +33,10 @@ Decidimos implementar **aplicação web (SPA) executando no navegador** que pers
 - ⚠️ PAT no cliente exige disciplina de armazenamento e mitigação de XSS (ver ADR-004)
 - ⚠️ Limites de rate e disponibilidade da `api.github.com` são dependência dura
 
+## Atualização 2026-04-25 (BFF, ADR-009)
+
+O browser **não** envia o PAT diretamente à `api.github.com` quando a aplicação adota **ADR-009**; o **mesmo *deploy* do produto** inclui um processo *server-side* (BFF) que retém o segredo e proxya chamadas. Isto **não** contradiz a ausência de *backend de dados* do fornecedor: o BFF **não** persiste quadros fora do GitHub; apenas sessão cifrada e tráfego autenticado. O trade-off *“PAT no cliente”* em **ADR-001** deixa de ser exigido após a transição; ver **ADR-009** e **ADR-004** (estado *superseded* parcial).
+
 ## Guardrails derivados desta decisão
 
 - **G1:** Nenhuma persistência de domínio FlowBoard fora do repositório GitHub configurado na sessão, salvo caches transitórios opcionais descritos em ADR futuro.

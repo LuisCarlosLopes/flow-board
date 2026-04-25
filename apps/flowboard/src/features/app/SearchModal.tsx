@@ -112,7 +112,7 @@ export function SearchModal({
 
         setBoard(null)
 
-        const client = createClientFromSession(session)
+        const client = createClientFromSession()
         const repo = createBoardRepository(client)
         const signal = abortControllerRef.current.signal
         const loadedBoard = await repo.loadBoard(boardId, { signal })

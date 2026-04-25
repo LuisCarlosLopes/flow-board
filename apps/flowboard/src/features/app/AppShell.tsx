@@ -8,7 +8,8 @@ import { SearchModal } from './SearchModal'
 import { useSearchHotkey } from '../../hooks/useSearchHotkey'
 import { formatRepoChipLabel } from '../../infrastructure/github/url'
 import { clearActiveBoardId, loadActiveBoardId, saveActiveBoardId } from '../../infrastructure/session/boardSelectionStore'
-import { clearSession, type FlowBoardSession } from '../../infrastructure/session/sessionStore'
+import { postBffLogout } from '../../infrastructure/session/sessionApi'
+import { clearLegacyPatStorage, type FlowBoardSession } from '../../infrastructure/session/sessionStore'
 import { THEME_STORAGE_KEY, type ThemeMode } from '../../infrastructure/theme/themeConstants'
 import { applyThemeToDocument, readTheme, writeTheme } from '../../infrastructure/theme/themeStore'
 import { useCurrentVersion } from '../release-notes/hooks/useCurrentVersion'
@@ -63,8 +64,14 @@ export function AppShell({ session, onLogout }: Props) {
 
   function logout() {
     clearActiveBoardId(session)
-    clearSession()
-    onLogout()
+    void (async () => {
+      try {
+        await postBffLogout()
+      } finally {
+        clearLegacyPatStorage()
+        onLogout()
+      }
+    })()
   }
 
   const repoChip = formatRepoChipLabel(session.webUrl)
@@ -135,7 +142,6 @@ export function AppShell({ session, onLogout }: Props) {
 
       <div className="fb-board-bar">
         <BoardListView
-          session={session}
           selectedBoardId={selectedBoardId}
           onSelectBoard={setSelectedBoardId}
           onOpenColumnEditor={requestOpenColumnEditor}
@@ -202,7 +208,6 @@ export function AppShell({ session, onLogout }: Props) {
       >
         {onArchivedRoute ? (
           <ArchivedCardsPage
-            session={session}
             boardId={selectedBoardId}
             onBoardPersisted={onBoardPersisted}
           />
@@ -210,7 +215,6 @@ export function AppShell({ session, onLogout }: Props) {
           <>
             {mainView === 'kanban' && selectedBoardId ? (
               <BoardView
-                session={session}
                 boardId={selectedBoardId}
                 columnEditorMenuTick={columnEditorMenuTick}
                 cardToEditId={cardToEditId}
@@ -219,7 +223,7 @@ export function AppShell({ session, onLogout }: Props) {
               />
             ) : null}
             {mainView === 'hours' ? (
-              <HoursView session={session} selectedBoardId={selectedBoardId} />
+              <HoursView selectedBoardId={selectedBoardId} />
             ) : null}
           </>
         )}

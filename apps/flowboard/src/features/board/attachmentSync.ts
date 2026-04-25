@@ -1,7 +1,7 @@
-import { GitHubContentsClient, GitHubHttpError, putFileBase64WithRetry } from '../../infrastructure/github/client'
+import { type GitHubDataClient, GitHubHttpError, putFileBase64WithRetry } from '../../infrastructure/github/client'
 import { fileToBase64 } from '../../infrastructure/github/fileBlob'
 
-export async function deleteRepoPathIfExists(client: GitHubContentsClient, path: string): Promise<void> {
+export async function deleteRepoPathIfExists(client: GitHubDataClient, path: string): Promise<void> {
   const got = await client.tryGetFileRaw(path)
   if (!got) {
     return
@@ -17,7 +17,7 @@ export async function deleteRepoPathIfExists(client: GitHubContentsClient, path:
 }
 
 export async function uploadAttachmentBlobs(
-  client: GitHubContentsClient,
+  client: GitHubDataClient,
   blobs: { storagePath: string; file: File }[],
 ): Promise<void> {
   const done: string[] = []

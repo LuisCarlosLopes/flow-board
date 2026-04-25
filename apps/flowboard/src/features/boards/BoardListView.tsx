@@ -7,11 +7,9 @@ import {
   renameBoardEntry,
   type CatalogJson,
 } from '../../infrastructure/persistence/boardRepository'
-import type { FlowBoardSession } from '../../infrastructure/session/sessionStore'
 import './BoardListView.css'
 
 type Props = {
-  session: FlowBoardSession
   selectedBoardId: string | null
   onSelectBoard: (id: string | null) => void
   /** Tabs Quadro / Horas — na mesma linha do formulário para alinhar à base. */
@@ -23,7 +21,6 @@ type Props = {
 }
 
 export function BoardListView({
-  session,
   selectedBoardId,
   onSelectBoard,
   viewTabs,
@@ -37,7 +34,7 @@ export function BoardListView({
   const [boardSettingsOpen, setBoardSettingsOpen] = useState(false)
   const boardSettingsRef = useRef<HTMLDivElement>(null)
 
-  const client = useMemo(() => createClientFromSession(session), [session])
+  const client = useMemo(() => createClientFromSession(), [])
   const repo = useMemo(() => createBoardRepository(client), [client])
 
   const currentBoard = useMemo(() => {

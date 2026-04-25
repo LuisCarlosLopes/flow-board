@@ -52,3 +52,4 @@ Decidimos, no **MVP**:
 ## Status de vigência
 
 - **Aceito** — em vigor desde 2026-04-19; revisar antes de Fase 2 offline-first.
+- **Parcialmente superseded (2026-04-25):** a decisão de **armazenar o PAT em Web Storage** (`sessionStorage` / `localStorage`) descrita na secção **Decisão** deste ADR é **substituída** para implementações que adotam **ADR-009** (sessão cifrada em cookie `HttpOnly` + BFF). Mantêm-se, onde ainda relevantes, as **Atualizações 2026-04-21** (`apiBase`, hostname, CSP, validação mínima de JSON) e os guardrails **G7**–**G8** na forma ajustada ao novo adaptador de sessão (PAT acessível só no servidor / cookie selado, não em storage JS).

@@ -1,0 +1,154 @@
+title: "Proteção do PAT GitHub (sessão server-side e BFF)"
+slug: "github-pat-bff-security"
+created_at: "2026-04-25"
+context: "FlowBoard — apps/flowboard; Constitution III; ADR-004 (sessionStorage atual) vs evolução de segurança"
+
+objective: >
+  Elevar a segurança do armazenamento e uso do Personal Access Token do GitHub, alinhando-se
+  ao guia de referência (defesa em profundidade, sem PAT em Web Storage, transporte e repouso
+  seguros, proxy/BFF) sem reinventar o guia: o TSD traduz requisitos para o produto e contratos
+  observáveis; decisões de stack (Vite+servidor dedicado, evolução mínima, etc.) fecham em
+  planner/ADR pós-revisão.
+
+acceptance_criteria:
+  - "TSD descreve requisitos, regras, contratos e fronteiras; não contém plano de arquivos ou escolha de lib como seção de implementação (fronteira com planner)."
+  - "Cobre explícito: o PAT não fica acessível a JavaScript de página (HttpOnly) após a transição; chamadas à API GitHub com credencial ocorrem só no contexto aprovado (servidor/BFF) ou equivalente com mesma barreira de segurança documentada."
+  - "Cita e reconcilia o guia docs/Protegendo PAT GitHub em Next.js.md como referência de princípios; registra mapeamento conceitual para a stack real do repositório (Vite/React, ausência hoje de Next App Router) como decisão aberta ou restrição de produto conforme o que o especificador encontrar no código."
+  - "Rastreia conflito/atualização necessária em relação a ADR-004 e Constitution III (mudança de sessão exige ADR)."
+
+scope:
+  in:
+    - "Autenticação e sessão do FlowBoard (PAT, metadados de repositório, logout)"
+    - "Acesso a api.github.com e fluxos de dados do quadro (somente o que for impactado por mover credencial)"
+    - "Especificação e posteriores ADR/plano para endurecimento; documentação mínima exigida pela governança"
+  out:
+    - "Definição de preço/self-hosted enterprise"
+    - "Mudanças de produto fora de segurança de credencial (ex.: funcionalidades de board novas) salvo se bloqueio técnico"
+
+tech_context: "React, Vite, TypeScript, Vitest; deploy alvo Vercel — BFF = Serverless Functions Node + static SPA; iron-session; dev local com proxy. Guia Next.js mapeado por princípios."
+baseline_ref: "main"
+
+squad:
+  status: concluído
+  track: FEATURE
+  track_override: true
+  score: 6
+  confidence: 85
+  current_phase: null
+  completed_phases: [spec, spec-reviewer, architect, planner, plan-reviewer, task-breakdown, pre-implementer-hitl, implementer, verifier, code-reviewer, tester]
+  next_phase: null
+  iteration: 1
+  blockers: []
+  hitl_required: false
+
+repo_write_scope:
+  - ".memory-bank/specs/github-pat-bff-security/**"
+  - ".memory-bank/adrs/001-flowboard-spa-github-persistence.md"
+  - ".memory-bank/adrs/004-flowboard-session-and-pat-storage.md"
+  - ".memory-bank/adrs/009-flowboard-bff-pat-session.md"
+  - "apps/flowboard/**"
+
+artifact_reuse:
+  - artifact: "security-hardening-mvp (state concluído)"
+    decision: "reused-as-context-only"
+    reason: "Endurecimento anterior excluía BFF; este slug é evolução explícita de modelo de ameaça e armazenamento de PAT"
+  - artifact: "docs/Protegendo PAT GitHub em Next.js.md"
+    decision: "reused-as-phase-output"
+    reason: "Referência de princípios e tabela de armazenamento adotada como baseline normativa do pedido"
+
+approvals:
+  - phase: pre-implementer-hitl
+    by: human
+    at: "2026-04-25"
+    note: "Pedido explícito /squad-codesteer Implemente (HITL implícito)"
+retries_by_phase: {}
+last_failure: null
+decisions:
+  - decision: Plataforma de produção
+    choice: "Vercel — estático (Vite dist) + API /api como Serverless Functions com Node.js runtime; não Edge para iron-session"
+    reason: "App corre na Vercel; ADR-009 § Plataforma de alojamento + self-correção 2026-04-25"
+    date: "2026-04-25"
+pipeline:
+  - spec
+  - spec-reviewer
+  - architect
+  - planner
+  - plan-reviewer
+  - task-breakdown
+  - pre-implementer-hitl
+  - implementer
+  - verifier
+  - code-reviewer
+  - tester
+subtasks: []
+history:
+  - phase: spec
+    agent: spec
+    subtask_id: null
+    status: ok
+    artifact: "spec-feature.md"
+    note: "TSD v1.0; subagente spec indisponível (quota) — TSD gerado pelo orquestrador com template e exploração do repo (sessionStore localStorage+PAT, ADR-004, guia PAT Next.js mapeado em princípios)"
+  - phase: spec-reviewer
+    agent: spec-reviewer
+    subtask_id: null
+    status: ok
+    artifact: "spec-reviewer-feature.md"
+    note: "Score 82; veredicto amarelo GO; §5 enriquecido com rotas default POST /api/flowboard/session, proxy /api/flowboard/github/...; quota subagent — review manual com checklist"
+  - phase: architect
+    agent: architect
+    subtask_id: null
+    status: ok
+    artifact: "architect-feature.md, ADR-009, ADR-001/004 updates"
+    note: "BFF+iron-session; diagramas; guardrails; subagente indisponível"
+  - phase: planner
+    agent: planner
+    subtask_id: null
+    status: ok
+    artifact: "planner-feature.md"
+    note: "IPD com mapa, strangler, invoke vs rotas; subagente indisponível"
+  - phase: plan-reviewer
+    agent: plan-reviewer
+    subtask_id: null
+    status: ok
+    artifact: "plan-reviewer-feature.md"
+    note: "Verde GO; T3 como commit de desenho API"
+  - phase: task-breakdown
+    agent: task-breakdown
+    subtask_id: null
+    status: ok
+    artifact: "task.md"
+    note: "T1–T8 + gate HITL"
+  - phase: implementer
+    agent: implementer
+    subtask_id: null
+    status: ok
+    artifact: "apps/flowboard server/, api/, bffClient, sessionApi, vercel.json, README"
+    note: "Implementação BFF + migração cliente; HITL aprovado via /squad-codesteer Implemente"
+  - phase: verifier
+    agent: verifier
+    subtask_id: null
+    status: ok
+    artifact: "verifier-feature.md"
+    note: "lint/test/build/typecheck:server verdes; subagente code-reviewer não invocado (quota); E2E não reexecutado"
+  - phase: code-reviewer
+    agent: code-reviewer
+    subtask_id: null
+    status: ok
+    artifact: "code-reviewer-feature.md"
+    note: "Revisão estática; GO sem críticos; CSRF/Origin informativo"
+  - phase: tester
+    agent: tester
+    subtask_id: null
+    status: ok
+    artifact: "tester-feature.md"
+    note: "Vitest 278 ok; E2E auth.setup verde após sessionOptions (NODE_ENV indefinido) + bootstrapEnv .env; test-results no gitignore"
+summary: >
+  BFF Hono + iron-session (cookie HttpOnly), POST /api/flowboard/session e /logout,
+  POST /api/flowboard/github/invoke, bootstrapEnv + SESSION_SECRET/ NODE_ENV alinhado ao dev Node.
+  Sessão sem PAT no Web Storage; E2E setup repassou com credenciais do .env.
+
+track_justification: >
+  Score 6: múltiplos módulos (auth, session, GitHub, possível camada servidora), decisão
+  arquitetural (BFF/HttpOnly/sessão cifrada vs sessionStorage), validação independente
+  (E2E/segurança), efeito em deploy/hospedagem. Override true: usuário pediu track FEATURE
+  explicitamente.

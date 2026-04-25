@@ -26,10 +26,26 @@ export type GitHubClientOptions = {
   fetchImpl?: typeof fetch
 }
 
+/** Interchangeable with {@link BffContentsClient} for app/data layers (BFF or direct API). */
+export type GitHubDataClient = {
+  getFileJson(path: string, signal?: AbortSignal): Promise<{ sha: string; json: unknown }>
+  tryGetFileJson(path: string, signal?: AbortSignal): Promise<{ sha: string; json: unknown } | null>
+  putFileJson(path: string, json: unknown, sha: string | null): Promise<void>
+  getFileRaw(path: string, signal?: AbortSignal): Promise<{ sha: string; contentBase64: string }>
+  tryGetFileRaw(path: string, signal?: AbortSignal): Promise<{ sha: string; contentBase64: string } | null>
+  putFileBase64(
+    path: string,
+    contentBase64: string,
+    sha: string | null,
+    message?: string,
+  ): Promise<void>
+  deleteFile(path: string, sha: string): Promise<void>
+}
+
 /**
  * Minimal GitHub Contents API client (JSON bodies as UTF-8 strings).
  */
-export class GitHubContentsClient {
+export class GitHubContentsClient implements GitHubDataClient {
   private readonly token: string
   private readonly owner: string
   private readonly repo: string
@@ -275,7 +291,7 @@ function utf8ToBase64(text: string): string {
  * Retries PUT once after 409 by re-reading SHA via getter (ADR-005).
  */
 export async function putJsonWithRetry(
-  client: GitHubContentsClient,
+  client: GitHubDataClient,
   path: string,
   json: unknown,
   readCurrent: () => Promise<{ sha: string; json: unknown }>,
@@ -298,7 +314,7 @@ export async function putJsonWithRetry(
  * Same as {@link putJsonWithRetry} for binary/text blobs: re-read SHA after 409 (concorrência GitHub).
  */
 export async function putFileBase64WithRetry(
-  client: GitHubContentsClient,
+  client: GitHubDataClient,
   path: string,
   contentBase64: string,
   readCurrentSha: () => Promise<string | null>,

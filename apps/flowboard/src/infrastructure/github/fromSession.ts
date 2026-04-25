@@ -1,12 +1,9 @@
-import type { FlowBoardSession } from '../session/sessionStore'
-import { GitHubContentsClient } from './client'
-import { GITHUB_API_BASE } from './url'
+import type { GitHubDataClient } from './client'
+import { BffContentsClient } from './bffClient'
 
-export function createClientFromSession(session: FlowBoardSession): GitHubContentsClient {
-  return new GitHubContentsClient({
-    token: session.pat,
-    owner: session.owner,
-    repo: session.repo,
-    apiBase: GITHUB_API_BASE,
-  })
+/**
+ * All GitHub data access in the browser goes through the BFF; the HttpOnly session holds the PAT.
+ */
+export function createClientFromSession(): GitHubDataClient {
+  return new BffContentsClient()
 }

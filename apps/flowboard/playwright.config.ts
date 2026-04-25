@@ -10,15 +10,17 @@ Object.assign(process.env, loadEnv(process.env.NODE_ENV ?? 'development', flowbo
 /** Caminho absoluto: evita ENOENT se o cwd ao invocar o CLI não for `apps/flowboard`. */
 const authStorage = getAuthStoragePath()
 
-/** Com janela visível, vários workers competem por foco e o clipboard falha com frequência. */
-const headedOrInteractive = ['--headed', '--debug', '--ui'].some((flag) => process.argv.includes(flag))
-
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: (!!process.env.CI || headedOrInteractive) ? 1 : undefined,
+  /**
+   * Um worker por defeito: happy paths (create-task, anexos, arquivo) partilham o mesmo board/repo no GitHub;
+   * com `workers` > 1, ficheiros distintos correm em paralelo e o estado corrompe (mesmo padrão que leva
+   * a ignorar esses ficheiros em Firefox/WebKit — ver `testIgnore` nos projetos abaixo).
+   */
+  workers: 1,
 
   reporter: 'html',
 
@@ -77,9 +79,13 @@ export default defineConfig({
     },
   ],
 
+  /**
+   * Aguarda o proxy Vite (`/api` → BFF) + BFF: só retorna 200 quando ambos estão a ouvir
+   * (evita setup E2E falhar com "Falha no login" por BFF ainda a arrancar).
+   */
   webServer: {
     command: 'npm run dev',
-    url: 'http://localhost:5173',
+    url: 'http://localhost:5173/api/flowboard/health',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },

@@ -40,7 +40,6 @@ import { base64ToBlob } from '../../infrastructure/github/fileBlob'
 import { createClientFromSession } from '../../infrastructure/github/fromSession'
 import type { BoardDocumentJson } from '../../infrastructure/persistence/types'
 import { createBoardRepository } from '../../infrastructure/persistence/boardRepository'
-import type { FlowBoardSession } from '../../infrastructure/session/sessionStore'
 import { appendNewSegments, docToTimeBoardState, writeTimeBoardStateToDoc } from './timeBridge'
 import { deleteRepoPathIfExists, uploadAttachmentBlobs } from './attachmentSync'
 import { clearSearchModalBoardCache } from '../app/SearchModal'
@@ -49,7 +48,6 @@ import { CreateTaskModal } from './CreateTaskModal'
 import './BoardView.css'
 
 type Props = {
-  session: FlowBoardSession
   boardId: string
   /** Incremented from the shell (e.g. board settings menu) to open the column editor. */
   columnEditorMenuTick?: number
@@ -62,14 +60,13 @@ type Props = {
 }
 
 export function BoardView({
-  session,
   boardId,
   columnEditorMenuTick = 0,
   cardToEditId,
   onCardEditComplete,
   onBoardPersisted,
 }: Props) {
-  const client = useMemo(() => createClientFromSession(session), [session])
+  const client = useMemo(() => createClientFromSession(), [])
   const repo = useMemo(() => createBoardRepository(client), [client])
 
   const [doc, setDoc] = useState<BoardDocumentJson | null>(null)
@@ -117,43 +114,51 @@ export function BoardView({
       timeStateRef.current = reconciled
       setDoc(nextDoc)
       setTimeState(reconciled)
-      setSaving(true)
       setPersistError('')
-      try {
-        await repo.saveBoard(nextDoc.boardId, nextDoc, got.sha)
-        const got2 = await repo.loadBoard(boardId)
-        if (got2) {
-          setDoc(got2.doc)
-          setSha(got2.sha)
-          shaRef.current = got2.sha
-          docRef.current = got2.doc
-          const ts = docToTimeBoardState(got2.doc)
-          timeStateRef.current = ts
-          setTimeState(ts)
-        }
-      } catch (e) {
-        if (e instanceof GitHubHttpError && e.status === 409) {
-          setPersistError('Conflito ao salvar após reconciliação. Recarregando dados.')
-        } else {
-          setPersistError(e instanceof Error ? e.message : 'Erro ao salvar.')
-        }
+      const runReconciliationSave = async () => {
+        setSaving(true)
+        setPersistError('')
         try {
-          const got3 = await repo.loadBoard(boardId)
-          if (got3) {
-            setDoc(got3.doc)
-            setSha(got3.sha)
-            shaRef.current = got3.sha
-            docRef.current = got3.doc
-            const ts3 = docToTimeBoardState(got3.doc)
-            timeStateRef.current = ts3
-            setTimeState(ts3)
+          await repo.saveBoard(nextDoc.boardId, nextDoc, got.sha)
+          const got2 = await repo.loadBoard(boardId)
+          if (got2) {
+            setDoc(got2.doc)
+            setSha(got2.sha)
+            shaRef.current = got2.sha
+            docRef.current = got2.doc
+            const ts = docToTimeBoardState(got2.doc)
+            timeStateRef.current = ts
+            setTimeState(ts)
           }
-        } catch {
-          /* ignore */
+        } catch (e) {
+          if (e instanceof GitHubHttpError && e.status === 409) {
+            setPersistError('Conflito ao salvar após reconciliação. Recarregando dados.')
+          } else {
+            setPersistError(e instanceof Error ? e.message : 'Erro ao salvar.')
+          }
+          try {
+            const got3 = await repo.loadBoard(boardId)
+            if (got3) {
+              setDoc(got3.doc)
+              setSha(got3.sha)
+              shaRef.current = got3.sha
+              docRef.current = got3.doc
+              const ts3 = docToTimeBoardState(got3.doc)
+              timeStateRef.current = ts3
+              setTimeState(ts3)
+            }
+          } catch {
+            /* ignore */
+          }
+        } finally {
+          setSaving(false)
         }
-      } finally {
-        setSaving(false)
       }
+      const queued = saveChainRef.current.then(runReconciliationSave)
+      saveChainRef.current = queued.catch(() => {
+        /* fila continua mesmo após falha */
+      })
+      await queued
     } else {
       timeStateRef.current = loaded
       setTimeState(loaded)
@@ -373,10 +378,6 @@ export function BoardView({
     if (!doc) {
       return
     }
-    const firstBacklog = doc.columns.find((c) => c.role === 'backlog')?.columnId
-    if (!firstBacklog) {
-      return
-    }
 
     const { attachmentBlobs, attachmentPathsToDelete, attachments, ...rest } = task
     try {
@@ -394,6 +395,29 @@ export function BoardView({
       return
     }
 
+    const hadRemoteAttachmentWork =
+      (attachmentBlobs?.length ?? 0) > 0 || (attachmentPathsToDelete?.length ?? 0) > 0
+    let baseDoc: BoardDocumentJson
+    if (hadRemoteAttachmentWork) {
+      const got = await repo.loadBoard(boardId)
+      if (!got) {
+        setPersistError('Não foi possível recarregar o quadro após operações de anexos no GitHub.')
+        return
+      }
+      baseDoc = got.doc
+      shaRef.current = got.sha
+      setSha(got.sha)
+    } else {
+      const cur = docRef.current
+      if (!cur) {
+        return
+      }
+      baseDoc = cur
+    }
+    const firstBacklog = baseDoc.columns.find((c) => c.role === 'backlog')?.columnId
+    if (!firstBacklog) {
+      return
+    }
     const newCard: Card = {
       cardId: rest.cardId || crypto.randomUUID(),
       title: rest.title || 'Nova tarefa',
@@ -405,9 +429,10 @@ export function BoardView({
       attachments: attachments ?? [],
     }
 
-    const nextDoc = structuredClone(doc)
+    const nextDoc = structuredClone(baseDoc)
     nextDoc.cards = [...nextDoc.cards, newCard]
     docRef.current = nextDoc
+    setDoc(nextDoc)
     await saveDocument(nextDoc)
   }
 
@@ -431,7 +456,26 @@ export function BoardView({
       return
     }
 
-    const nextDoc = structuredClone(doc)
+    const hadRemoteAttachmentWork =
+      (attachmentBlobs?.length ?? 0) > 0 || (attachmentPathsToDelete?.length ?? 0) > 0
+    let baseDoc: BoardDocumentJson
+    if (hadRemoteAttachmentWork) {
+      const got = await repo.loadBoard(boardId)
+      if (!got) {
+        setPersistError('Não foi possível recarregar o quadro após operações de anexos no GitHub.')
+        return
+      }
+      baseDoc = got.doc
+      shaRef.current = got.sha
+      setSha(got.sha)
+    } else {
+      const cur = docRef.current
+      if (!cur) {
+        return
+      }
+      baseDoc = cur
+    }
+    const nextDoc = structuredClone(baseDoc)
     nextDoc.cards = nextDoc.cards.map((c) =>
       c.cardId === cardId
         ? {

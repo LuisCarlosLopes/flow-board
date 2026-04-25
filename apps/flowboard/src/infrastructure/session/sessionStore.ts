@@ -1,73 +1,71 @@
-import { GITHUB_API_BASE, isOfficialGithubApiBase, type RepoResolution } from '../github/url'
+import { isOfficialGithubApiBase, type RepoResolution } from '../github/url'
 
-const STORAGE_KEY = 'flowboard.session.v1'
-
-/** Migra sessão antiga (sessionStorage) para localStorage — compatível com Playwright storageState. */
-function migrateFromSessionStorageIfNeeded(): void {
-  if (typeof sessionStorage === 'undefined' || typeof localStorage === 'undefined') {
-    return
-  }
-  if (localStorage.getItem(STORAGE_KEY)) {
-    return
-  }
-  const legacy = sessionStorage.getItem(STORAGE_KEY)
-  if (!legacy) {
-    return
-  }
-  localStorage.setItem(STORAGE_KEY, legacy)
-  sessionStorage.removeItem(STORAGE_KEY)
-}
+const LEGACY_STORAGE_KEY = 'flowboard.session.v1'
 
 export type FlowBoardSession = RepoResolution & {
-  pat: string
   /** Original URL entered by the user */
   repoUrl: string
 }
 
-export function loadSession(): FlowBoardSession | null {
-  if (typeof localStorage === 'undefined') {
-    return null
+/**
+ * Best-effort removal of the legacy local/session storage snapshot that used to include the PAT.
+ * Safe to call on startup before session restore via BFF.
+ */
+export function clearLegacyPatStorage(): void {
+  if (typeof localStorage === 'undefined' || typeof sessionStorage === 'undefined') {
+    return
   }
-  migrateFromSessionStorageIfNeeded()
-  const raw = localStorage.getItem(STORAGE_KEY)
-  if (!raw) {
-    return null
-  }
-  try {
-    const v = JSON.parse(raw) as FlowBoardSession
-    if (!v.pat || !v.owner || !v.repo) {
-      localStorage.removeItem(STORAGE_KEY)
-      return null
+  const fromLocal = localStorage.getItem(LEGACY_STORAGE_KEY)
+  const fromSession = sessionStorage.getItem(LEGACY_STORAGE_KEY)
+  if (fromLocal) {
+    try {
+      const v = JSON.parse(fromLocal) as { pat?: unknown }
+      if (v && 'pat' in v && v.pat) {
+        localStorage.removeItem(LEGACY_STORAGE_KEY)
+      }
+    } catch {
+      localStorage.removeItem(LEGACY_STORAGE_KEY)
     }
-    if (!isOfficialGithubApiBase(typeof v.apiBase === 'string' ? v.apiBase : '')) {
-      localStorage.removeItem(STORAGE_KEY)
-      return null
+  }
+  if (fromSession) {
+    try {
+      const v = JSON.parse(fromSession) as { pat?: unknown }
+      if (v && 'pat' in v && v.pat) {
+        sessionStorage.removeItem(LEGACY_STORAGE_KEY)
+      }
+    } catch {
+      sessionStorage.removeItem(LEGACY_STORAGE_KEY)
     }
-    return v
-  } catch {
-    localStorage.removeItem(STORAGE_KEY)
-    return null
   }
 }
 
-export function saveSession(session: FlowBoardSession): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(session))
-}
-
-export function clearSession(): void {
-  localStorage.removeItem(STORAGE_KEY)
-  if (typeof sessionStorage !== 'undefined') {
-    sessionStorage.removeItem(STORAGE_KEY)
-  }
-}
-
-export function createSession(pat: string, repoUrl: string, resolution: RepoResolution): FlowBoardSession {
+export function createSessionView(resolution: RepoResolution, repoUrl: string): FlowBoardSession {
   return {
-    pat,
+    ...resolution,
     repoUrl,
-    owner: resolution.owner,
-    repo: resolution.repo,
-    apiBase: GITHUB_API_BASE,
-    webUrl: resolution.webUrl,
+  }
+}
+
+export type BffSessionBody = {
+  session: {
+    owner: string
+    repo: string
+    apiBase: string
+    webUrl: string
+    repoUrl: string
+  }
+}
+
+export function sessionFromApiPayload(body: BffSessionBody): FlowBoardSession {
+  const s = body.session
+  if (!isOfficialGithubApiBase(s.apiBase)) {
+    throw new Error('Sessão inválida (api base)')
+  }
+  return {
+    owner: s.owner,
+    repo: s.repo,
+    apiBase: s.apiBase,
+    webUrl: s.webUrl,
+    repoUrl: s.repoUrl,
   }
 }

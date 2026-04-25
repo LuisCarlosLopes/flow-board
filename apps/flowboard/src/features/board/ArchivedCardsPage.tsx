@@ -7,7 +7,6 @@ import { GitHubHttpError } from '../../infrastructure/github/client'
 import { createClientFromSession } from '../../infrastructure/github/fromSession'
 import type { BoardDocumentJson } from '../../infrastructure/persistence/types'
 import { createBoardRepository } from '../../infrastructure/persistence/boardRepository'
-import type { FlowBoardSession } from '../../infrastructure/session/sessionStore'
 import { appendNewSegments, docToTimeBoardState, writeTimeBoardStateToDoc } from './timeBridge'
 import { deleteRepoPathIfExists } from './attachmentSync'
 import { clearSearchModalBoardCache } from '../app/SearchModal'
@@ -44,13 +43,12 @@ function formatArchivedAtForDisplay(iso?: string): string | null {
 }
 
 type Props = {
-  session: FlowBoardSession
   boardId: string | null
   onBoardPersisted?: () => void
 }
 
-export function ArchivedCardsPage({ session, boardId, onBoardPersisted }: Props) {
-  const client = useMemo(() => createClientFromSession(session), [session])
+export function ArchivedCardsPage({ boardId, onBoardPersisted }: Props) {
+  const client = useMemo(() => createClientFromSession(), [])
   const repo = useMemo(() => createBoardRepository(client), [client])
 
   const [doc, setDoc] = useState<BoardDocumentJson | null>(null)

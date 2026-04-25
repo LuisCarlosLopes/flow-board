@@ -16,7 +16,6 @@ import { GitHubHttpError } from '../../infrastructure/github/client'
 import { createClientFromSession } from '../../infrastructure/github/fromSession'
 import { createBoardRepository } from '../../infrastructure/persistence/boardRepository'
 import type { BoardDocumentJson } from '../../infrastructure/persistence/types'
-import type { FlowBoardSession } from '../../infrastructure/session/sessionStore'
 import './HoursView.css'
 
 type PeriodKind = 'day' | 'week' | 'month'
@@ -107,12 +106,11 @@ function formatHours(durationMs: number): string {
 }
 
 type Props = {
-  session: FlowBoardSession
   selectedBoardId: string | null
 }
 
-export function HoursView({ session, selectedBoardId }: Props) {
-  const client = useMemo(() => createClientFromSession(session), [session])
+export function HoursView({ selectedBoardId }: Props) {
+  const client = useMemo(() => createClientFromSession(), [])
   const repo = useMemo(() => createBoardRepository(client), [client])
 
   const [periodKind, setPeriodKind] = useState<PeriodKind>('week')
