@@ -120,11 +120,9 @@ Referência: PRD/TSD em `.memory-bank/specs/personal-kanban/`. Testes com **Vite
 
 ## Deploy (Vercel)
 
-**Opção A — Root Directory = `apps/flowboard`:** o Vercel lê `apps/flowboard/vercel.json` e a função em `apps/flowboard/api/`.
+Definir **Settings → General → Root Directory = `apps/flowboard`**. O repositório `flow-board` tem a app nessa subpasta; o BFF fica em `api/flowboard/*.ts` (rotas **explícitas** — o Vite não aplica o mesmo catch-all que o Next; ver `api/flowboard/_bff.ts`).
 
-**Opção B — Raiz do repositório (sem subpasta no painel):** na raiz do git existem `vercel.json` e `api/[...route].ts`, que reexportam o BFF a partir de `apps/flowboard/`. Não deixe as duas configurações em conflito: ou defines Root Directory, ou o projeto fica na raiz.
-
-Em ambos os casos: `SESSION_SECRET` (≥32 caracteres) e, em produção, o iron-session ajusta cookies `secure` com `VERCEL=1` quando aplicável.
+Variáveis: `SESSION_SECRET` (≥32 caracteres) e, em produção, o iron-session ajusta cookies `secure` com `VERCEL=1` quando aplicável.
 
 ## Licença
 

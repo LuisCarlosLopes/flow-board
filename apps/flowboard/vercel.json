@@ -4,7 +4,7 @@
   "outputDirectory": "dist",
   "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }],
   "functions": {
-    "api/**": {
+    "api/flowboard/**": {
       "includeFiles": "server/**"
     }
   }
