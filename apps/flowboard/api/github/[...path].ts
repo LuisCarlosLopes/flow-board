@@ -17,22 +17,21 @@ const FORWARD_RESPONSE_HEADERS = [
   'last-modified',
 ]
 
-export default async function handler(req: IncomingMessage & { query?: Record<string, string | string[]> }, res: ServerResponse): Promise<void> {
+export default async function handler(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const session = readSessionFromRequest(req)
   if (!session) {
     sendJson(res, 401, { error: 'Não autenticado.' })
     return
   }
 
-  // Build the upstream path from the Vercel catch-all query param
-  const pathParam = req.query?.path
-  const pathSegments = Array.isArray(pathParam) ? pathParam : pathParam ? [pathParam] : []
-  const upstreamPath = '/' + pathSegments.join('/')
-
-  // Preserve query string
+  // Derive upstream path from req.url, stripping the /api/github prefix.
+  // This works regardless of how Vercel routes the request (catch-all or
+  // explicit route) and does not depend on req.query being populated.
   const rawUrl = req.url ?? ''
   const qIdx = rawUrl.indexOf('?')
+  const pathname = qIdx >= 0 ? rawUrl.slice(0, qIdx) : rawUrl
   const qs = qIdx >= 0 ? rawUrl.slice(qIdx) : ''
+  const upstreamPath = pathname.replace(/^\/api\/github/, '') || '/'
 
   const upstreamUrl = `${GITHUB_API}${upstreamPath}${qs}`
 
