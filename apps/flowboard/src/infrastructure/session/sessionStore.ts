@@ -1,3 +1,5 @@
+import { hasForbiddenSecretShape, hasForbiddenSerializedSecretMarkers } from './secretPayload'
+
 const STORAGE_KEY = 'flowboard.session.v1'
 
 export type FlowBoardSession = {
@@ -70,19 +72,14 @@ function hasForbiddenStoragePayload(raw: string | null): boolean {
   if (!raw) {
     return false
   }
+  if (hasForbiddenSerializedSecretMarkers(raw)) {
+    return true
+  }
   try {
     return hasForbiddenSecretShape(JSON.parse(raw))
   } catch {
     return false
   }
-}
-
-function hasForbiddenSecretShape(value: unknown): boolean {
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
-    return false
-  }
-  const candidate = value as Record<string, unknown>
-  return ['pat', 'token', 'accessToken', 'refreshToken', 'authorization', 'apiBase'].some((key) => key in candidate)
 }
 
 function isValidPublicSession(value: unknown): value is FlowBoardSession {
