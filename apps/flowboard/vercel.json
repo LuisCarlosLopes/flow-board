@@ -4,8 +4,8 @@
   "outputDirectory": "dist",
   "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }],
   "functions": {
-    "api/flowboard/**": {
-      "includeFiles": "server/**+src/**",
+    "api/flowboard/**/*.ts": {
+      "includeFiles": "{server/**,src/**}",
       "memory": 1024,
       "maxDuration": 60
     }

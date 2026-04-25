@@ -1,6 +1,6 @@
 import { getIronSession, type SessionOptions, type IronSession } from 'iron-session'
 import type { Context } from 'hono'
-import type { FlowboardIronSession } from './flowboardSessionData.ts'
+import type { FlowboardIronSession } from './flowboardSessionData.js'
 
 type IronSaveResult = { response: Response; session: IronSession<FlowboardIronSession> }
 

@@ -38,3 +38,4 @@ after-hours.yml
 *.njsproj
 *.sln
 *.sw?
+.vercel

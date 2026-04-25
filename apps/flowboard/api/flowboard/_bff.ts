@@ -3,7 +3,7 @@
  * mapeia-se com ficheiros explícitos; todos usam o mesmo Hono.
  */
 import { handle } from 'hono/vercel'
-import { app } from '../../server/app.ts'
+import { app } from '../../server/app.js'
 
 export const config = {
   maxDuration: 60,

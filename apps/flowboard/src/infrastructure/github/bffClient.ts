@@ -1,5 +1,5 @@
-import { GitHubHttpError } from './client.ts'
-import type { GitHubDataClient } from './client.ts'
+import { GitHubHttpError } from './client.js'
+import type { GitHubDataClient } from './client.js'
 
 const INVOKE = '/api/flowboard/github/invoke'
 
@@ -11,7 +11,7 @@ function isRecord(v: unknown): v is Record<string, unknown> {
 }
 
 /**
- * GitHub data access from the browser: same contract as {@link import('./client.ts').GitHubContentsClient}
+ * GitHub data access from the browser: same contract as {@link import('./client.js').GitHubContentsClient}
  * but requests go to the BFF; credentials live in the HttpOnly session cookie.
  */
 export class BffContentsClient implements GitHubDataClient {

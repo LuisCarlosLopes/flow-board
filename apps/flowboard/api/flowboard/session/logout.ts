@@ -1,1 +1,1 @@
-export { default, config } from '../_bff.ts'
+export { default, config } from '../_bff.js'

@@ -1,5 +1,5 @@
 import { serve } from '@hono/node-server'
-import { app } from './app.ts'
+import { app } from './app.js'
 
 const port = Number(process.env.BFF_PORT ?? 8787)
 

@@ -1,6 +1,6 @@
 import { z } from 'zod'
-import { GitHubContentsClient, GitHubHttpError } from '../src/infrastructure/github/client.ts'
-import type { FlowboardIronSession } from './flowboardSessionData.ts'
+import { GitHubContentsClient, GitHubHttpError } from '../src/infrastructure/github/client.js'
+import type { FlowboardIronSession } from './flowboardSessionData.js'
 import type { IronSession } from 'iron-session'
 
 const invokeBodySchema = z

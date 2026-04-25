@@ -1,4 +1,4 @@
-import { GITHUB_API_BASE } from './url'
+import { GITHUB_API_BASE } from './url.js'
 
 export type ContentsGetResponse = {
   sha: string
