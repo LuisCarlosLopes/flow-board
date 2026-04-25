@@ -1,7 +1,18 @@
 import { sessionFromApiPayload, type BffSessionBody, type FlowBoardSession } from './sessionStore.ts'
 
+const BOOTSTRAP_SESSION_TIMEOUT_MS = 8000
+
 export async function fetchBffSession(): Promise<FlowBoardSession | null> {
-  const res = await fetch('/api/flowboard/session', { credentials: 'include' })
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), BOOTSTRAP_SESSION_TIMEOUT_MS)
+  let res: Response
+  try {
+    res = await fetch('/api/flowboard/session', { credentials: 'include', signal: controller.signal })
+  } catch {
+    return null
+  } finally {
+    clearTimeout(timeout)
+  }
   if (res.status === 401) {
     return null
   }

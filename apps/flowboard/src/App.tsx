@@ -19,6 +19,10 @@ export default function App() {
         if (!cancelled) {
           setSession(s)
         }
+      } catch {
+        if (!cancelled) {
+          setSession(null)
+        }
       } finally {
         if (!cancelled) {
           setBooting(false)
