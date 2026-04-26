@@ -32,8 +32,10 @@ vi.mock('../../infrastructure/session/sessionStore', () => ({
     repoUrl: 'https://github.com/test/repo',
     owner: 'test',
     repo: 'repo',
+    apiBase: 'https://api.github.com',
+    webUrl: 'https://github.com/test/repo',
   })),
-  saveSession: vi.fn(),
+  saveSessionAsync: vi.fn().mockResolvedValue(undefined),
 }))
 
 // Mock URL parser

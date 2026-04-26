@@ -32,6 +32,14 @@ Alterações que mudem comportamento observável do produto devem ser **verific�
 
 Comunicação no âmbito deste repositório (agentes, revisões, PRs, tarefas) deve **priorizar informação acionável e estado novo**. É proibido como padrão: recapitular o pedido original sem agregar decisão; produzir “relatórios de progresso” ou sumários do processo quando o leitor já tem o histórico; narrar passos triviais de execução; ou meta-comentários que não mudem governança, contrato ou próximo passo. **Sumários só são obrigatórios** quando consolidarem decisão, versão, critério de aceite ou checklist que impacte trabalho futuro — e ainda assim no menor volume necessário.
 
+### VIII. CodeSteer Tags em código não trivial
+
+Comentários inline semânticos (**CodeSteer Tags**) são o padrão para documentação viva que explica **por quê**, contrato, fluxo, dependências e risco quando isso **não** se infere só de nomes e da estrutura do módulo. A taxonomia, anti-padrões e checklist de qualidade estão na SKILL **codesteer-tagger**; agentes e revisores tratam esse ficheiro como contrato operacional das tags.
+
+- **Quando aplicar:** handlers e orquestrações multi-etapa; decisões locais não óbvias; workarounds ou limites de plataforma; superfícies de segurança, concorrência, idempotência ou integridade; funções públicas cujo input/output/erro deve ficar explícito junto ao uso.
+- **O que evitar:** tags em código trivial, wrappers óbvios ou mapeamentos mecânicos; linhas redundantes entre si ou com o próprio código; tags genéricas sem conteúdo acionável (a “regra de ouro” da skill: só quando agregam contexto ausente no código).
+- **Redação:** seguir o idioma dos comentários internos já definido para o repositório (alinhado à secção de idioma em *Workflow*); usar o subconjunto de tags necessário (`@MindContext`, `@MindSpec`, `@MindFlow`, `@MindWhy`, `@MindDecision`, `@MindRisk`, `@MindDeps`, `@MindTest`, `@MindTODO`), em geral uma a três linhas por bloco salvo complexidade justificada.
+
 ## Arquitetura, stack e limites
 
 - **Stack principal do app:** TypeScript, React, Vite; testes com a stack definida no pacote da aplicação (ex.: Vitest).
@@ -43,8 +51,8 @@ Comunicação no âmbito deste repositório (agentes, revisões, PRs, tarefas) d
 
 - **Saídas enxutas (alinhado ao princípio VII):** na conclusão de uma tarefa, priorizar o que mudou, impacto e como validar; omitir “executei X, depois Y” quando não for necessário ao revisor. Evitar listas de “o que foi feito” que duplicam o diff ou o pedido.
 - **Antes de concluir trabalho:** executar verificações locais previstas no pacote afetado (ex.: `lint`, `test`, `build` onde existirem).
-- **Revisão:** mudanças que alterem persistência, segurança de sessão, contratos de dados ou regras de domínio devem ser revisadas com **referência explícita** ao trecho de spec ou ADR correspondente.
-- **Idioma e Padrões:** O desenvolvimento segue o padrão de código em **Inglês** (nomenclatura de variáveis, funções, arquivos), com comentários internos ao código, documentação técnica (especificações, ADRs), planos de implementação e tarefas sempre em **Português**.
+- **Revisão:** mudanças que alterem persistência, segurança de sessão, contratos de dados ou regras de domínio devem ser revisadas com **referência explícita** ao trecho de spec ou ADR correspondente. Onde o diff tocar lógica coberta pelo princípio VIII, a revisão confere se as **CodeSteer Tags** adicionam contexto real ou se faltam tags nos pontos de risco/contrato indicados na skill.
+- **Idioma e Padrões:** O desenvolvimento segue o padrão de código em **Inglês** (nomenclatura de variáveis, funções, arquivos), com comentários internos ao código, documentação técnica (especificações, ADRs), planos de implementação e tarefas sempre em **Português** — incluindo o texto descritivo das **CodeSteer Tags** (princípio VIII), salvo termos de API ou domínio já estabelecidos em inglês no código.
 - **Documentação viva:** quando uma mudança invalidar um ADR, o fluxo esperado é **deprecar ou substituir** o ADR com status e data, não deixar decisões contraditórias sem resolução.
 
 ## Governance
@@ -53,4 +61,4 @@ Comunicação no âmbito deste repositório (agentes, revisões, PRs, tarefas) d
 - **Emendas** alteram este arquivo, incrementam a versão de forma coerente com o impacto e atualizam `Last Amended`.
 - O conjunto **ADR + specs ativas + esta Constitution** forma a hierarquia de governança técnica do workspace; implementação deve ser rastreável até um desses artefatos para decisões não triviais.
 
-**Version**: 1.0.2 | **Ratified**: 2026-04-19 | **Last Amended**: 2026-04-21
+**Version**: 1.1.0 | **Ratified**: 2026-04-19 | **Last Amended**: 2026-04-26

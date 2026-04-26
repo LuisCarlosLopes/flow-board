@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { clearSession, createSession, loadSession, saveSession } from './sessionStore'
+import { clearSession, createSession, hasPersistedSession, loadSessionAsync, saveSessionAsync } from './sessionStore'
 
 const STORAGE_KEY = 'flowboard.session.v1'
 
@@ -8,21 +8,21 @@ describe('sessionStore', () => {
     clearSession()
   })
 
-  it('round-trips session', () => {
+  it('round-trips session (encrypted in test mode when key is set)', async () => {
     const s = createSession('ghp_x', 'https://github.com/a/b', {
       owner: 'a',
       repo: 'b',
       apiBase: 'https://api.github.com',
       webUrl: 'https://github.com/a/b',
     })
-    saveSession(s)
-    const loaded = loadSession()
+    await saveSessionAsync(s)
+    const loaded = await loadSessionAsync()
     expect(loaded?.owner).toBe('a')
     expect(loaded?.pat).toBe('ghp_x')
   })
 
-  it('clear removes session', () => {
-    saveSession(
+  it('clear removes session', async () => {
+    await saveSessionAsync(
       createSession('t', 'u', {
         owner: 'a',
         repo: 'b',
@@ -31,16 +31,16 @@ describe('sessionStore', () => {
       }),
     )
     clearSession()
-    expect(loadSession()).toBeNull()
+    expect(await loadSessionAsync()).toBeNull()
   })
 
-  it('clears storage when JSON is not a valid session object', () => {
+  it('clears storage when JSON is not a valid session object', async () => {
     localStorage.setItem(STORAGE_KEY, 'not-json')
-    expect(loadSession()).toBeNull()
+    expect(await loadSessionAsync()).toBeNull()
     expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
   })
 
-  it('clears storage when pat or owner/repo missing', () => {
+  it('clears storage when pat or owner/repo missing', async () => {
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
@@ -52,11 +52,11 @@ describe('sessionStore', () => {
         repoUrl: 'https://github.com/a/b',
       }),
     )
-    expect(loadSession()).toBeNull()
+    expect(await loadSessionAsync()).toBeNull()
     expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
   })
 
-  it('clears storage when apiBase was tampered', () => {
+  it('clears storage when apiBase was tampered', async () => {
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
@@ -68,11 +68,11 @@ describe('sessionStore', () => {
         repoUrl: 'https://github.com/a/b',
       }),
     )
-    expect(loadSession()).toBeNull()
+    expect(await loadSessionAsync()).toBeNull()
     expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
   })
 
-  it('migrates legacy session from sessionStorage to localStorage', () => {
+  it('migrates legacy session from sessionStorage to localStorage', async () => {
     const payload = JSON.stringify({
       pat: 'ghp_x',
       owner: 'a',
@@ -82,9 +82,35 @@ describe('sessionStore', () => {
       repoUrl: 'https://github.com/a/b',
     })
     sessionStorage.setItem(STORAGE_KEY, payload)
-    const loaded = loadSession()
+    const loaded = await loadSessionAsync()
     expect(loaded?.owner).toBe('a')
     expect(localStorage.getItem(STORAGE_KEY)).toBe(payload)
     expect(sessionStorage.getItem(STORAGE_KEY)).toBeNull()
+  })
+
+  it('hasPersistedSession is true for plaintext and sealed payloads', async () => {
+    expect(hasPersistedSession()).toBe(false)
+    const plain = {
+      pat: 'ghp_x',
+      owner: 'a',
+      repo: 'b',
+      apiBase: 'https://api.github.com',
+      webUrl: 'https://github.com/a/b',
+      repoUrl: 'https://github.com/a/b',
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(plain))
+    expect(hasPersistedSession()).toBe(true)
+    clearSession()
+    await saveSessionAsync(
+      createSession('ghp_y', 'https://github.com/a/b', {
+        owner: 'a',
+        repo: 'b',
+        apiBase: 'https://api.github.com',
+        webUrl: 'https://github.com/a/b',
+      }),
+    )
+    const raw = localStorage.getItem(STORAGE_KEY) ?? ''
+    expect(raw).toContain('patEnc')
+    expect(hasPersistedSession()).toBe(true)
   })
 })

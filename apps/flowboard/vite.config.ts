@@ -1,6 +1,7 @@
-import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import type { Plugin } from 'vite'
+import { loadEnv } from 'vite'
+import { defineConfig } from 'vitest/config'
 
 /**
  * CSP apenas no HTML emitido pelo build de produção (HITL D4).
@@ -42,11 +43,22 @@ function contentSecurityPolicyProduction(): Plugin {
 }
 
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [react(), contentSecurityPolicyProduction()],
-  test: {
-    environment: 'happy-dom',
-    include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
-    setupFiles: ['src/vitest.setup.ts'],
-  },
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+  const patKey =
+    env.VITE_SESSION_SECRET ||
+    env.SESSION_SECRET ||
+    (mode === 'test' ? 'flowboard-vitest-default-pat-encryption-key-min-length' : '')
+
+  return {
+    define: {
+      'import.meta.env.FLOWBOARD_PAT_KEY': JSON.stringify(patKey),
+    },
+    plugins: [react(), contentSecurityPolicyProduction()],
+    test: {
+      environment: 'happy-dom',
+      include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+      setupFiles: ['src/vitest.setup.ts'],
+    },
+  }
 })

@@ -134,6 +134,7 @@ Valores de `apps/flowboard/package.json` (ajuste se bump): **React ^19.2.4**, **
 
 ### Sempre
 
+- Em código novo ou alterado com contexto não óbvio (domínio, fluxo multi-etapa, contrato público, risco), usar **CodeSteer Tags** conforme `.github/skills/codesteer-tagger/SKILL.md` e o princípio VIII de `.memory-bank/constitution.md` — só o que agregar valor; evitar tags em trechos triviais.
 - Alterar comportamento de domínio/persistência com testes Vitest nas áreas tocadas (`boardRules`, `timeEngine`, cliente GitHub, etc., conforme README do app).
 - Manter **cobertura de testes unitários (Vitest) acima de 80%** nas linhas cobertas pelo escopo da mudança (ou no projeto, quando a alteração for ampla); não entregar código novo ou refatoração de domínio sem testes que preservem ou elevem essa barra.
 - Respeitar o MVP: sem busca global na topbar, notificações, favoritos ou labels persistidos, salvo mudança explícita de spec.
@@ -169,6 +170,7 @@ Não introduzir API dinâmica nem outro ficheiro como fonte da versão sem spec/
 | `FLOWBOARD_E2E_PAT` | Sim para E2E com GitHub | PAT com escopo suficiente para ler/escrever conteúdo nesse repo. **Nunca** documentar o valor real no repositório. |
 | `FLOWBOARD_E2E_BASE_URL` | Não | Base da app nos testes (default `http://localhost:5173`). |
 | `CI` | Não | Quando definido, Playwright usa `retries: 2`, `workers: 1`, `forbidOnly: true`. |
+| `VITE_SESSION_SECRET` ou `SESSION_SECRET` | Não (recomendado em produção) | Chave de cifra do PAT no `localStorage` (PBKDF2 + AES-256-GCM). Sem isto, o PAT grava em texto claro. **Atenção:** o valor entra no bundle do cliente; protege principalmente o armazenamento em repouso, não um segredo de servidor. |
 
 ---
 

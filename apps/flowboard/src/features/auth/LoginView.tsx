@@ -6,7 +6,7 @@ import {
   consumeLoginScreenBanner,
   LOGIN_BANNER_PAT_LOST,
 } from '../../infrastructure/session/sessionInvalidation'
-import { createSession, saveSession, type FlowBoardSession } from '../../infrastructure/session/sessionStore'
+import { createSession, saveSessionAsync, type FlowBoardSession } from '../../infrastructure/session/sessionStore'
 import { OnboardingPage } from './OnboardingPage'
 import './LoginView.css'
 
@@ -53,7 +53,7 @@ export function LoginView({ onConnected }: Props) {
       await client.verifyRepositoryAccess()
       await bootstrapFlowBoardData(client)
       const session = createSession(pat.trim(), repoUrl.trim(), parsed)
-      saveSession(session)
+      await saveSessionAsync(session)
       onConnected(session)
     } catch (err) {
       if (err instanceof GitHubHttpError) {

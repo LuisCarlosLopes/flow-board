@@ -1,5 +1,5 @@
 // @MindContext: Acoplamento mínimo entre 401 do cliente GitHub e `App` (limpar sessão, banner) sem importar React no `client`.
-// @MindWhy: A notificação tem de ser síncrona antes do `throw`, para o handler ver `loadSession()` e gravar o banner; registo a cada render em `App` mantém a closure de `setSession` atual.
+// @MindWhy: Síncrono antes do `throw`; o handler usa `hasPersistedSession()` (sem desencriptar) para decidir o banner; registo a cada render em `App` mantém a closure de `setSession` atual.
 // @MindRisk: Se o handler falhar, o throw de 401 ainda ocorre — UI deve continuar a tratar o erro noutros pontos.
 const BANNER_STORAGE_KEY = 'flowboard.loginScreenBanner.v1'
 
@@ -9,7 +9,7 @@ export const LOGIN_BANNER_PAT_LOST = 'pat_lost'
 let sessionInvalidateHandler: (() => void) | null = null
 
 /**
- * Replaced on each `App` render so the latest `setSession` / `loadSession` closure runs.
+ * Replaced on each `App` render so the latest `setSession` closure runs.
  * Must stay synchronous: GitHub client calls the notifier before throwing.
  */
 export function registerSessionInvalidateHandler(handler: () => void): void {
