@@ -118,7 +118,7 @@ export function hasPersistedSession(): boolean {
 
 export async function loadSessionAsync(): Promise<FlowBoardSession | null> {
   if (typeof localStorage === 'undefined') {
-    return null
+    return false
   }
   migrateFromSessionStorageIfNeeded()
   const raw = localStorage.getItem(STORAGE_KEY)
@@ -193,13 +193,15 @@ export function clearSession(): void {
   }
 }
 
-export function createSession(pat: string, repoUrl: string, resolution: RepoResolution): FlowBoardSession {
+export function createSession(
+  repoUrl: string,
+  resolution: { owner: string; repo: string; webUrl: string },
+): FlowBoardSession {
   return {
-    pat,
     repoUrl,
     owner: resolution.owner,
     repo: resolution.repo,
-    apiBase: GITHUB_API_BASE,
+    apiBase: PROXY_API_BASE,
     webUrl: resolution.webUrl,
   }
 }

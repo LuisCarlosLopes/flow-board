@@ -6,19 +6,21 @@ const STORAGE_KEY = 'flowboard.session.v1'
 describe('sessionStore', () => {
   afterEach(() => {
     clearSession()
+    localStorage.clear()
   })
 
   it('round-trips session (encrypted in test mode when key is set)', async () => {
     const s = createSession('ghp_x', 'https://github.com/a/b', {
       owner: 'a',
       repo: 'b',
-      apiBase: 'https://api.github.com',
       webUrl: 'https://github.com/a/b',
     })
     await saveSessionAsync(s)
     const loaded = await loadSessionAsync()
     expect(loaded?.owner).toBe('a')
-    expect(loaded?.pat).toBe('ghp_x')
+    expect(loaded?.apiBase).toBe('/api/github')
+    // PAT nunca deve estar na sessão armazenada
+    expect(loaded).not.toHaveProperty('pat')
   })
 
   it('clear removes session', async () => {
@@ -26,7 +28,6 @@ describe('sessionStore', () => {
       createSession('t', 'u', {
         owner: 'a',
         repo: 'b',
-        apiBase: 'https://api.github.com',
         webUrl: 'https://github.com/a/b',
       }),
     )
@@ -47,7 +48,7 @@ describe('sessionStore', () => {
         pat: '',
         owner: 'a',
         repo: 'b',
-        apiBase: 'https://api.github.com',
+        apiBase: '/api/github',
         webUrl: 'https://github.com/a/b',
         repoUrl: 'https://github.com/a/b',
       }),
