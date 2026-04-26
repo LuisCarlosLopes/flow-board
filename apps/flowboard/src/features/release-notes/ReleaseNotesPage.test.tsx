@@ -29,17 +29,20 @@ describe('ReleaseNotesPage', () => {
   it('lists releases in descending order (newest first)', () => {
     renderPage()
     const cards = screen.getAllByTestId(/^release-card-/)
-    expect(cards).toHaveLength(2)
-    expect(cards[0]).toHaveAttribute('data-testid', 'release-card-0.2.0')
-    expect(cards[1]).toHaveAttribute('data-testid', 'release-card-0.1.0')
+    expect(cards).toHaveLength(3)
+    expect(cards[0]).toHaveAttribute('data-testid', 'release-card-0.3.0')
+    expect(cards[1]).toHaveAttribute('data-testid', 'release-card-0.2.0')
+    expect(cards[2]).toHaveAttribute('data-testid', 'release-card-0.1.0')
   })
 
   it('lists all releases from releases.json', () => {
     renderPage()
     expect(screen.getByTestId('release-card-0.1.0')).toBeInTheDocument()
     expect(screen.getByTestId('release-card-0.2.0')).toBeInTheDocument()
+    expect(screen.getByTestId('release-card-0.3.0')).toBeInTheDocument()
     expect(screen.getByText('Lançamento inicial')).toBeInTheDocument()
     expect(screen.getByText('Interface de histórico de versões')).toBeInTheDocument()
+    expect(screen.getByText('Export task hours to CSV')).toBeInTheDocument()
   })
 
   it('renders filter controls', async () => {
@@ -53,6 +56,9 @@ describe('ReleaseNotesPage', () => {
     const user = userEvent.setup()
     renderPage()
     await user.click(screen.getByTestId('filter-feature'))
+
+    const v030 = screen.getByTestId('release-card-0.3.0')
+    expect(within(v030).getByText('Export task hours to CSV')).toBeInTheDocument()
 
     const v020 = screen.getByTestId('release-card-0.2.0')
     expect(within(v020).getByText('Interface de histórico de versões')).toBeInTheDocument()
@@ -70,6 +76,7 @@ describe('ReleaseNotesPage', () => {
     expect(screen.queryByTestId('release-card-0.2.0')).not.toBeInTheDocument()
     await user.click(screen.getByTestId('filter-all'))
     expect(screen.getByTestId('release-card-0.2.0')).toBeInTheDocument()
+    expect(screen.getByTestId('release-card-0.3.0')).toBeInTheDocument()
     expect(screen.getByText('Otimização de performance')).toBeInTheDocument()
   })
 
@@ -78,7 +85,9 @@ describe('ReleaseNotesPage', () => {
     const v010 = screen.getByTestId('release-card-0.1.0')
     expect(within(v010).getByTestId('archive-badge')).toBeInTheDocument()
     const v020 = screen.getByTestId('release-card-0.2.0')
-    expect(within(v020).queryByTestId('archive-badge')).not.toBeInTheDocument()
+    expect(within(v020).getByTestId('archive-badge')).toBeInTheDocument()
+    const v030 = screen.getByTestId('release-card-0.3.0')
+    expect(within(v030).queryByTestId('archive-badge')).not.toBeInTheDocument()
   })
 
   it('exposes change type markers for styling', () => {

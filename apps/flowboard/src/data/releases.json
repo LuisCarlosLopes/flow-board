@@ -21,7 +21,7 @@
   {
     "version": "0.2.0",
     "releaseDate": "2026-04-20T00:00:00.000Z",
-    "archived": false,
+    "archived": true,
     "changes": [
       {
         "id": "c3",
@@ -34,6 +34,19 @@
         "type": "improvement",
         "title": "Otimização de performance",
         "description": "Redução de re-renderizações nas atualizações do quadro em colunas grandes."
+      }
+    ]
+  },
+  {
+    "version": "0.3.0",
+    "releaseDate": "2026-04-26T00:00:00.000Z",
+    "archived": false,
+    "changes": [
+      {
+        "id": "c5",
+        "type": "feature",
+        "title": "Export task hours to CSV",
+        "description": "Hours view supports multi-board selection and downloads a UTF-8 CSV (semicolon, CRLF, pt-BR decimals) with catalog revalidation and atomic loading."
       }
     ]
   }

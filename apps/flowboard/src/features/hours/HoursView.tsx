@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { applyTargetHoursForCardInPeriod } from '../../domain/applyTargetHoursForCardInPeriod'
 import {
+  loadBoardDocumentsOrThrow,
+  validateSelectedBoardsAgainstCatalog,
+} from '../../domain/hoursExport'
+import {
   aggregateTaskHoursForPeriod,
   type BoardHoursInput,
   type TaskHoursRow,
@@ -12,6 +16,7 @@ import {
   localWeekRange,
   type PeriodRange,
 } from '../../domain/hoursProjection'
+import { buildTaskHoursCsv, formatSegmentEndRangePtBr, periodToCsvFields } from '../../domain/taskHoursCsv'
 import { GitHubHttpError } from '../../infrastructure/github/client'
 import { createClientFromSession } from '../../infrastructure/github/fromSession'
 import { createBoardRepository } from '../../infrastructure/persistence/boardRepository'
@@ -20,7 +25,6 @@ import type { FlowBoardSession } from '../../infrastructure/session/sessionStore
 import './HoursView.css'
 
 type PeriodKind = 'day' | 'week' | 'month'
-type Scope = 'selected' | 'all'
 
 const DOMAIN_MSG = {
   NO_SEGMENTS:
@@ -31,6 +35,17 @@ const DOMAIN_MSG = {
 } as const
 
 const MSG_409 = 'O quadro foi alterado em outro lugar. Recarregue e tente salvar novamente.'
+
+const MSG_EXPORT_CATALOG =
+  'Um ou mais quadros selecionados não estão mais disponíveis ou foram arquivados. Atualize a seleção e tente exportar novamente.'
+
+const MSG_EXPORT_EMPTY =
+  'Não há dados para exportar neste período com os quadros selecionados. Ajuste o período ou a seleção de quadros.'
+
+const MSG_SCOPE_NEED_BOARD =
+  'Selecione um quadro no seletor da barra acima para usar o escopo "Quadro atual".'
+
+const MSG_EXPORT_NO_BOARDS = 'Selecione pelo menos um quadro no diálogo para incluir no CSV.'
 
 function periodFor(kind: PeriodKind, anchor: Date): PeriodRange {
   switch (kind) {
@@ -58,6 +73,18 @@ function toBoardHoursInput(doc: BoardDocumentJson): BoardHoursInput {
       endMs: s.endMs,
     })),
   }
+}
+
+function collectArchivedKeysFromDocs(docs: BoardDocumentJson[]): Set<string> {
+  const archived = new Set<string>()
+  for (const doc of docs) {
+    for (const c of doc.cards) {
+      if (isCardArchived(c)) {
+        archived.add(`${doc.boardId}:${c.cardId}`)
+      }
+    }
+  }
+  return archived
 }
 
 function dateInputValue(d: Date): string {
@@ -106,11 +133,27 @@ function formatHours(durationMs: number): string {
   return `${(durationMs / 3_600_000).toFixed(2)} h`
 }
 
+function downloadCsvFile(filename: string, csv: string): void {
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+type Scope = 'all' | 'selected'
+
 type Props = {
   session: FlowBoardSession
   selectedBoardId: string | null
 }
 
+/**
+ * @MindFlow: Pré-visualização (escopo Todos/Quadro atual) usa carga tolerante; o export (modal) usa carga atómica e revalida catálogo.
+ * @MindRisk: Export: CA-E1 e RF-07 no fluxo explícito de download, não no preview.
+ */
 export function HoursView({ session, selectedBoardId }: Props) {
   const client = useMemo(() => createClientFromSession(session), [session])
   const repo = useMemo(() => createBoardRepository(client), [client])
@@ -118,10 +161,19 @@ export function HoursView({ session, selectedBoardId }: Props) {
   const [periodKind, setPeriodKind] = useState<PeriodKind>('week')
   const [anchor, setAnchor] = useState(() => new Date())
   const [scope, setScope] = useState<Scope>('all')
+  const loadSeqRef = useRef(0)
+
   const [rows, setRows] = useState<TaskHoursRow[]>([])
   const [archivedKeys, setArchivedKeys] = useState<Set<string>>(() => new Set())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+
+  const [exportModalOpen, setExportModalOpen] = useState(false)
+  const [exportEligible, setExportEligible] = useState<{ boardId: string; title: string }[]>([])
+  const [exportBoardIds, setExportBoardIds] = useState<string[]>([])
+  const [exportPreparing, setExportPreparing] = useState(false)
+  const [exportBusy, setExportBusy] = useState(false)
+  const [exportNotice, setExportNotice] = useState('')
 
   const [edit, setEdit] = useState<TaskHoursRow | null>(null)
   const [hoursDraft, setHoursDraft] = useState('')
@@ -133,46 +185,65 @@ export function HoursView({ session, selectedBoardId }: Props) {
 
   const period = useMemo(() => periodFor(periodKind, anchor), [periodKind, anchor])
   const anchorTime = anchor.getTime()
+  const scopeKey = scope === 'selected' ? (selectedBoardId ?? '') : 'all'
 
   const load = useCallback(async () => {
+    const seq = ++loadSeqRef.current
     setLoading(true)
     setError('')
+    setExportNotice('')
     try {
       const { catalog } = await repo.loadCatalog()
-      let entries = catalog.boards.filter((b) => !b.archived)
+      if (seq !== loadSeqRef.current) {
+        return
+      }
+      const eligible = catalog.boards.filter((b) => !b.archived)
+      let entries = eligible
       if (scope === 'selected') {
         if (!selectedBoardId) {
-          setRows([])
-          setArchivedKeys(new Set())
-          setLoading(false)
+          if (seq === loadSeqRef.current) {
+            setRows([])
+            setArchivedKeys(new Set())
+          }
           return
         }
-        entries = entries.filter((e) => e.boardId === selectedBoardId)
+        entries = eligible.filter((e) => e.boardId === selectedBoardId)
       }
+
       const docs: BoardDocumentJson[] = []
       const archived = new Set<string>()
       for (const e of entries) {
         const got = await repo.loadBoard(e.boardId)
+        if (seq !== loadSeqRef.current) {
+          return
+        }
         if (got) {
-          docs.push(got.doc)
           for (const c of got.doc.cards) {
             if (isCardArchived(c)) {
               archived.add(`${got.doc.boardId}:${c.cardId}`)
             }
           }
+          docs.push(got.doc)
         }
       }
       const inputs = docs.map(toBoardHoursInput)
+      if (seq !== loadSeqRef.current) {
+        return
+      }
       setRows(aggregateTaskHoursForPeriod(inputs, period))
       setArchivedKeys(archived)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Falha ao carregar dados.')
-      setRows([])
-      setArchivedKeys(new Set())
+      if (seq === loadSeqRef.current) {
+        setError(e instanceof Error ? e.message : 'Falha ao carregar dados.')
+        setRows([])
+        setArchivedKeys(new Set())
+      }
     } finally {
-      setLoading(false)
+      if (seq === loadSeqRef.current) {
+        setLoading(false)
+      }
     }
-  }, [repo, scope, selectedBoardId, period])
+  }, [repo, period, scope, selectedBoardId])
 
   useEffect(() => {
     const t = window.setTimeout(() => {
@@ -189,7 +260,7 @@ export function HoursView({ session, selectedBoardId }: Props) {
     setModalError('')
     setSaveBusy(false)
     setPersistConflict(false)
-  }, [periodKind, anchorTime, scope])
+  }, [periodKind, anchorTime, scopeKey])
   /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
@@ -208,6 +279,20 @@ export function HoursView({ session, selectedBoardId }: Props) {
   }, [edit])
 
   useEffect(() => {
+    if (!exportModalOpen) {
+      return
+    }
+    const onKey = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') {
+        setExportModalOpen(false)
+        setExportNotice('')
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [exportModalOpen])
+
+  useEffect(() => {
     if (edit && hoursInputRef.current) {
       const id = window.requestAnimationFrame(() => {
         hoursInputRef.current?.focus()
@@ -218,6 +303,80 @@ export function HoursView({ session, selectedBoardId }: Props) {
   }, [edit])
 
   const totalMs = useMemo(() => rows.reduce((acc, r) => acc + r.durationMs, 0), [rows])
+
+  async function openExportModal() {
+    setExportNotice('')
+    setExportPreparing(true)
+    try {
+      const { catalog } = await repo.loadCatalog()
+      const eligible = catalog.boards.filter((b) => !b.archived)
+      setExportEligible(eligible.map((e) => ({ boardId: e.boardId, title: e.title })))
+      setExportBoardIds(eligible.map((e) => e.boardId))
+      setExportModalOpen(true)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Falha ao carregar o catálogo para exportar.')
+    } finally {
+      setExportPreparing(false)
+    }
+  }
+
+  function closeExportModal() {
+    setExportModalOpen(false)
+    setExportNotice('')
+  }
+
+  function toggleExportBoard(boardId: string) {
+    setExportNotice('')
+    setExportBoardIds((prev) =>
+      prev.includes(boardId) ? prev.filter((id) => id !== boardId) : [...prev, boardId],
+    )
+  }
+
+  async function runExportFromModal() {
+    setExportNotice('')
+    if (exportBoardIds.length === 0) {
+      setExportNotice(MSG_EXPORT_NO_BOARDS)
+      return
+    }
+    setExportBusy(true)
+    try {
+      const { catalog } = await repo.loadCatalog()
+      const eligibleIds = catalog.boards.filter((b) => !b.archived).map((e) => e.boardId)
+      const selectedSet = new Set(exportBoardIds)
+      const eligibility = validateSelectedBoardsAgainstCatalog(catalog.boards, selectedSet)
+      if (!eligibility.ok) {
+        setExportNotice(MSG_EXPORT_CATALOG)
+        return
+      }
+
+      const orderedForLoad = eligibleIds.filter((id) => selectedSet.has(id))
+      const periodSnapshot = periodFor(periodKind, anchor)
+      const docs = await loadBoardDocumentsOrThrow((id) => repo.loadBoard(id), orderedForLoad)
+      const inputs = docs.map(toBoardHoursInput)
+      const archived = collectArchivedKeysFromDocs(docs)
+      const aggregated = aggregateTaskHoursForPeriod(inputs, periodSnapshot)
+
+      if (aggregated.length === 0) {
+        setExportNotice(MSG_EXPORT_EMPTY)
+        return
+      }
+
+      const csv = buildTaskHoursCsv({
+        periodKind,
+        period: periodSnapshot,
+        rows: aggregated,
+        archivedCardKeys: archived,
+      })
+      const { periodo_inicio, periodo_fim } = periodToCsvFields(periodKind, periodSnapshot)
+      const filename = `flowboard-horas-${periodo_inicio}_${periodo_fim}.csv`
+      downloadCsvFile(filename, csv)
+      closeExportModal()
+    } catch (e) {
+      setExportNotice(e instanceof Error ? e.message : 'Falha ao exportar CSV.')
+    } finally {
+      setExportBusy(false)
+    }
+  }
 
   function openEdit(row: TaskHoursRow) {
     setModalError('')
@@ -403,6 +562,18 @@ export function HoursView({ session, selectedBoardId }: Props) {
               Quadro atual
             </button>
           </div>
+
+          <div className="fb-hours__export-launch">
+            <button
+              type="button"
+              className="fb-hours__export-btn"
+              data-testid="hours-export-csv"
+              disabled={exportPreparing}
+              onClick={() => void openExportModal()}
+            >
+              {exportPreparing ? 'Abrindo…' : 'Exportar CSV'}
+            </button>
+          </div>
         </div>
 
         {persistConflict ? (
@@ -431,9 +602,7 @@ export function HoursView({ session, selectedBoardId }: Props) {
         {loading ? (
           <p className="fb-hours__loading">Carregando…</p>
         ) : scope === 'selected' && !selectedBoardId ? (
-          <p className="fb-hours__empty">
-            Selecione um quadro no seletor da barra acima para usar o escopo &quot;Quadro atual&quot;.
-          </p>
+          <p className="fb-hours__empty">{MSG_SCOPE_NEED_BOARD}</p>
         ) : rows.length === 0 ? (
           <p className="fb-hours__empty">Nenhum tempo concluído neste período (conforme data de conclusão dos segmentos).</p>
         ) : (
@@ -443,6 +612,7 @@ export function HoursView({ session, selectedBoardId }: Props) {
                 <tr>
                   <th scope="col">Tarefa</th>
                   <th scope="col">Quadro</th>
+                  <th scope="col" className="fb-hours__date">Data</th>
                   <th scope="col" className="fb-hours__num">
                     Tempo
                   </th>
@@ -458,6 +628,9 @@ export function HoursView({ session, selectedBoardId }: Props) {
                     <tr key={`${r.boardId}:${r.cardId}`}>
                       <td>{r.cardTitle}</td>
                       <td>{r.boardTitle}</td>
+                      <td className="fb-hours__date">
+                        {formatSegmentEndRangePtBr(r.segmentEndMsMin, r.segmentEndMsMax)}
+                      </td>
                       <td className="fb-hours__num">{formatHours(r.durationMs)}</td>
                       <td className="fb-hours__actions">
                         <button
@@ -488,7 +661,7 @@ export function HoursView({ session, selectedBoardId }: Props) {
               </tbody>
               <tfoot>
                 <tr>
-                  <td colSpan={2}>
+                  <td colSpan={3}>
                     <strong>Total</strong>
                   </td>
                   <td className="fb-hours__num">
@@ -501,6 +674,73 @@ export function HoursView({ session, selectedBoardId }: Props) {
           </div>
         )}
       </div>
+
+      {exportModalOpen ? (
+        <div className="fb-hours-modal-root">
+          <div className="fb-hours-modal-backdrop" aria-hidden="true" onClick={() => closeExportModal()} />
+          <div
+            className="fb-hours-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="hours-export-title"
+            data-testid="hours-export-modal"
+            onClick={(ev) => ev.stopPropagation()}
+          >
+            <div className="fb-hours-modal__header">
+              <h2 id="hours-export-title" className="fb-hours-modal__title">
+                Exportar apontamentos (CSV)
+              </h2>
+            </div>
+            <p className="fb-hours__lead" style={{ marginTop: 0, marginBottom: 'var(--space-3)' }}>
+              O ficheiro usa o <strong>período e a data de referência</strong> mostrados no topo desta página.
+              Inclua um ou mais quadros ativos abaixo.
+            </p>
+            {exportEligible.length === 0 ? (
+              <p className="fb-hours__notice">Não há quadros ativos no catálogo para exportar.</p>
+            ) : (
+              <fieldset className="fb-hours__board-panel" style={{ maxHeight: 200, marginBottom: 'var(--space-3)' }}>
+                <legend>Quadros a incluir</legend>
+                {exportEligible.map((b) => (
+                  <label key={b.boardId} className="fb-hours__board-check">
+                    <input
+                      type="checkbox"
+                      checked={exportBoardIds.includes(b.boardId)}
+                      onChange={() => toggleExportBoard(b.boardId)}
+                      data-testid={`hours-export-board-${b.boardId}`}
+                    />
+                    <span>{b.title}</span>
+                  </label>
+                ))}
+              </fieldset>
+            )}
+            {exportNotice ? (
+              <div className="fb-hours-modal__err" role="status" data-testid="hours-export-notice">
+                {exportNotice}
+              </div>
+            ) : null}
+            <div className="fb-hours-modal__actions">
+              <button
+                type="button"
+                className="fb-hours-modal__btn fb-hours-modal__btn--ghost"
+                data-testid="hours-export-cancel"
+                onClick={() => closeExportModal()}
+                disabled={exportBusy}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="fb-hours-modal__btn fb-hours-modal__btn--primary"
+                data-testid="hours-export-confirm"
+                onClick={() => void runExportFromModal()}
+                disabled={exportBusy || exportEligible.length === 0}
+              >
+                {exportBusy ? 'A gerar…' : 'Baixar CSV'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {edit ? (
         <div className="fb-hours-modal-root">

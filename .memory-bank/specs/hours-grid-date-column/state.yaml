@@ -1,0 +1,84 @@
+title: "Coluna Data na grid de apontamentos (Horas no período)"
+slug: hours-grid-date-column
+created_at: "2026-04-26T12:00:00.000Z"
+updated_at: "2026-04-26T12:00:00.000Z"
+context: "FlowBoard — vista Horas no período / agregação R09 por endMs"
+objective: >
+  Exibir na tabela de apontamentos uma coluna com a data (ou intervalo de datas)
+  associada ao tempo agregado por tarefa no período, alinhada à regra de conclusão
+  dos segmentos (instante endMs, calendário local).
+acceptance_criteria:
+  - "A grid inclui cabeçalho 'Data' com valores em pt-BR."
+  - "Para cada linha (tarefa + quadro), a data reflete o intervalo civil local entre o menor e o maior endMs dos segmentos que entram na agregação do período; se coincidirem, mostrar um único dia."
+  - "Ordenação e totais permanecem coerentes; edição de horas por tarefa/período continua a funcionar."
+  - "Testes Vitest em hoursAggregation cobrem casos de um dia e de vários dias."
+scope:
+  in:
+    - "Domínio aggregateTaskHoursForPeriod e tipo TaskHoursRow."
+    - "HoursView.tsx (tabela) e CSS se necessário."
+  out:
+    - "Mudança obrigatória do contrato CSV export (pode alinhar depois em follow-up)."
+tech_context: "React SPA; domínio hoursAggregation; Constitution I e VI."
+baseline_ref: "1030fd8777c6da92ad02175ef65d80dfdeaefd28"
+
+squad:
+  status: concluído
+  track: TASK
+  track_override: false
+  score: 3
+  confidence: 88
+  current_phase: null
+  completed_phases:
+    - planner
+    - task-breakdown
+    - HITL
+    - implementer
+    - code-reviewer
+    - tester
+  next_phase: null
+  iteration: 1
+  blockers: []
+  hitl_required: false
+
+repo_write_scope:
+  - apps/flowboard/src/domain/hoursAggregation.ts
+  - apps/flowboard/src/domain/hoursAggregation.test.ts
+  - apps/flowboard/src/features/hours/HoursView.tsx
+  - apps/flowboard/src/features/hours/HoursView.css
+
+artifact_reuse:
+  - artifact: ".memory-bank/specs/export-apontamentos-csv/state.yaml"
+    decision: reused-as-context-only
+    reason: "Mesma vista e agregação; escopo atual só coluna de data na grid."
+
+approvals:
+  - at: "2026-04-26T12:30:00.000Z"
+    gate: HITL_pre_implementacao
+    decision: approved
+    note: "Pedido explícito do utilizador com pipeline squad-codesteer; planner-TASK.md e task-breakdown-TASK.md tomados como plano executável."
+retries_by_phase: {}
+last_failure: null
+decisions: []
+pipeline:
+  - planner
+  - task-breakdown
+  - HITL
+  - implementer
+  - code-reviewer
+  - tester
+
+subtasks: []
+history: []
+parallel_groups: []
+context_cache:
+  version: null
+feedback_loop:
+  similar_tasks:
+    - slug: export-apontamentos-csv
+      note: "Horas no período, mesmo aggregateTaskHoursForPeriod"
+  predictions: {}
+  adjustments_applied: []
+  recommendations_acknowledged: []
+summary: >
+  Coluna Data na grid (min/max endMs civil local pt-BR por tarefa); TaskHoursRow estendido;
+  formatadores em taskHoursCsv; tfoot colSpan=3; Vitest hoursAggregation + suite completa verde.

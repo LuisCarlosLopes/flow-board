@@ -1,0 +1,51 @@
+cache_version: "1.0"
+created_at: "2026-04-26T00:00:00.000Z"
+updated_at: "2026-04-26T12:00:00.000Z"
+slug: export-apontamentos-csv
+repo_identity:
+  git_commit: "1030fd8777c6da92ad02175ef65d80dfdeaefd28"
+  structure_hash: "bootstrap"
+shared_analysis:
+  stack_detection: "TypeScript, React, Vite; Vitest; persistência GitHub (BoardDocumentJson.timeSegments)."
+  conventions: "Domínio em src/domain; HoursView em src/features/hours; R09 = filtro por endMs em PeriodRange (hoursProjection)."
+  repo_map: "HoursView: periodKind day|week|month; multi-select boards elegíveis; export CSV via taskHoursCsv + revalidação catálogo (hoursExport)."
+phase_caches:
+  spec:
+    artifact: spec-feature.md
+    summary: "CSV ; UTF-8 BOM CRLF; horas com vírgula decimal; 1 linha por board+card; filtro período + multi-board; atomicidade export."
+  planner:
+    artifact: planner-FEATURE.md
+    summary: "taskHoursCsv.ts + tests; HoursView multi-board + export; carga atómica boards; DoD RF×CA; CA-E1 para E1."
+  implementer:
+    verification_results:
+      compilation_ok: true
+      lint_ok: true
+      tests_passed: 308
+      tests_failed: 0
+    files_created:
+      - "apps/flowboard/src/domain/taskHoursCsv.ts"
+      - "apps/flowboard/src/domain/taskHoursCsv.test.ts"
+      - "apps/flowboard/src/domain/hoursExport.ts"
+      - "apps/flowboard/src/domain/hoursExport.test.ts"
+      - ".memory-bank/specs/export-apontamentos-csv/implementer-delivery-FEATURE.md"
+    files_modified:
+      - "apps/flowboard/src/features/hours/HoursView.tsx"
+      - "apps/flowboard/src/features/hours/HoursView.css"
+      - "apps/flowboard/src/data/releases.json"
+      - "apps/flowboard/src/features/release-notes/ReleaseNotesPage.test.tsx"
+      - ".memory-bank/specs/export-apontamentos-csv/task-breakdown-FEATURE.md"
+    generated_at: "2026-04-26T12:00:00.000Z"
+handoff_summaries:
+  plan_reviewer_focus: "Validar mapa de ficheiros vs repo; atomic load vs HoursView atual; releases.json scope."
+  implementer_to_tester:
+    test_priorities:
+      - "Export com 0 linhas agregadas não cria ficheiro"
+      - "Board removido/arquivado entre UI e export (CA-E1)"
+      - "loadBoard null em board selecionado bloqueia preview e export"
+    files_requiring_tests:
+      - "apps/flowboard/src/features/hours/HoursView.tsx"
+    mock_requirements:
+      - "boardRepository loadCatalog / loadBoard"
+    generated_at: "2026-04-26T12:00:00.000Z"
+cache_metrics:
+  tokens_saved_estimate: 0

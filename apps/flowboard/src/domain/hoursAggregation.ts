@@ -8,6 +8,10 @@ export type TaskHoursRow = {
   cardId: string
   cardTitle: string
   durationMs: number
+  /** Min `endMs` among R09-included segments for this task in the period. */
+  segmentEndMsMin: number
+  /** Max `endMs` among R09-included segments for this task in the period. */
+  segmentEndMsMax: number
 }
 
 /** Entrada mínima para agregar (evita acoplar ao JSON de persistência). */
@@ -35,9 +39,15 @@ export function aggregateTaskHoursForPeriod(boards: BoardHoursInput[], period: P
       const duration = seg.endMs - seg.startMs
       const key = `${b.boardId}:${seg.cardId}`
       const cardTitle = titleByCard.get(seg.cardId) ?? 'Tarefa'
+      const endMs = seg.endMs
       const prev = map.get(key)
       if (prev) {
-        map.set(key, { ...prev, durationMs: prev.durationMs + duration })
+        map.set(key, {
+          ...prev,
+          durationMs: prev.durationMs + duration,
+          segmentEndMsMin: Math.min(prev.segmentEndMsMin, endMs),
+          segmentEndMsMax: Math.max(prev.segmentEndMsMax, endMs),
+        })
       } else {
         map.set(key, {
           boardId: b.boardId,
@@ -45,6 +55,8 @@ export function aggregateTaskHoursForPeriod(boards: BoardHoursInput[], period: P
           cardId: seg.cardId,
           cardTitle,
           durationMs: duration,
+          segmentEndMsMin: endMs,
+          segmentEndMsMax: endMs,
         })
       }
     }

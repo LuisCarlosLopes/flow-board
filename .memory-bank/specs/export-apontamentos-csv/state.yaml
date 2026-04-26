@@ -1,0 +1,147 @@
+title: "Exportar apontamentos para CSV (separador ;)"
+slug: export-apontamentos-csv
+created_at: "2026-04-26T00:00:00.000Z"
+updated_at: "2026-04-26T22:30:00.000Z"
+context: "FlowBoard — vista Horas / agregação de tempo por tarefa"
+objective: >
+  Permitir exportar apontamentos (tempo por tarefa no período) para ficheiro CSV
+  com separador ponto e vírgula, com filtros de período e de um ou mais quadros.
+acceptance_criteria:
+  - "Utilizador pode escolher período (coerente com a vista de horas ou equivalente documentado) e um ou mais boards."
+  - "Ficheiro gerado usa ; como delimitador de campo e abre/salvaguarda conteúdo conforme regras da spec (RFC4180 adaptado a ;)."
+  - "Linhas exportadas refletem a mesma semântica de inclusão de segmentos no período que a agregação atual (endMs no intervalo do período), salvo decisão explícita em contrário na spec."
+  - "Comportamento sem dados, erro de rede e boards arquivados tratados de forma definida na spec."
+scope:
+  in:
+    - "UI/fluxo de exportação e geração do CSV no cliente (sem backend próprio)."
+    - "Filtro multi-board e período."
+  out:
+    - "OAuth GitHub; alteração do modelo de persistência além do necessário para leitura."
+tech_context: "React SPA, dados em GitHub JSON; domínio em hoursAggregation / HoursView; Constitution II (sem backend de dados próprio)."
+baseline_ref: "1030fd8777c6da92ad02175ef65d80dfdeaefd28"
+
+squad:
+  status: aguardando_code_review_e_tester
+  track: FEATURE
+  track_override: false
+  score: 5
+  confidence: 85
+  current_phase: code-reviewer
+  completed_phases:
+    - spec
+    - spec-reviewer
+    - planner
+    - plan-reviewer
+    - task-breakdown
+    - HITL
+    - implementer
+    - verifier
+  next_phase: tester
+  iteration: 1
+  blockers: []
+  hitl_required: false
+
+repo_write_scope:
+  - apps/flowboard/src/domain/taskHoursCsv.ts
+  - apps/flowboard/src/domain/taskHoursCsv.test.ts
+  - apps/flowboard/src/features/hours/HoursView.tsx
+  - apps/flowboard/src/features/hours/HoursView.css
+  - apps/flowboard/src/data/releases.json
+artifact_reuse:
+  - artifact: ".memory-bank/specs/edit-horas-apontamento/spec-feature.md"
+    decision: reused-as-context-only
+    reason: "Mesmo domínio (Horas, segmentos, período, TaskHoursRow); escopo de exportação e multi-board é novo."
+approvals:
+  - at: "2026-04-26T20:00:00.000Z"
+    gate: HITL_pre_implementacao
+    decision: approved
+    note: "Utilizador pediu continuar implementação; plano task-breakdown-FEATURE.md (T1–T7) aprovado para execução."
+retries_by_phase: {}
+last_failure: null
+decisions:
+  - at: "2026-04-26T22:30:00.000Z"
+    topic: RF-04_D4_preview_vs_export
+    status: accepted_with_caveat
+    note: "Verificador: prévia (escopo chips) e CSV (modal) podem divergir no subconjunto de boards; export segue IPD no modal."
+pipeline:
+  - spec
+  - spec-reviewer
+  - planner
+  - plan-reviewer
+  - task-breakdown
+  - HITL
+  - implementer
+  - verifier
+  - code-reviewer
+  - tester
+subtasks: []
+history:
+  - at: "2026-04-26T12:00:00.000Z"
+    phase: spec
+    agent: spec
+    artifact: spec-feature.md
+    note: "TSD gerado; confiança 89 no documento."
+  - at: "2026-04-26T18:00:00.000Z"
+    phase: spec-reviewer
+    agent: spec-reviewer
+    artifact: spec-reviewer-feature.md
+    note: "GO com ressalvas; score 70/100; 0 críticos."
+  - at: "2026-04-26T18:00:00.000Z"
+    phase: planner
+    agent: planner
+    artifact: planner-FEATURE.md
+    note: "IPD 1.0.0; confiança 92 no documento."
+  - at: "2026-04-26T18:30:00.000Z"
+    phase: plan-reviewer
+    agent: plan-reviewer
+    artifact: plan-reviewer-FEATURE.md
+    note: "GO; score 90/100; avisos D12 e linhas hoursProjection."
+  - at: "2026-04-26T19:00:00.000Z"
+    phase: task-breakdown
+    agent: task-breakdown
+    artifact: task-breakdown-FEATURE.md
+    note: "7 tasks T1–T7; pronto para HITL pré-implementação."
+  - at: "2026-04-26T20:00:00.000Z"
+    phase: HITL
+    agent: human
+    artifact: null
+    note: "Aprovação explícita; fase implementer iniciada."
+  - at: "2026-04-26T20:15:00.000Z"
+    phase: implementer
+    agent: implementer
+    artifact: implementer-delivery-FEATURE.md
+    note: "Código, testes, releases.json; pronto para verifier."
+  - at: "2026-04-26T22:00:00.000Z"
+    phase: correção_ux
+    agent: human+assistant
+    artifact: null
+    note: "Apontamento: restaurar Todos/Quadro atual e preview; export só no modal pós 'Exportar CSV'."
+  - at: "2026-04-26T22:30:00.000Z"
+    phase: verifier
+    agent: verifier
+    artifact: verifier-FEATURE.md
+    note: "APROVADO COM RESSALVAS; GO pós-UX; lint/vitest/build verdes no relatório."
+parallel_groups:
+  - id: pos-verification
+    status: pending
+    note: "code-reviewer e tester em paralelo (quando forem acionados)."
+    phases:
+      - name: code-reviewer
+        agent: code-reviewer
+        status: pending
+        artifact_path: code-reviewer-FEATURE.md
+      - name: tester
+        agent: tester
+        status: pending
+        artifact_path: tester-FEATURE.md
+    merge_gate:
+      condition: all_completed
+      required_all_success: true
+context_cache:
+  version: "1.0"
+feedback_loop:
+  similar_tasks: []
+  predictions: {}
+  adjustments_applied: []
+  recommendations_acknowledged: []
+summary: null
