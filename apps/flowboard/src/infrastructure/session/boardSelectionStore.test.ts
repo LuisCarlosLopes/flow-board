@@ -4,6 +4,7 @@ import type { FlowBoardSession } from './sessionStore'
 
 function makeSession(owner: string, repo: string): FlowBoardSession {
   return {
+    pat: 'ghp_test',
     repoUrl: `https://github.com/${owner}/${repo}`,
     owner,
     repo,

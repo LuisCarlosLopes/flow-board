@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { ArchivedCardsPage } from '../board/ArchivedCardsPage'
 import { BoardView } from '../board/BoardView'
@@ -6,6 +6,8 @@ import { BoardListView } from '../boards/BoardListView'
 import { HoursView } from '../hours/HoursView'
 import { SearchModal } from './SearchModal'
 import { useSearchHotkey } from '../../hooks/useSearchHotkey'
+import { GitHubHttpError } from '../../infrastructure/github/client'
+import { createClientFromSession } from '../../infrastructure/github/fromSession'
 import { formatRepoChipLabel } from '../../infrastructure/github/url'
 import { clearActiveBoardId, loadActiveBoardId, saveActiveBoardId } from '../../infrastructure/session/boardSelectionStore'
 import { clearSession, type FlowBoardSession } from '../../infrastructure/session/sessionStore'
@@ -31,6 +33,8 @@ export function AppShell({ session, onLogout }: Props) {
   const [cardToEditId, setCardToEditId] = useState<string | null>(null)
   const [boardPersistGeneration, setBoardPersistGeneration] = useState(0)
   const [theme, setTheme] = useState<ThemeMode>(() => readTheme())
+  const tabWasHidden = useRef(false)
+  const lastRepoProbeAt = useRef(0)
 
   useEffect(() => {
     function onStorage(e: StorageEvent) {
@@ -49,6 +53,36 @@ export function AppShell({ session, onLogout }: Props) {
   useEffect(() => {
     saveActiveBoardId(session, selectedBoardId)
   }, [session, selectedBoardId])
+
+  // After the user was away, probe GitHub once so a revoked/expired PAT surfaces as 401 and
+  // the global handler sends them to login, instead of leaving uncaught load errors in the board.
+  useEffect(() => {
+    const MIN_MS_BETWEEN_PROBES = 5 * 60 * 1000
+    function onVisibility() {
+      if (document.visibilityState === 'hidden') {
+        tabWasHidden.current = true
+        return
+      }
+      if (document.visibilityState !== 'visible' || !tabWasHidden.current) {
+        return
+      }
+      tabWasHidden.current = false
+      const now = Date.now()
+      if (now - lastRepoProbeAt.current < MIN_MS_BETWEEN_PROBES) {
+        return
+      }
+      lastRepoProbeAt.current = now
+      const client = createClientFromSession(session)
+      void client.verifyRepositoryAccess().catch((e) => {
+        if (e instanceof GitHubHttpError && e.status === 401) {
+          return
+        }
+        // Transient network / rate limits: ignore; a later action will surface errors.
+      })
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => document.removeEventListener('visibilitychange', onVisibility)
+  }, [session])
 
   const requestOpenColumnEditor = useCallback(() => {
     setColumnEditorMenuTick((n) => n + 1)

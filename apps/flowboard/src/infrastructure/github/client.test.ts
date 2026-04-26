@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import * as sessionInv from '../session/sessionInvalidation'
 import { GitHubContentsClient, GitHubHttpError, putFileBase64WithRetry, putJsonWithRetry } from './client'
 
 function mockResponse(status: number, body?: unknown, headers?: Record<string, string>) {
@@ -13,6 +14,48 @@ function mockResponse(status: number, body?: unknown, headers?: Record<string, s
 }
 
 describe('GitHubContentsClient', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('sends cache no-store on GET so stale 401 is not served from HTTP cache', async () => {
+    const fetchMock = vi.fn().mockImplementation(() => mockResponse(200, { encoding: 'base64', content: btoa('{}') }))
+    const client = new GitHubContentsClient({
+      token: 't',
+      owner: 'o',
+      repo: 'r',
+      fetchImpl: fetchMock,
+    })
+    await client.tryGetFileJson('flowboard/x.json')
+    expect(fetchMock.mock.calls[0]![1]).toMatchObject({ cache: 'no-store' })
+  })
+
+  it('notifies session invalidation on 401 from tryGetFileJson', async () => {
+    const spy = vi.spyOn(sessionInv, 'notifySessionInvalidateFromGithub401')
+    const fetchMock = vi.fn().mockImplementation(() => mockResponse(401))
+    const client = new GitHubContentsClient({
+      token: 't',
+      owner: 'o',
+      repo: 'r',
+      fetchImpl: fetchMock,
+    })
+    await expect(client.tryGetFileJson('flowboard/x.json')).rejects.toMatchObject({ status: 401 })
+    expect(spy).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not notify on 403 from tryGetFileJson', async () => {
+    const spy = vi.spyOn(sessionInv, 'notifySessionInvalidateFromGithub401')
+    const fetchMock = vi.fn().mockImplementation(() => mockResponse(403))
+    const client = new GitHubContentsClient({
+      token: 't',
+      owner: 'o',
+      repo: 'r',
+      fetchImpl: fetchMock,
+    })
+    await expect(client.tryGetFileJson('flowboard/x.json')).rejects.toMatchObject({ status: 403 })
+    expect(spy).not.toHaveBeenCalled()
+  })
+
   it('deleteFile sends DELETE with sha', async () => {
     const fetchMock = vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
       expect(init?.method).toBe('DELETE')

@@ -1,8 +1,12 @@
 import { type FormEvent, useState } from 'react'
 import { GitHubContentsClient } from '../../infrastructure/github/client'
-import { parseRepoUrl } from '../../infrastructure/github/url'
+import { FLOWBOARD_GITHUB_PROXY_BASE, parseRepoUrl } from '../../infrastructure/github/url'
 import { bootstrapFlowBoardData } from '../../infrastructure/persistence/boardRepository'
-import { createSession, saveSession, type FlowBoardSession } from '../../infrastructure/session/sessionStore'
+import {
+  consumeLoginScreenBanner,
+  LOGIN_BANNER_PAT_LOST,
+} from '../../infrastructure/session/sessionInvalidation'
+import { createSession, saveSessionAsync, type FlowBoardSession } from '../../infrastructure/session/sessionStore'
 import { OnboardingPage } from './OnboardingPage'
 import './LoginView.css'
 
@@ -33,14 +37,20 @@ export function LoginView({ onConnected }: Props) {
   const [repoUrl, setRepoUrl] = useState('')
   const [pat, setPat] = useState('')
   const [error, setError] = useState('')
+  const [sessionLostBanner, setSessionLostBanner] = useState<string | null>(() => {
+    const key = consumeLoginScreenBanner()
+    if (key === LOGIN_BANNER_PAT_LOST) {
+      return 'Sua sessão com o GitHub expirou ou o token foi revogado. Cole um PAT válido para continuar.'
+    }
+    return null
+  })
   const [busy, setBusy] = useState(false)
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError('')
-
-    // Client-side format validation before hitting the server
+    setSessionLostBanner(null)
     const parsed = parseRepoUrl(repoUrl.trim())
     if ('error' in parsed) {
       setError(parsed.error)
@@ -53,22 +63,20 @@ export function LoginView({ onConnected }: Props) {
 
     setBusy(true)
     try {
-      // POST to BFF — PAT validated server-side, stored in HttpOnly cookie
-      const meta = await postLogin(pat.trim(), repoUrl.trim())
-
-      // Bootstrap default board data using the proxy (cookie carries the PAT)
-      const proxyClient = new GitHubContentsClient({
-        owner: meta.owner,
-        repo: meta.repo,
+      const resolution = await postLogin(pat.trim(), repoUrl.trim())
+      const client = new GitHubContentsClient({
+        owner: resolution.owner,
+        repo: resolution.repo,
+        apiBase: FLOWBOARD_GITHUB_PROXY_BASE,
       })
-      await bootstrapFlowBoardData(proxyClient)
-
-      const session = createSession(meta.repoUrl, {
-        owner: meta.owner,
-        repo: meta.repo,
-        webUrl: meta.webUrl,
+      await client.verifyRepositoryAccess()
+      await bootstrapFlowBoardData(client)
+      const session = createSession(pat.trim(), repoUrl.trim(), {
+        owner: resolution.owner,
+        repo: resolution.repo,
+        webUrl: resolution.webUrl,
       })
-      saveSession(session)
+      await saveSessionAsync(session)
       onConnected(session)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha ao conectar. Tente novamente.')
@@ -101,6 +109,11 @@ export function LoginView({ onConnected }: Props) {
           Conecte um <strong>repositório GitHub privado</strong> onde os dados serão salvos como JSON.
           Use um PAT com escopo adequado (tipicamente <code>repo</code> para repos privados).
         </p>
+        {sessionLostBanner ? (
+          <div className="fb-login__err" role="status">
+            {sessionLostBanner}
+          </div>
+        ) : null}
         {error ? (
           <div className="fb-login__err" role="alert">
             {error}
