@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  /** Chave de cifra do PAT; injetada no build a partir de VITE_SESSION_SECRET ou SESSION_SECRET. */
+  /** Chave de cifra do PAT; injetada no build a partir de `VITE_SESSION_SECRET` apenas. */
   readonly FLOWBOARD_PAT_KEY: string
 }
 

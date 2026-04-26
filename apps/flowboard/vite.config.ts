@@ -103,9 +103,11 @@ function apiDevServer(): Plugin {
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
+  // Never use SESSION_SECRET here: that key is for HttpOnly cookie crypto on the
+  // server only (`api/_session.ts`). Embedding it via `define` would ship it in
+  // the public JS bundle. Client-side PAT encryption uses `VITE_SESSION_SECRET` only.
   const patKey =
     env.VITE_SESSION_SECRET ||
-    env.SESSION_SECRET ||
     (mode === 'test' ? 'flowboard-vitest-default-pat-encryption-key-min-length' : '')
 
   return {

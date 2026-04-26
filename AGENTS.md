@@ -188,7 +188,7 @@ Funcionalidades em desenvolvimento podem ficar atrás de flags **preview**: o ut
 | `FLOWBOARD_E2E_PAT` | Sim para E2E com GitHub | PAT com escopo suficiente para ler/escrever conteúdo nesse repo. **Nunca** documentar o valor real no repositório. |
 | `FLOWBOARD_E2E_BASE_URL` | Não | Base da app nos testes (default `http://localhost:5173`). |
 | `CI` | Não | Quando definido, Playwright usa `retries: 2`, `workers: 1`, `forbidOnly: true`. |
-| `VITE_SESSION_SECRET` ou `SESSION_SECRET` | Não (recomendado em produção) | Chave de cifra do PAT no `localStorage` (PBKDF2 + AES-256-GCM). Sem isto, o PAT grava em texto claro. **Atenção:** o valor entra no bundle do cliente; protege principalmente o armazenamento em repouso, não um segredo de servidor. |
+| `VITE_SESSION_SECRET` | Não (recomendado em produção) | Chave de cifra do PAT no `localStorage` (PBKDF2 + AES-256-GCM). Sem isto, o PAT grava em texto claro. **Atenção:** o valor entra no bundle do cliente; use uma chave dedicada, **não** reutilize `SESSION_SECRET` (esse é só para cookies HttpOnly no servidor). |
 
 ---
 

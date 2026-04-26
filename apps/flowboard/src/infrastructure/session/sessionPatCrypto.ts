@@ -1,6 +1,7 @@
 /**
  * Criptografia do PAT em repouso (Web Crypto, AES-256-GCM, chave via PBKDF2).
- * A chave vem de `VITE_SESSION_SECRET` ou `SESSION_SECRET` (ver `vite.config.ts`).
+ * A chave vem só de `VITE_SESSION_SECRET` no build (ver `vite.config.ts`). Não usar
+ * `SESSION_SECRET` no cliente — esse valor é só para cookies no servidor.
  */
 const PBKDF2_ITERATIONS = 100_000
 const PBKDF2_SALT = new TextEncoder().encode('flowboard.pat.salt.v1')
