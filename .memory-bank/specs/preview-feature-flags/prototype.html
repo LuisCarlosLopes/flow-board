@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FlowBoard — Protótipo: Pré-visualizações (feature flags)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Sora:wght@600;700&display=swap"
+      rel="stylesheet"
+    />
+    <!--
+      PALETA SELECIONADA
+      ├── Nicho identificado: dev tool / quadro B2B (dados densos, topbar discreta)
+      ├── Preset escolhido: tech-dark
+      ├── Motivo: alinha ao tom de AppShell, SearchModal (backdrop) e evita
+      │   competição visual com ações críticas; o botão "Previews" permanece ghost
+      └── Accent principal: oklch(62% 0.20 264) — só para foco/hover secundário, não no CTA "Previews"
+
+      ENTENDIMENTO DO DRAFT
+      ├── Objetivo: entrada estável na topbar + modal de toggles de flags experimentais
+      ├── Usuário: pessoa que usa quadro/horas e quer ativar labs sem ruído
+      ├── Ação principal: abrir "Previews" e ligar/desligar flags; persistir sem "Guardar"
+      └── Hierarquia: busca e tema primeiro na percepção; "Previews" é terciário (opacity)
+    -->
+    <style>
+      :root {
+        /* Preset tech-dark (devtools / SaaS) */
+        --bg-base: #0d0f14;
+        --bg-surface: #141720;
+        --bg-overlay: #1c2030;
+        --bg-subtle: #252a3a;
+        --text-primary: #eef0f6;
+        --text-secondary: #8892aa;
+        --text-disabled: #4a526a;
+        --border-default: rgba(255, 255, 255, 0.07);
+        --border-strong: rgba(255, 255, 255, 0.14);
+        --fb-border-subtle: rgba(255, 255, 255, 0.08);
+        --accent: oklch(62% 0.2 264);
+        --accent-hover: oklch(67% 0.22 264);
+        --accent-fg: #ffffff;
+        --backdrop-modal: rgba(0, 0, 0, 0.45);
+        --font-display: "Sora", system-ui, sans-serif;
+        --font-body: "Plus Jakarta Sans", system-ui, sans-serif;
+        --space-1: 4px;
+        --space-2: 8px;
+        --space-3: 16px;
+        --space-4: 24px;
+        --radius-sm: 4px;
+        --radius-md: 8px;
+        --radius-lg: 12px;
+        --z-modal: 100;
+        --transition: 150ms cubic-bezier(0, 0, 0.2, 1);
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        background: var(--bg-base);
+        color: var(--text-primary);
+        font-family: var(--font-body);
+        font-size: 1rem;
+        line-height: 1.5;
+      }
+
+      .fb-proto {
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .fb-topbar {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+        padding: var(--space-2) var(--space-3);
+        background: var(--bg-surface);
+        border-bottom: 1px solid var(--border-default);
+        position: sticky;
+        top: 0;
+        z-index: 20;
+      }
+
+      .fb-topbar__brand {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+        flex-shrink: 0;
+      }
+
+      .fb-topbar__mark {
+        width: 32px;
+        height: 32px;
+        border-radius: var(--radius-sm);
+        background: linear-gradient(145deg, var(--accent), oklch(55% 0.18 290));
+        display: grid;
+        place-items: center;
+        font-family: var(--font-display);
+        font-weight: 700;
+        font-size: 0.85rem;
+        color: var(--accent-fg);
+      }
+
+      .fb-topbar__name {
+        font-family: var(--font-display);
+        font-weight: 600;
+        font-size: 1.05rem;
+        letter-spacing: -0.02em;
+      }
+
+      .fb-topbar__search {
+        flex: 1;
+        max-width: 420px;
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+        padding: var(--space-2) var(--space-3);
+        background: var(--bg-overlay);
+        border: 1px solid var(--border-default);
+        border-radius: var(--radius-md);
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+        cursor: default;
+        user-select: none;
+      }
+
+      .fb-topbar__kbd {
+        margin-left: auto;
+        font-family: ui-monospace, monospace;
+        font-size: 0.7rem;
+        padding: 2px 6px;
+        border-radius: 4px;
+        border: 1px solid var(--border-strong);
+        color: var(--text-disabled);
+      }
+
+      .fb-topbar__actions {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+        margin-left: auto;
+        flex-shrink: 0;
+      }
+
+      .fb-btn-text,
+      .fb-proto-ghost {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.35rem 0.5rem;
+        font-size: 0.875rem;
+        font-family: inherit;
+        color: var(--text-secondary);
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        text-decoration: none;
+        transition:
+          color var(--transition),
+          opacity var(--transition),
+          border-color var(--transition),
+          background var(--transition);
+      }
+
+      .fb-proto-ghost:hover,
+      .fb-proto-ghost:focus-visible {
+        color: var(--text-primary);
+        background: var(--bg-overlay);
+        border-color: var(--border-default);
+      }
+
+      .fb-proto-ghost:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      .fb-theme-toggle {
+        display: inline-grid;
+        place-items: center;
+        width: 36px;
+        height: 36px;
+        padding: 0;
+        border: 1px solid var(--border-default);
+        border-radius: var(--radius-md);
+        background: var(--bg-subtle);
+        color: var(--text-secondary);
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+
+      .fb-theme-toggle:hover {
+        color: var(--accent);
+        border-color: var(--border-strong);
+      }
+
+      .fb-version-pill {
+        font-size: 0.75rem;
+        color: var(--text-disabled);
+        padding: 0.25rem 0.4rem;
+        border-radius: var(--radius-sm);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .fb-preview-lab-btn {
+        font-size: 0.8125rem;
+        font-weight: 500;
+        opacity: 0.88;
+        padding: 0.35rem 0.5rem;
+        gap: 0.35rem;
+        color: var(--text-secondary);
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        font-family: inherit;
+        display: inline-flex;
+        align-items: center;
+        transition:
+          opacity var(--transition),
+          color var(--transition),
+          background var(--transition),
+          border-color var(--transition);
+      }
+
+      .fb-preview-lab-btn:hover,
+      .fb-preview-lab-btn:focus-visible {
+        opacity: 1;
+        color: var(--text-primary);
+        background: var(--bg-overlay);
+        border-color: var(--border-default);
+      }
+
+      .fb-preview-lab-btn:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      .fb-preview-lab-btn svg {
+        flex-shrink: 0;
+        opacity: 0.9;
+      }
+
+      .fb-proto-body {
+        flex: 1;
+        padding: var(--space-4);
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+      }
+
+      .fb-proto-hint {
+        margin: 0 0 var(--space-2);
+        font-size: 0.8125rem;
+        color: var(--text-disabled);
+      }
+
+      /* Modal */
+      .fb-preview-backdrop {
+        position: fixed;
+        inset: 0;
+        background: var(--backdrop-modal);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: var(--space-3);
+        z-index: var(--z-modal);
+        animation: fb-fade 150ms ease-out;
+      }
+
+      @keyframes fb-fade {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .fb-preview-backdrop {
+          animation: none;
+        }
+      }
+
+      .fb-preview-modal {
+        width: min(420px, 92vw);
+        max-height: min(560px, 88dvh);
+        display: flex;
+        flex-direction: column;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-default);
+        border-radius: var(--radius-lg);
+        box-shadow:
+          0 4px 24px rgba(0, 0, 0, 0.45),
+          0 0 0 1px rgba(255, 255, 255, 0.03);
+        overflow: hidden;
+        animation: fb-scale 200ms cubic-bezier(0, 0, 0.2, 1);
+      }
+
+      @keyframes fb-scale {
+        from {
+          opacity: 0;
+          transform: scale(0.98);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .fb-preview-modal {
+          animation: none;
+        }
+      }
+
+      .fb-preview-modal__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-2);
+        padding: var(--space-3) var(--space-3) 0.75rem;
+        border-bottom: 1px solid var(--fb-border-subtle);
+        flex-shrink: 0;
+      }
+
+      .fb-preview-modal__title {
+        margin: 0;
+        font-family: var(--font-display);
+        font-size: 1.0625rem;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        color: var(--text-primary);
+      }
+
+      .fb-preview-modal__close {
+        display: inline-grid;
+        place-items: center;
+        width: 36px;
+        height: 36px;
+        margin: -6px;
+        border: none;
+        border-radius: var(--radius-md);
+        background: transparent;
+        color: var(--text-secondary);
+        font-size: 1.4rem;
+        line-height: 1;
+        cursor: pointer;
+        flex-shrink: 0;
+        transition: color var(--transition), background var(--transition);
+      }
+
+      .fb-preview-modal__close:hover,
+      .fb-preview-modal__close:focus-visible {
+        color: var(--text-primary);
+        background: var(--bg-overlay);
+      }
+
+      .fb-preview-modal__close:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 0;
+      }
+
+      .fb-preview-modal__body {
+        padding: 0.25rem 0 0.5rem;
+        overflow-y: auto;
+        flex: 1;
+        min-height: 0;
+      }
+
+      .fb-preview-modal__row {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.75rem var(--space-3);
+        border-bottom: 1px solid var(--fb-border-subtle);
+      }
+
+      .fb-preview-modal__row:last-child {
+        border-bottom: none;
+      }
+
+      .fb-preview-modal__label {
+        min-width: 0;
+        cursor: pointer;
+      }
+
+      .fb-preview-modal__row-title {
+        font-weight: 600;
+        font-size: 0.9375rem;
+        color: var(--text-primary);
+        margin: 0 0 0.2rem;
+      }
+
+      .fb-preview-modal__row-desc {
+        margin: 0;
+        font-size: 0.8125rem;
+        line-height: 1.45;
+        color: var(--text-secondary);
+        max-width: 38ch;
+      }
+
+      .fb-preview-switch {
+        position: relative;
+        width: 44px;
+        height: 24px;
+        flex-shrink: 0;
+        margin-top: 2px;
+      }
+
+      .fb-preview-switch input {
+        position: absolute;
+        opacity: 0;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        cursor: pointer;
+        z-index: 1;
+      }
+
+      .fb-preview-switch__track {
+        position: absolute;
+        inset: 0;
+        border-radius: 9999px;
+        background: var(--bg-subtle);
+        border: 1px solid var(--border-default);
+        transition: background 150ms ease, border-color 150ms ease;
+        pointer-events: none;
+      }
+
+      .fb-preview-switch__thumb {
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        transition: transform 150ms cubic-bezier(0, 0, 0.2, 1);
+        pointer-events: none;
+      }
+
+      .fb-preview-switch input:checked + .fb-preview-switch__track {
+        background: oklch(40% 0.16 264);
+        border-color: var(--accent);
+      }
+
+      .fb-preview-switch input:checked + .fb-preview-switch__track .fb-preview-switch__thumb {
+        transform: translateX(20px);
+      }
+
+      .fb-preview-switch input:focus-visible + .fb-preview-switch__track {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      .fb-preview-modal__empty {
+        padding: var(--space-4) var(--space-3) var(--space-3);
+        text-align: left;
+      }
+
+      .fb-preview-modal__empty p {
+        margin: 0 0 0.5rem;
+        color: var(--text-primary);
+        font-size: 0.9375rem;
+      }
+
+      .fb-preview-modal__empty p:last-child {
+        margin: 0;
+        font-size: 0.8125rem;
+        color: var(--text-secondary);
+        line-height: 1.5;
+      }
+
+      .fb-proto-devbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--space-2);
+        margin-top: var(--space-3);
+        padding: var(--space-2) var(--space-3);
+        background: var(--bg-surface);
+        border: 1px dashed var(--border-strong);
+        border-radius: var(--radius-md);
+        font-size: 0.75rem;
+        color: var(--text-disabled);
+      }
+
+      .fb-proto-devbar label {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      [hidden] {
+        display: none !important;
+      }
+
+      .fb-sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+
+      .fb-preview-lab-btn__label-narrow {
+        display: none;
+      }
+      @media (max-width: 479px) {
+        .fb-preview-lab-btn__label-wide {
+          display: none;
+        }
+        .fb-preview-lab-btn__label-narrow {
+          display: inline;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="fb-proto" id="proto-root">
+      <header class="fb-topbar" role="banner">
+        <div class="fb-topbar__brand">
+          <div class="fb-topbar__mark" aria-hidden="true">F</div>
+          <span class="fb-topbar__name">FlowBoard</span>
+        </div>
+        <div class="fb-topbar__search" role="button" tabindex="-1" aria-label="Buscar (exemplo)">
+          <span>Buscar tarefas…</span>
+          <span class="fb-topbar__kbd">⌘K</span>
+        </div>
+        <div class="fb-topbar__actions">
+          <button class="fb-theme-toggle" type="button" aria-label="Alternar tema" disabled title="Só ilustrativo no protótipo">
+            <span aria-hidden="true">☼</span>
+          </button>
+          <button
+            class="fb-preview-lab-btn"
+            type="button"
+            id="btn-previews"
+            aria-label="Pré-visualizações experimentais"
+            aria-haspopup="dialog"
+            aria-expanded="false"
+            aria-controls="dialog-previews"
+            title="Pré-visualizações experimentais"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M9 2v2M15 2v2M12 4a6 6 0 0 0-6 6v2a3 3 0 0 0 3 3h2v3" stroke-linecap="round" />
+              <path d="M9 18h6" stroke-linecap="round" />
+            </svg>
+            <span class="fb-preview-lab-btn__label-wide">Previews</span>
+            <span class="fb-preview-lab-btn__label-narrow" aria-hidden="true">Labs</span>
+          </button>
+          <span class="fb-version-pill" title="Badge de versão">v0.3.0</span>
+          <a class="fb-btn-text" href="#" onclick="return false">GitHub · owner/repo</a>
+          <button class="fb-proto-ghost" type="button">Sair</button>
+        </div>
+      </header>
+      <main class="fb-proto-body" id="main">
+        <h1 class="fb-sr-only">Protótipo — Pré-visualizações experimentais</h1>
+        <p class="fb-proto-hint">Área de conteúdo (quadro, horas, etc.). O foco do protótipo é a topbar e o diálogo.</p>
+        <p>Abra <strong>Previews</strong> na barra superior. <kbd>Esc</kbd> ou clique fora fecha o diálogo.</p>
+        <div class="fb-proto-devbar" role="group" aria-label="Controlo do protótipo">
+          <span>Protótipo:</span>
+          <label>
+            <input type="radio" name="demo" value="list" checked />
+            Com flags de exemplo
+          </label>
+          <label>
+            <input type="radio" name="demo" value="empty" />
+            Estado vazio
+          </label>
+        </div>
+      </main>
+    </div>
+
+    <div
+      class="fb-preview-backdrop"
+      id="backdrop-previews"
+      role="presentation"
+      hidden
+    >
+      <div
+        class="fb-preview-modal"
+        role="dialog"
+        id="dialog-previews"
+        aria-modal="true"
+        aria-labelledby="preview-dialog-title"
+        tabindex="-1"
+      >
+        <div class="fb-preview-modal__header">
+          <h2 class="fb-preview-modal__title" id="preview-dialog-title">Pré-visualizações</h2>
+          <button class="fb-preview-modal__close" type="button" id="btn-close-previews" aria-label="Fechar">×</button>
+        </div>
+        <div class="fb-preview-modal__body" id="preview-dialog-body">
+          <div class="fb-preview-modal__list" id="preview-list" hidden>
+            <div class="fb-preview-modal__row" data-flag-id="grid-hours-dates">
+              <label class="fb-preview-modal__label" for="sw-grid">
+                <h3 class="fb-preview-modal__row-title">Coluna de data na grelha de horas</h3>
+                <p class="fb-preview-modal__row-desc">Mostra a data alinhada a cada célula no modo Horas (experimental).</p>
+              </label>
+              <div class="fb-preview-switch">
+                <input type="checkbox" id="sw-grid" data-flag="grid-hours-dates" />
+                <div class="fb-preview-switch__track" aria-hidden="true">
+                  <div class="fb-preview-switch__thumb"></div>
+                </div>
+              </div>
+            </div>
+            <div class="fb-preview-modal__row" data-flag-id="export-csv-v2">
+              <label class="fb-preview-modal__label" for="sw-csv">
+                <h3 class="fb-preview-modal__row-title">Exportar apontamentos (CSV) — pré-visualização</h3>
+                <p class="fb-preview-modal__row-desc">Formatação adicional e cabeçalhos alinhados ao relatório interno.</p>
+              </label>
+              <div class="fb-preview-switch">
+                <input type="checkbox" id="sw-csv" data-flag="export-csv-v2" />
+                <div class="fb-preview-switch__track" aria-hidden="true">
+                  <div class="fb-preview-switch__thumb"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="fb-preview-modal__empty" id="preview-empty" hidden>
+            <p>Não há pré-visualizações disponíveis nesta versão.</p>
+            <p>Quando houver novidades experimentais, poderá ativá-las aqui.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        const KEY = "fb-prototype-preview-flags";
+        const btn = document.getElementById("btn-previews");
+        const backdrop = document.getElementById("backdrop-previews");
+        const dialog = document.getElementById("dialog-previews");
+        const btnClose = document.getElementById("btn-close-previews");
+        const list = document.getElementById("preview-list");
+        const empty = document.getElementById("preview-empty");
+        const inputs = list.querySelectorAll('input[type="checkbox"][data-flag]');
+
+        function load() {
+          try {
+            return JSON.parse(localStorage.getItem(KEY) || "{}");
+          } catch {
+            return {};
+          }
+        }
+
+        function save(st) {
+          localStorage.setItem(KEY, JSON.stringify(st));
+        }
+
+        function applyFromStorage() {
+          const st = load();
+          inputs.forEach((el) => {
+            const k = el.getAttribute("data-flag");
+            if (k in st) el.checked = !!st[k];
+          });
+        }
+
+        function commitToggle(el) {
+          const st = load();
+          st[el.getAttribute("data-flag")] = el.checked;
+          save(st);
+        }
+
+        function setDemoMode(mode) {
+          const isEmpty = mode === "empty";
+          list.hidden = isEmpty;
+          empty.hidden = !isEmpty;
+        }
+
+        document.querySelectorAll('input[name="demo"]').forEach((r) => {
+          r.addEventListener("change", function () {
+            if (r.checked) setDemoMode(r.value);
+          });
+        });
+
+        let lastFocus = null;
+
+        function openDialog() {
+          lastFocus = document.activeElement;
+          backdrop.hidden = false;
+          btn.setAttribute("aria-expanded", "true");
+          setDemoMode(
+            document.querySelector('input[name="demo"]:checked')?.value || "list"
+          );
+          dialog.focus();
+        }
+
+        function closeDialog() {
+          backdrop.hidden = true;
+          btn.setAttribute("aria-expanded", "false");
+          if (lastFocus && lastFocus.focus) lastFocus.focus();
+        }
+
+        btn.addEventListener("click", function () {
+          if (backdrop.hidden) openDialog();
+          else closeDialog();
+        });
+
+        btnClose.addEventListener("click", closeDialog);
+
+        backdrop.addEventListener("click", function (e) {
+          if (e.target === backdrop) closeDialog();
+        });
+
+        document.addEventListener("keydown", function (e) {
+          if (e.key === "Escape" && !backdrop.hidden) {
+            e.preventDefault();
+            closeDialog();
+          }
+        });
+
+        inputs.forEach((el) => {
+          el.addEventListener("change", function () {
+            commitToggle(el);
+          });
+        });
+
+        applyFromStorage();
+      })();
+    </script>
+  </body>
+</html>

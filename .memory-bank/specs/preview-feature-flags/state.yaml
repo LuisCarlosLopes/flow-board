@@ -1,0 +1,130 @@
+title: "Feature flags de preview e painel na home"
+slug: "preview-feature-flags"
+created_at: "2026-04-26T00:00:00.000Z"
+context: "FlowBoard SPA — experiência pós-login (AppShell) e novos desenvolvimentos."
+objective: >
+  Introduzir um sistema de feature flags para funcionalidades em desenvolvimento (preview),
+  com registo em código, persistência de preferências do utilizador por browser, e um controlo
+  discreto na área principal (home/board shell) para listar apenas previews ativos, permitindo
+  ativar ou desativar cada um. Funcionalidades consideradas definitivas não aparecem nesta lista.
+acceptance_criteria:
+  - "Existe um registo canónico de flags de preview (identificador estável, metadados para UI, default)."
+  - "O utilizador pode ligar/desligar cada preview; o estado persiste entre sessões no mesmo browser (escopo local, sem GitHub)."
+  - "A home/shell mostra um controlo discreto (ex.: botão ou link pouco intrusivo) que abre o painel de previews."
+  - "O painel lista só funcionalidades em modo preview; flags 'definitivas' / GA não são listadas."
+  - "Código que depende de uma preview consulta a flag de forma centralizada (evitar espalhar strings mágicas)."
+  - "Comportamento verificável com testes (domínio ou hooks/store) nos ficheiros tocados."
+scope:
+  in:
+    - "apps/flowboard/src — registry de flags, store de preferências, UI do painel, integração no AppShell ou vista inicial."
+    - "Testes Vitest para regras de filtro (preview vs GA) e persistência."
+  out:
+    - "Flags remotas ou A/B sem spec futura."
+    - "Sincronização de preferências entre dispositivos ou via repositório GitHub."
+    - "Alteração de release notes / versão (salvo necessidade mínima documentada)."
+tech_context: "TypeScript, React 19, Vite; sem backend próprio; preferências apenas client-side alinhadas à Constitution (II)."
+baseline_ref: "044b119d13ccc1e4cfe43eb3e992a6a42ea0273b"
+
+squad:
+  status: implementado_aguardando_review
+  track: FEATURE
+  track_override: false
+  score: 6
+  confidence: 78
+  current_phase: verifier
+  completed_phases:
+    - spec
+    - spec-reviewer
+    - architect
+    - planner
+    - plan-reviewer
+    - task-breakdown
+    - prototype-ui
+    - implementer
+  next_phase: verifier
+  iteration: 1
+  blockers: []
+  hitl_required: false
+
+repo_write_scope:
+  - apps/flowboard/src/infrastructure/featureFlags/
+  - apps/flowboard/src/features/app/AppShell.tsx
+  - apps/flowboard/src/features/app/AppShell.css
+  - apps/flowboard/src/features/app/PreviewFeaturesModal.tsx
+  - apps/flowboard/src/features/app/PreviewFeaturesModal.css
+  - apps/flowboard/src/features/app/PreviewFeaturesModal.test.tsx
+  - apps/flowboard/src/features/app/PreviewFeaturesModal.empty.test.tsx
+artifact_reuse: []
+approvals:
+  - at: "2026-04-26"
+    actor: human
+    decision: "Aprovação explícita para implementação (mensagem: aprovado)."
+retries_by_phase: {}
+last_failure: null
+decisions:
+  - date: "2026-04-26"
+    text: >
+      Execução dos subagentes via Task falhou (limite de API). Artefatos spec, review, architect,
+      planner, plan-reviewer, task-breakdown e prototype-ui foram produzidos manualmente pelo orquestrador
+      com o mesmo conteúdo esperado dos agentes; recomenda-se revisão humana reforçada.
+pipeline:
+  - phase: spec
+    agent: spec
+    artifact: spec-feature.md
+    status: completed
+  - phase: spec-reviewer
+    agent: spec-reviewer
+    artifact: spec-reviewer-feature.md
+    status: completed
+  - phase: architect
+    agent: architect
+    artifact: architect-feature.md
+    status: completed
+  - phase: planner
+    agent: planner
+    artifact: planner-feature.md
+    status: completed
+  - phase: plan-reviewer
+    agent: plan-reviewer
+    artifact: plan-reviewer-feature.md
+    status: completed
+  - phase: prototype-ui
+    agent: manual
+    artifact: prototype-ui.md
+    status: completed
+  - phase: task-breakdown
+    agent: task-breakdown
+    artifact: task-breakdown-feature.md
+    status: completed
+  - phase: implementer
+    agent: implementer
+    status: completed
+  - phase: code-reviewer
+    agent: code-reviewer
+    artifact: code-reviewer-FEATURE.md
+    status: completed
+  - phase: verifier
+    agent: verifier
+    status: pending
+  - phase: tester
+    agent: tester
+    status: pending
+
+subtasks: []
+history:
+  - at: "2026-04-26"
+    event: "Pipeline até plan-reviewer + protótipo concluídos; gate HITL antes do implementer."
+  - at: "2026-04-26"
+    event: "HITL aprovado; implementação no AppShell + infra featureFlags + testes Vitest; build OK."
+parallel_groups: []
+
+context_cache:
+  version: "1.0"
+
+feedback_loop:
+  similar_tasks: []
+  predictions: {}
+  adjustments_applied: []
+  recommendations_acknowledged: []
+
+summary: null

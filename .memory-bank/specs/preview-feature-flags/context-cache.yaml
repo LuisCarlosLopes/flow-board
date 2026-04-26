@@ -1,0 +1,15 @@
+cache_version: "1.0"
+created_at: "2026-04-26T00:00:00.000Z"
+updated_at: "2026-04-26T00:00:00.000Z"
+slug: "preview-feature-flags"
+repo_identity:
+  git_commit: "044b119d13ccc1e4cfe43eb3e992a6a42ea0273b"
+  structure_hash: "pending"
+shared_analysis:
+  stack_detection: "React 19, Vite 8, TypeScript 6, React Router; sessão em localStorage; tema em localStorage; AppShell é shell pós-login com BoardListView/BoardView/HoursView."
+  conventions: "Domínio em src/domain; features em src/features; infra em src/infrastructure; testes Vitest; comentários/tags em pontos não triviais (CodeSteer)."
+  repo_map: "Entry App.tsx → AppShell (topbar, views); /releases rota pública; board selection em boardSelectionStore."
+phase_caches: {}
+handoff_summaries: {}
+cache_metrics:
+  tokens_saved_estimate: 0

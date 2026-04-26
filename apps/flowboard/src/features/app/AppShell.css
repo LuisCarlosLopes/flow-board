@@ -119,6 +119,33 @@
   display: block;
 }
 
+.fb-preview-lab-btn {
+  border: 1px solid var(--border-default);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+  opacity: 0.9;
+  transition:
+    background var(--transition),
+    color var(--transition),
+    opacity var(--transition),
+    border-color var(--transition);
+}
+
+.fb-preview-lab-btn:hover,
+.fb-preview-lab-btn:focus-visible {
+  background: var(--bg-overlay);
+  color: var(--text-primary);
+  opacity: 1;
+  border-color: var(--border-strong);
+}
+
 .fb-version-badge {
   padding: var(--space-1) var(--space-2);
   border: 1px solid var(--border-default);

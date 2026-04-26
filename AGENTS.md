@@ -160,6 +160,24 @@ Ao publicar uma versão nova, siga estes passos:
 
 Não introduzir API dinâmica nem outro ficheiro como fonte da versão sem spec/ADR; o contrato atual é JSON estático + tipos em `src/features/release-notes/types/releases.types.ts`.
 
+### Feature flags (pré-visualizações experimentais)
+
+Funcionalidades em desenvolvimento podem ficar atrás de flags **preview**: o utilizador liga/desliga no botão **Previews** da topbar (só após login, dentro de `AppShell`). Especificação e plano: `.memory-bank/specs/preview-feature-flags/`.
+
+**Como adicionar uma flag**
+
+1. Editar **`apps/flowboard/src/infrastructure/featureFlags/featureFlagRegistry.ts`** e acrescentar um objeto a `FEATURE_FLAG_REGISTRY` com:
+   - `id`: string estável (ex.: `my_feature_preview`);
+   - `title` e opcionalmente `description` (texto do painel);
+   - `defaultEnabled`: `true` | `false` para quem nunca abriu o painel;
+   - `lifecycle`: `'preview'` enquanto for experimental; ao tornar-se definitiva, mudar para `'stable'` (deixa de aparecer no painel e fica **sempre ativa** para efeitos de produto — overrides antigos deixam de aplicar).
+
+2. No código da feature (componente sob a shell autenticada), usar **`useFeatureFlag('my_feature_preview')`** importado de `infrastructure/featureFlags/FeatureFlagContext.tsx`. Só renderizar ou ramificar o comportamento quando o hook devolver `true`. O `FeatureFlagProvider` já envolve `AppShell`; **não** usar estes hooks em `LoginView` sem envolver com o provider.
+
+3. **Persistência:** preferências gravam-se só em **`localStorage`** (chave `flowboard.featureFlags.v1`), sem GitHub. Não misturar com dados de domínio.
+
+4. **Testes:** em Vitest, se o componente depender do registo, **`vi.mock`** de `featureFlagRegistry` com uma lista mínima (ver `PreviewFeaturesModal.test.tsx` e `PreviewFeaturesModal.empty.test.tsx`). Funções puras em `featureFlagState.ts` e `featureFlagStorage.ts` testam-se sem React.
+
 ---
 
 ## Variáveis de ambiente

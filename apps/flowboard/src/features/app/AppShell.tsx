@@ -4,6 +4,8 @@ import { ArchivedCardsPage } from '../board/ArchivedCardsPage'
 import { BoardView } from '../board/BoardView'
 import { BoardListView } from '../boards/BoardListView'
 import { HoursView } from '../hours/HoursView'
+import { FeatureFlagProvider } from '../../infrastructure/featureFlags/FeatureFlagContext'
+import { PreviewFeaturesModal } from './PreviewFeaturesModal'
 import { SearchModal } from './SearchModal'
 import { useSearchHotkey } from '../../hooks/useSearchHotkey'
 import { GitHubHttpError } from '../../infrastructure/github/client'
@@ -30,6 +32,7 @@ export function AppShell({ session, onLogout }: Props) {
   const [mainView, setMainView] = useState<'kanban' | 'hours'>('kanban')
   const [columnEditorMenuTick, setColumnEditorMenuTick] = useState(0)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [isPreviewFeaturesOpen, setIsPreviewFeaturesOpen] = useState(false)
   const [cardToEditId, setCardToEditId] = useState<string | null>(null)
   const [boardPersistGeneration, setBoardPersistGeneration] = useState(0)
   const [theme, setTheme] = useState<ThemeMode>(() => readTheme())
@@ -111,61 +114,72 @@ export function AppShell({ session, onLogout }: Props) {
   }
 
   return (
-    <div className="fb-app fb-app-shell">
-      <header className="fb-topbar">
-        <div className="fb-topbar__brand">
-          <span className="fb-topbar__mark" aria-hidden>
-            F
-          </span>
-          <span className="fb-topbar__name">FlowBoard</span>
-        </div>
-        <div
-          className="fb-topbar__search"
-          role="button"
-          tabIndex={0}
-          onClick={() => setIsSearchOpen(true)}
-          onKeyDown={(e) => {
-            if (e.key === ' ') {
-              e.preventDefault()
-              setIsSearchOpen(true)
-            } else if (e.key === 'Enter') {
-              setIsSearchOpen(true)
-            }
-          }}
-          aria-label="Busca no quadro"
-        >
-          <span aria-hidden="true">⌕</span>
-          <span>Buscar cards, etiquetas, tempo…</span>
-          <kbd className="fb-topbar__kbd">/</kbd>
-        </div>
-        <div className="fb-topbar__actions">
-          <button
-            type="button"
-            className="fb-theme-toggle"
-            data-testid="fb-theme-toggle"
-            onClick={toggleTheme}
-            aria-label={theme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'}
-            title={theme === 'dark' ? 'Tema claro' : 'Tema escuro'}
+    <FeatureFlagProvider>
+      <div className="fb-app fb-app-shell">
+        <header className="fb-topbar">
+          <div className="fb-topbar__brand">
+            <span className="fb-topbar__mark" aria-hidden>
+              F
+            </span>
+            <span className="fb-topbar__name">FlowBoard</span>
+          </div>
+          <div
+            className="fb-topbar__search"
+            role="button"
+            tabIndex={0}
+            onClick={() => setIsSearchOpen(true)}
+            onKeyDown={(e) => {
+              if (e.key === ' ') {
+                e.preventDefault()
+                setIsSearchOpen(true)
+              } else if (e.key === 'Enter') {
+                setIsSearchOpen(true)
+              }
+            }}
+            aria-label="Busca no quadro"
           >
-            {theme === 'dark' ? <IconSun /> : <IconMoon />}
-          </button>
-          <button
-            type="button"
-            className="fb-version-badge"
-            data-testid="fb-version-badge"
-            title="Ver notas de versão"
-            onClick={() => navigate('/releases')}
-          >
-            v{version}
-          </button>
-          <span className="fb-chip fb-chip--accent fb-repo-chip" title={session.webUrl}>
-            GitHub · {repoChip}
-          </span>
-          <button type="button" className="fb-btn-text" onClick={logout}>
-            Sair
-          </button>
-        </div>
-      </header>
+            <span aria-hidden="true">⌕</span>
+            <span>Buscar cards, etiquetas, tempo…</span>
+            <kbd className="fb-topbar__kbd">/</kbd>
+          </div>
+          <div className="fb-topbar__actions">
+            <button
+              type="button"
+              className="fb-theme-toggle"
+              data-testid="fb-theme-toggle"
+              onClick={toggleTheme}
+              aria-label={theme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'}
+              title={theme === 'dark' ? 'Tema claro' : 'Tema escuro'}
+            >
+              {theme === 'dark' ? <IconSun /> : <IconMoon />}
+            </button>
+            <button
+              type="button"
+              className="fb-preview-lab-btn"
+              data-testid="fb-preview-features-open"
+              onClick={() => setIsPreviewFeaturesOpen(true)}
+              aria-label="Pré-visualizações experimentais"
+              title="Ativar ou desativar funcionalidades em preview"
+            >
+              Previews
+            </button>
+            <button
+              type="button"
+              className="fb-version-badge"
+              data-testid="fb-version-badge"
+              title="Ver notas de versão"
+              onClick={() => navigate('/releases')}
+            >
+              v{version}
+            </button>
+            <span className="fb-chip fb-chip--accent fb-repo-chip" title={session.webUrl}>
+              GitHub · {repoChip}
+            </span>
+            <button type="button" className="fb-btn-text" onClick={logout}>
+              Sair
+            </button>
+          </div>
+        </header>
 
       <div className="fb-board-bar">
         <BoardListView
@@ -259,22 +273,27 @@ export function AppShell({ session, onLogout }: Props) {
         )}
       </main>
 
-      <SearchModal
-        isOpen={isSearchOpen}
-        onClose={() => setIsSearchOpen(false)}
-        boardId={selectedBoardId || ''}
-        session={session}
-        boardPersistGeneration={boardPersistGeneration}
-        onSelectResult={(cardId) => {
-          setIsSearchOpen(false)
-          if (onArchivedRoute) {
-            navigate('/')
-            setMainView('kanban')
-          }
-          setCardToEditId(cardId)
-        }}
-      />
-    </div>
+        <SearchModal
+          isOpen={isSearchOpen}
+          onClose={() => setIsSearchOpen(false)}
+          boardId={selectedBoardId || ''}
+          session={session}
+          boardPersistGeneration={boardPersistGeneration}
+          onSelectResult={(cardId) => {
+            setIsSearchOpen(false)
+            if (onArchivedRoute) {
+              navigate('/')
+              setMainView('kanban')
+            }
+            setCardToEditId(cardId)
+          }}
+        />
+        <PreviewFeaturesModal
+          isOpen={isPreviewFeaturesOpen}
+          onClose={() => setIsPreviewFeaturesOpen(false)}
+        />
+      </div>
+    </FeatureFlagProvider>
   )
 }
 
