@@ -1,50 +1,79 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { clearSession, createSession, hasPersistedSession, loadSessionAsync, saveSessionAsync } from './sessionStore'
+import { clearSession, createSession, hasPersistedSession, loadSession, loadSessionAsync, saveSession, saveSessionAsync } from './sessionStore'
 
 const STORAGE_KEY = 'flowboard.session.v1'
 
 describe('sessionStore', () => {
   afterEach(() => {
     clearSession()
+    localStorage.clear()
   })
 
-  it('round-trips session (encrypted in test mode when key is set)', async () => {
-    const s = createSession('ghp_x', 'https://github.com/a/b', {
+  it('round-trips session (sem pat)', () => {
+    const s = createSession('https://github.com/a/b', {
       owner: 'a',
       repo: 'b',
-      apiBase: 'https://api.github.com',
+      webUrl: 'https://github.com/a/b',
+    })
+    saveSession(s)
+    const loaded = loadSession()
+    expect(loaded?.owner).toBe('a')
+    expect(loaded?.apiBase).toBe('/api/github')
+    // PAT nunca deve estar na sessão armazenada
+    expect(loaded).not.toHaveProperty('pat')
+  })
+
+  it('async wrappers round-trip session', async () => {
+    const s = createSession('https://github.com/a/b', {
+      owner: 'a',
+      repo: 'b',
       webUrl: 'https://github.com/a/b',
     })
     await saveSessionAsync(s)
     const loaded = await loadSessionAsync()
     expect(loaded?.owner).toBe('a')
-    expect(loaded?.pat).toBe('ghp_x')
+    expect(loaded?.apiBase).toBe('/api/github')
+    expect(loaded).not.toHaveProperty('pat')
   })
 
-  it('clear removes session', async () => {
-    await saveSessionAsync(
-      createSession('t', 'u', {
+  it('clear removes session', () => {
+    saveSession(
+      createSession('https://github.com/a/b', {
         owner: 'a',
         repo: 'b',
-        apiBase: 'https://api.github.com',
         webUrl: 'https://github.com/a/b',
       }),
     )
     clearSession()
-    expect(await loadSessionAsync()).toBeNull()
+    expect(loadSession()).toBeNull()
   })
 
-  it('clears storage when JSON is not a valid session object', async () => {
+  it('clears storage when JSON is not a valid session object', () => {
     localStorage.setItem(STORAGE_KEY, 'not-json')
-    expect(await loadSessionAsync()).toBeNull()
+    expect(loadSession()).toBeNull()
     expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
   })
 
-  it('clears storage when pat or owner/repo missing', async () => {
+  it('clears storage when owner or repo is missing', () => {
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
-        pat: '',
+        owner: '',
+        repo: 'b',
+        apiBase: '/api/github',
+        webUrl: 'https://github.com/a/b',
+        repoUrl: 'https://github.com/a/b',
+      }),
+    )
+    expect(loadSession()).toBeNull()
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
+  })
+
+  it('clears legacy sessions with direct GitHub apiBase (forces re-login for security)', () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        pat: 'ghp_x',
         owner: 'a',
         repo: 'b',
         apiBase: 'https://api.github.com',
@@ -52,15 +81,14 @@ describe('sessionStore', () => {
         repoUrl: 'https://github.com/a/b',
       }),
     )
-    expect(await loadSessionAsync()).toBeNull()
+    expect(loadSession()).toBeNull()
     expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
   })
 
-  it('clears storage when apiBase was tampered', async () => {
+  it('clears storage when apiBase is not the BFF proxy path', () => {
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
-        pat: 'ghp_x',
         owner: 'a',
         repo: 'b',
         apiBase: 'https://evil.example',
@@ -68,49 +96,36 @@ describe('sessionStore', () => {
         repoUrl: 'https://github.com/a/b',
       }),
     )
-    expect(await loadSessionAsync()).toBeNull()
+    expect(loadSession()).toBeNull()
     expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
   })
 
-  it('migrates legacy session from sessionStorage to localStorage', async () => {
-    const payload = JSON.stringify({
-      pat: 'ghp_x',
-      owner: 'a',
-      repo: 'b',
-      apiBase: 'https://api.github.com',
-      webUrl: 'https://github.com/a/b',
-      repoUrl: 'https://github.com/a/b',
-    })
-    sessionStorage.setItem(STORAGE_KEY, payload)
-    const loaded = await loadSessionAsync()
-    expect(loaded?.owner).toBe('a')
-    expect(localStorage.getItem(STORAGE_KEY)).toBe(payload)
-    expect(sessionStorage.getItem(STORAGE_KEY)).toBeNull()
+  it('hasPersistedSession returns false when no session', () => {
+    expect(hasPersistedSession()).toBe(false)
   })
 
-  it('hasPersistedSession is true for plaintext and sealed payloads', async () => {
-    expect(hasPersistedSession()).toBe(false)
-    const plain = {
-      pat: 'ghp_x',
-      owner: 'a',
-      repo: 'b',
-      apiBase: 'https://api.github.com',
-      webUrl: 'https://github.com/a/b',
-      repoUrl: 'https://github.com/a/b',
-    }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(plain))
-    expect(hasPersistedSession()).toBe(true)
-    clearSession()
-    await saveSessionAsync(
-      createSession('ghp_y', 'https://github.com/a/b', {
+  it('hasPersistedSession returns true after saving valid session', () => {
+    saveSession(
+      createSession('https://github.com/a/b', {
         owner: 'a',
         repo: 'b',
-        apiBase: 'https://api.github.com',
         webUrl: 'https://github.com/a/b',
       }),
     )
-    const raw = localStorage.getItem(STORAGE_KEY) ?? ''
-    expect(raw).toContain('patEnc')
     expect(hasPersistedSession()).toBe(true)
+  })
+
+  it('hasPersistedSession returns false for tampered apiBase', () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        owner: 'a',
+        repo: 'b',
+        apiBase: 'https://evil.example',
+        webUrl: 'https://github.com/a/b',
+        repoUrl: 'https://github.com/a/b',
+      }),
+    )
+    expect(hasPersistedSession()).toBe(false)
   })
 })

@@ -1,5 +1,6 @@
 import { notifySessionInvalidateFromGithub401 } from '../session/sessionInvalidation'
-import { GITHUB_API_BASE } from './url'
+
+const PROXY_API_BASE = '/api/github'
 
 export type ContentsGetResponse = {
   sha: string
@@ -20,7 +21,8 @@ export class GitHubHttpError extends Error {
 }
 
 export type GitHubClientOptions = {
-  token: string
+  /** PAT — omit when using the BFF proxy (cookie carries the credential). */
+  token?: string
   owner: string
   repo: string
   apiBase?: string
@@ -35,7 +37,7 @@ export type GitHubClientOptions = {
  * Minimal GitHub Contents API client (JSON bodies as UTF-8 strings).
  */
 export class GitHubContentsClient {
-  private readonly token: string
+  private readonly token: string | undefined
   private readonly owner: string
   private readonly repo: string
   private readonly apiBase: string
@@ -45,17 +47,20 @@ export class GitHubContentsClient {
     this.token = opts.token
     this.owner = opts.owner
     this.repo = opts.repo
-    this.apiBase = opts.apiBase ?? GITHUB_API_BASE
+    this.apiBase = opts.apiBase ?? PROXY_API_BASE
     // Evita "Illegal invocation" no browser quando `fetch` é chamado sem receiver (`this`).
     this.fetchImpl = opts.fetchImpl ?? ((input, init) => globalThis.fetch(input, init))
   }
 
   private headers(): HeadersInit {
-    return {
-      Authorization: `Bearer ${this.token}`,
+    const h: Record<string, string> = {
       Accept: 'application/vnd.github+json',
       'X-GitHub-Api-Version': '2022-11-28',
     }
+    if (this.token) {
+      h['Authorization'] = `Bearer ${this.token}`
+    }
+    return h
   }
 
   private onUnauthorizedStatus(status: number): void {
