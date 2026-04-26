@@ -7,3 +7,9 @@ _codesteer/
 .claude/
 apps/flowboard/test-results/
 apps/flowboard/playwright-report/
+.playwright-cli/console-2026-04-25T23-33-47-836Z.log
+.playwright-cli/console-2026-04-25T23-34-48-627Z.log
+.playwright-cli/console-2026-04-25T23-35-00-047Z.log
+.playwright-cli/page-2026-04-25T23-33-52-155Z.yml
+.playwright-cli/page-2026-04-25T23-34-50-790Z.yml
+.playwright-cli/page-2026-04-25T23-35-04-420Z.yml
