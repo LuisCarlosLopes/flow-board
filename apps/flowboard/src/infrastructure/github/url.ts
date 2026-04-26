@@ -9,6 +9,9 @@ export type RepoResolution = {
 /** Official GitHub REST API origin allowed for PAT requests (session allowlist). */
 export const GITHUB_API_BASE = 'https://api.github.com' as const
 
+/** Relative path prefix for the server-side GitHub API proxy (BFF). */
+export const FLOWBOARD_GITHUB_PROXY_BASE = '/api/github' as const
+
 const GITHUB_HOST = 'github.com'
 
 /** True if `apiBase` resolves to the official GitHub API origin. */
@@ -18,6 +21,14 @@ export function isOfficialGithubApiBase(apiBase: string): boolean {
   } catch {
     return false
   }
+}
+
+/** Session may store direct GitHub API origin (legacy) or the app proxy path. */
+export function isAllowedFlowboardSessionApiBase(apiBase: string): boolean {
+  if (apiBase === FLOWBOARD_GITHUB_PROXY_BASE) {
+    return true
+  }
+  return isOfficialGithubApiBase(apiBase)
 }
 
 /**

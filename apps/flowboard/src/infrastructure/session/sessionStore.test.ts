@@ -19,8 +19,10 @@ describe('sessionStore', () => {
     const loaded = await loadSessionAsync()
     expect(loaded?.owner).toBe('a')
     expect(loaded?.apiBase).toBe('/api/github')
-    // PAT nunca deve estar na sessão armazenada
-    expect(loaded).not.toHaveProperty('pat')
+    expect(loaded?.pat).toBe('ghp_x')
+    const raw = localStorage.getItem(STORAGE_KEY) ?? ''
+    expect(raw).toContain('patEnc')
+    expect(raw).not.toContain('ghp_x')
   })
 
   it('clear removes session', async () => {
@@ -106,7 +108,6 @@ describe('sessionStore', () => {
       createSession('ghp_y', 'https://github.com/a/b', {
         owner: 'a',
         repo: 'b',
-        apiBase: 'https://api.github.com',
         webUrl: 'https://github.com/a/b',
       }),
     )

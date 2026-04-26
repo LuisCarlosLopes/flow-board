@@ -1,3 +1,4 @@
+import type { IncomingMessage, ServerResponse } from 'node:http'
 import react from '@vitejs/plugin-react'
 import type { Plugin } from 'vite'
 import { loadEnv } from 'vite'
@@ -111,7 +112,7 @@ export default defineConfig(({ mode }) => {
     define: {
       'import.meta.env.FLOWBOARD_PAT_KEY': JSON.stringify(patKey),
     },
-    plugins: [react(), contentSecurityPolicyProduction()],
+    plugins: [react(), contentSecurityPolicyProduction(), apiDevServer()],
     test: {
       environment: 'happy-dom',
       include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],

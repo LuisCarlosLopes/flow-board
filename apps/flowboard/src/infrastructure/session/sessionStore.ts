@@ -1,4 +1,8 @@
-import { GITHUB_API_BASE, isOfficialGithubApiBase, type RepoResolution } from '../github/url'
+import {
+  FLOWBOARD_GITHUB_PROXY_BASE,
+  isAllowedFlowboardSessionApiBase,
+  type RepoResolution,
+} from '../github/url'
 import { decryptPat, encryptPat, hasPatEncryptionKey, type PatEncPayload } from './sessionPatCrypto'
 
 const STORAGE_KEY = 'flowboard.session.v1'
@@ -45,7 +49,7 @@ function validateCommon(
   if (typeof v.repo !== 'string' || !v.repo.trim()) {
     return { ok: false }
   }
-  if (typeof v.apiBase !== 'string' || !isOfficialGithubApiBase(v.apiBase)) {
+  if (typeof v.apiBase !== 'string' || !isAllowedFlowboardSessionApiBase(v.apiBase)) {
     return { ok: false }
   }
   if (typeof v.webUrl !== 'string' || !v.webUrl.trim()) {
@@ -118,7 +122,7 @@ export function hasPersistedSession(): boolean {
 
 export async function loadSessionAsync(): Promise<FlowBoardSession | null> {
   if (typeof localStorage === 'undefined') {
-    return false
+    return null
   }
   migrateFromSessionStorageIfNeeded()
   const raw = localStorage.getItem(STORAGE_KEY)
@@ -194,14 +198,16 @@ export function clearSession(): void {
 }
 
 export function createSession(
+  pat: string,
   repoUrl: string,
   resolution: { owner: string; repo: string; webUrl: string },
 ): FlowBoardSession {
   return {
+    pat,
     repoUrl,
     owner: resolution.owner,
     repo: resolution.repo,
-    apiBase: PROXY_API_BASE,
+    apiBase: FLOWBOARD_GITHUB_PROXY_BASE,
     webUrl: resolution.webUrl,
   }
 }

@@ -1,6 +1,6 @@
 import { type FormEvent, useState } from 'react'
 import { GitHubContentsClient } from '../../infrastructure/github/client'
-import { parseRepoUrl } from '../../infrastructure/github/url'
+import { FLOWBOARD_GITHUB_PROXY_BASE, parseRepoUrl } from '../../infrastructure/github/url'
 import { bootstrapFlowBoardData } from '../../infrastructure/persistence/boardRepository'
 import {
   consumeLoginScreenBanner,
@@ -63,9 +63,19 @@ export function LoginView({ onConnected }: Props) {
 
     setBusy(true)
     try {
+      const resolution = await postLogin(pat.trim(), repoUrl.trim())
+      const client = new GitHubContentsClient({
+        owner: resolution.owner,
+        repo: resolution.repo,
+        apiBase: FLOWBOARD_GITHUB_PROXY_BASE,
+      })
       await client.verifyRepositoryAccess()
       await bootstrapFlowBoardData(client)
-      const session = createSession(pat.trim(), repoUrl.trim(), parsed)
+      const session = createSession(pat.trim(), repoUrl.trim(), {
+        owner: resolution.owner,
+        repo: resolution.repo,
+        webUrl: resolution.webUrl,
+      })
       await saveSessionAsync(session)
       onConnected(session)
     } catch (err) {

@@ -63,6 +63,7 @@ describe('SearchModal', () => {
   beforeEach(() => {
     clearSearchModalBoardCache()
     mockSession = {
+      pat: 'ghp_test',
       repoUrl: 'https://github.com/test/repo',
       webUrl: 'https://github.com/test/repo',
       owner: 'test',

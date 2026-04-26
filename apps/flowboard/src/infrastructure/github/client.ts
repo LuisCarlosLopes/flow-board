@@ -1,5 +1,5 @@
 import { notifySessionInvalidateFromGithub401 } from '../session/sessionInvalidation'
-import { GITHUB_API_BASE } from './url'
+import { FLOWBOARD_GITHUB_PROXY_BASE } from './url'
 
 export type ContentsGetResponse = {
   sha: string
@@ -46,7 +46,7 @@ export class GitHubContentsClient {
     this.token = opts.token
     this.owner = opts.owner
     this.repo = opts.repo
-    this.apiBase = opts.apiBase ?? PROXY_API_BASE
+    this.apiBase = opts.apiBase ?? FLOWBOARD_GITHUB_PROXY_BASE
     // Evita "Illegal invocation" no browser quando `fetch` é chamado sem receiver (`this`).
     this.fetchImpl = opts.fetchImpl ?? ((input, init) => globalThis.fetch(input, init))
   }
@@ -56,6 +56,10 @@ export class GitHubContentsClient {
       Accept: 'application/vnd.github+json',
       'X-GitHub-Api-Version': '2022-11-28',
     }
+    if (this.token) {
+      h.Authorization = `Bearer ${this.token}`
+    }
+    return h
   }
 
   private onUnauthorizedStatus(status: number): void {

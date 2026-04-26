@@ -6,8 +6,10 @@ import { LoginView } from './LoginView'
 // Mock GitHub client (usado pelo bootstrapFlowBoardData via proxy)
 vi.mock('../../infrastructure/github/client', () => {
   return {
-    GitHubContentsClient: vi.fn(function (this: Record<string, unknown>) {
-      // proxy client sem token — nenhum método adicional necessário
+    GitHubContentsClient: vi.fn(function GitHubContentsClientMock(this: {
+      verifyRepositoryAccess: ReturnType<typeof vi.fn>
+    }) {
+      this.verifyRepositoryAccess = vi.fn().mockResolvedValue(undefined)
     }),
     GitHubHttpError: class GitHubHttpError extends Error {
       constructor(message: string) {
@@ -26,10 +28,11 @@ vi.mock('../../infrastructure/persistence/boardRepository', () => ({
 // Mock session store
 vi.mock('../../infrastructure/session/sessionStore', () => ({
   createSession: vi.fn(() => ({
+    pat: 'ghp_test1234567890',
     repoUrl: 'https://github.com/test/repo',
     owner: 'test',
     repo: 'repo',
-    apiBase: 'https://api.github.com',
+    apiBase: '/api/github',
     webUrl: 'https://github.com/test/repo',
   })),
   saveSessionAsync: vi.fn().mockResolvedValue(undefined),
@@ -37,6 +40,7 @@ vi.mock('../../infrastructure/session/sessionStore', () => ({
 
 // Mock URL parser
 vi.mock('../../infrastructure/github/url', () => ({
+  FLOWBOARD_GITHUB_PROXY_BASE: '/api/github',
   parseRepoUrl: vi.fn((url: string) => {
     if (url === 'https://github.com/test/repo') {
       return { owner: 'test', repo: 'repo', webUrl: 'https://github.com/test/repo' }

@@ -40,7 +40,6 @@ describe('sessionStore plaintext (no FLOWBOARD_PAT_KEY)', () => {
     const s = createSession('ghp_plain', 'https://github.com/a/b', {
       owner: 'a',
       repo: 'b',
-      apiBase: 'https://api.github.com',
       webUrl: 'https://github.com/a/b',
     })
     await saveSessionAsync(s)
