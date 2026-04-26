@@ -2,6 +2,10 @@ import { type FormEvent, useState } from 'react'
 import { GitHubContentsClient, GitHubHttpError } from '../../infrastructure/github/client'
 import { parseRepoUrl } from '../../infrastructure/github/url'
 import { bootstrapFlowBoardData } from '../../infrastructure/persistence/boardRepository'
+import {
+  consumeLoginScreenBanner,
+  LOGIN_BANNER_PAT_LOST,
+} from '../../infrastructure/session/sessionInvalidation'
 import { createSession, saveSession, type FlowBoardSession } from '../../infrastructure/session/sessionStore'
 import { OnboardingPage } from './OnboardingPage'
 import './LoginView.css'
@@ -14,12 +18,20 @@ export function LoginView({ onConnected }: Props) {
   const [repoUrl, setRepoUrl] = useState('')
   const [pat, setPat] = useState('')
   const [error, setError] = useState('')
+  const [sessionLostBanner, setSessionLostBanner] = useState<string | null>(() => {
+    const key = consumeLoginScreenBanner()
+    if (key === LOGIN_BANNER_PAT_LOST) {
+      return 'Sua sessão com o GitHub expirou ou o token foi revogado. Cole um PAT válido para continuar.'
+    }
+    return null
+  })
   const [busy, setBusy] = useState(false)
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError('')
+    setSessionLostBanner(null)
     const parsed = parseRepoUrl(repoUrl.trim())
     if ('error' in parsed) {
       setError(parsed.error)
@@ -78,6 +90,11 @@ export function LoginView({ onConnected }: Props) {
           Conecte um <strong>repositório GitHub privado</strong> onde os dados serão salvos como JSON.
           Use um PAT com escopo adequado (tipicamente <code>repo</code> para repos privados).
         </p>
+        {sessionLostBanner ? (
+          <div className="fb-login__err" role="status">
+            {sessionLostBanner}
+          </div>
+        ) : null}
         {error ? (
           <div className="fb-login__err" role="alert">
             {error}

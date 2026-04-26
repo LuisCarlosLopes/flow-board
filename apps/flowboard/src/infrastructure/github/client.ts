@@ -1,3 +1,4 @@
+import { notifySessionInvalidateFromGithub401 } from '../session/sessionInvalidation'
 import { GITHUB_API_BASE } from './url'
 
 export type ContentsGetResponse = {
@@ -26,6 +27,10 @@ export type GitHubClientOptions = {
   fetchImpl?: typeof fetch
 }
 
+// @MindContext: Cliente da GitHub Contents API no browser (Bearer PAT) — persistência de quadro/catálogo no repo de dados.
+// @MindWhy: `cache: 'no-store'` em todos os `fetch` evita 401/403 reutilizadas do cache HTTP após a aba ficar muito tempo inativa, com PAT ainda válido em `localStorage`.
+// @MindFlow: resposta 401 em `onUnauthorizedStatus` → `notifySessionInvalidateFromGithub401` (síncrono) → `throw GitHubHttpError`
+// @MindTest: `src/infrastructure/github/client.test.ts`
 /**
  * Minimal GitHub Contents API client (JSON bodies as UTF-8 strings).
  */
@@ -53,6 +58,16 @@ export class GitHubContentsClient {
     }
   }
 
+  private onUnauthorizedStatus(status: number): void {
+    if (status === 401) {
+      notifySessionInvalidateFromGithub401()
+    }
+  }
+
+  private withNoStore(init: RequestInit): RequestInit {
+    return { ...init, cache: 'no-store' }
+  }
+
   private url(path: string): string {
     const encoded = path
       .split('/')
@@ -63,14 +78,19 @@ export class GitHubContentsClient {
   }
 
   async getFileJson(path: string, signal?: AbortSignal): Promise<{ sha: string; json: unknown }> {
-    const res = await this.fetchImpl(this.url(path), {
-      headers: this.headers(),
-      signal,
-    })
+    const res = await this.fetchImpl(
+      this.url(path),
+      this.withNoStore({
+        headers: this.headers(),
+        signal,
+      }),
+    )
     if (res.status === 401 || res.status === 403 || res.status === 404) {
+      this.onUnauthorizedStatus(res.status)
       throw new GitHubHttpError(`GitHub ${res.status}`, res.status)
     }
     if (!res.ok) {
+      this.onUnauthorizedStatus(res.status)
       throw new GitHubHttpError(`GitHub ${res.status}`, res.status)
     }
     const body = (await res.json()) as ContentsGetResponse
@@ -81,17 +101,22 @@ export class GitHubContentsClient {
 
   /** GET file JSON; `null` if path missing (404). Other errors throw. */
   async tryGetFileJson(path: string, signal?: AbortSignal): Promise<{ sha: string; json: unknown } | null> {
-    const res = await this.fetchImpl(this.url(path), {
-      headers: this.headers(),
-      signal,
-    })
+    const res = await this.fetchImpl(
+      this.url(path),
+      this.withNoStore({
+        headers: this.headers(),
+        signal,
+      }),
+    )
     if (res.status === 404) {
       return null
     }
     if (res.status === 401 || res.status === 403) {
+      this.onUnauthorizedStatus(res.status)
       throw new GitHubHttpError(`GitHub ${res.status}`, res.status)
     }
     if (!res.ok) {
+      this.onUnauthorizedStatus(res.status)
       throw new GitHubHttpError(`GitHub ${res.status}`, res.status)
     }
     const body = (await res.json()) as ContentsGetResponse
@@ -103,10 +128,14 @@ export class GitHubContentsClient {
   /** Validates PAT can read the configured repository (GET /repos/{owner}/{repo}). */
   async verifyRepositoryAccess(): Promise<void> {
     const url = `${this.apiBase}/repos/${encodeURIComponent(this.owner)}/${encodeURIComponent(this.repo)}`
-    const res = await this.fetchImpl(url, {
-      headers: this.headers(),
-    })
+    const res = await this.fetchImpl(
+      url,
+      this.withNoStore({
+        headers: this.headers(),
+      }),
+    )
     if (res.status === 401) {
+      this.onUnauthorizedStatus(401)
       throw new GitHubHttpError('Não autorizado (401). Verifique o PAT.', 401)
     }
     if (res.status === 404) {
@@ -132,14 +161,17 @@ export class GitHubContentsClient {
     if (sha) {
       body.sha = sha
     }
-    const res = await this.fetchImpl(this.url(path), {
-      method: 'PUT',
-      headers: {
-        ...this.headers(),
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    })
+    const res = await this.fetchImpl(
+      this.url(path),
+      this.withNoStore({
+        method: 'PUT',
+        headers: {
+          ...this.headers(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      }),
+    )
     if (res.status === 409) {
       throw new GitHubHttpError('Conflict (409)', 409)
     }
@@ -149,6 +181,7 @@ export class GitHubContentsClient {
       throw new GitHubHttpError('Rate limited (429)', 429, retryAfterMs)
     }
     if (!res.ok) {
+      this.onUnauthorizedStatus(res.status)
       throw new GitHubHttpError(`GitHub ${res.status}`, res.status)
     }
   }
@@ -157,14 +190,19 @@ export class GitHubContentsClient {
    * GET raw file (base64 as returned by API). Use for binary blobs and non-JSON text.
    */
   async getFileRaw(path: string, signal?: AbortSignal): Promise<{ sha: string; contentBase64: string }> {
-    const res = await this.fetchImpl(this.url(path), {
-      headers: this.headers(),
-      signal,
-    })
+    const res = await this.fetchImpl(
+      this.url(path),
+      this.withNoStore({
+        headers: this.headers(),
+        signal,
+      }),
+    )
     if (res.status === 401 || res.status === 403 || res.status === 404) {
+      this.onUnauthorizedStatus(res.status)
       throw new GitHubHttpError(`GitHub ${res.status}`, res.status)
     }
     if (!res.ok) {
+      this.onUnauthorizedStatus(res.status)
       throw new GitHubHttpError(`GitHub ${res.status}`, res.status)
     }
     const body = (await res.json()) as ContentsGetResponse
@@ -176,17 +214,22 @@ export class GitHubContentsClient {
 
   /** `tryGetFileRaw`: null if 404. */
   async tryGetFileRaw(path: string, signal?: AbortSignal): Promise<{ sha: string; contentBase64: string } | null> {
-    const res = await this.fetchImpl(this.url(path), {
-      headers: this.headers(),
-      signal,
-    })
+    const res = await this.fetchImpl(
+      this.url(path),
+      this.withNoStore({
+        headers: this.headers(),
+        signal,
+      }),
+    )
     if (res.status === 404) {
       return null
     }
     if (res.status === 401 || res.status === 403) {
+      this.onUnauthorizedStatus(res.status)
       throw new GitHubHttpError(`GitHub ${res.status}`, res.status)
     }
     if (!res.ok) {
+      this.onUnauthorizedStatus(res.status)
       throw new GitHubHttpError(`GitHub ${res.status}`, res.status)
     }
     const body = (await res.json()) as ContentsGetResponse
@@ -207,14 +250,17 @@ export class GitHubContentsClient {
     if (sha) {
       body.sha = sha
     }
-    const res = await this.fetchImpl(this.url(path), {
-      method: 'PUT',
-      headers: {
-        ...this.headers(),
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    })
+    const res = await this.fetchImpl(
+      this.url(path),
+      this.withNoStore({
+        method: 'PUT',
+        headers: {
+          ...this.headers(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      }),
+    )
     if (res.status === 409) {
       throw new GitHubHttpError('Conflict (409)', 409)
     }
@@ -224,27 +270,33 @@ export class GitHubContentsClient {
       throw new GitHubHttpError('Rate limited (429)', 429, retryAfterMs)
     }
     if (!res.ok) {
+      this.onUnauthorizedStatus(res.status)
       throw new GitHubHttpError(`GitHub ${res.status}`, res.status)
     }
   }
 
   /** DELETE file at path (requires current blob SHA). */
   async deleteFile(path: string, sha: string): Promise<void> {
-    const res = await this.fetchImpl(this.url(path), {
-      method: 'DELETE',
-      headers: {
-        ...this.headers(),
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        message: `flowboard: delete ${path}`,
-        sha,
+    const res = await this.fetchImpl(
+      this.url(path),
+      this.withNoStore({
+        method: 'DELETE',
+        headers: {
+          ...this.headers(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: `flowboard: delete ${path}`,
+          sha,
+        }),
       }),
-    })
+    )
     if (res.status === 401 || res.status === 403 || res.status === 404) {
+      this.onUnauthorizedStatus(res.status)
       throw new GitHubHttpError(`GitHub ${res.status}`, res.status)
     }
     if (!res.ok) {
+      this.onUnauthorizedStatus(res.status)
       throw new GitHubHttpError(`GitHub ${res.status}`, res.status)
     }
   }
